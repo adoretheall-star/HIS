@@ -1,0 +1,388 @@
+// ==========================================
+// 文件名: list_ops.c
+// 作用: 链表核心操作的具体实现
+// ==========================================
+#define _CRT_SECURE_NO_WARNINGS
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "global.h" 
+#include "list_ops.h"
+
+// 🚀 极其重要：在这里为 global.h 中声明的全局头指针真正分配内存空间！
+// 如果不写这几行，整个系统就会报“未解析的外部符号”错误。
+PatientNode* g_patient_list = NULL;
+DoctorNode* g_doctor_list  = NULL;
+MedicineNode* g_medicine_list = NULL;
+WardNode* g_ward_list    = NULL;
+AccountNode* g_account_list = NULL;
+//一、患者链表操作
+// ---------------------------------------------------------
+// 功能 1：初始化带头结点的双向链表
+// ---------------------------------------------------------
+PatientNode* init_patient_list() 
+{
+    PatientNode* head = (PatientNode*)malloc(sizeof(PatientNode));
+    if (head == NULL) 
+    {
+        printf("🔥 致命错误：内存分配失败，系统无法启动！\n");
+        exit(1); // 内存都没了，直接让程序自杀（1表示程序异常退出）
+    }
+    
+    // 给头结点打上标记，防止和真实数据混淆
+    // 安全的写法，确保不会超出字符数组的边界，防止缓冲区溢出
+    strncpy(head->id, "HEAD", MAX_ID_LEN - 1);
+    head->id[MAX_ID_LEN - 1] = '\0';
+
+    strncpy(head->name, "SYSTEM_HEAD", MAX_NAME_LEN - 1);
+    head->name[MAX_NAME_LEN - 1] = '\0';
+    
+    // 💡 防御阵地：头结点的指针必须干干净净
+    head->script_head = NULL; 
+    head->prev = NULL;
+    head->next = NULL;
+    
+    return head;
+}
+
+// ---------------------------------------------------------
+// 功能 2：在内存中捏造一个“干净”的患者节点
+// ---------------------------------------------------------
+PatientNode* create_patient_node(const char* id, const char* name, int age) {
+    PatientNode* new_node = (PatientNode*)malloc(sizeof(PatientNode));
+    if (new_node == NULL) return NULL;
+
+    // 录入基础信息
+    strncpy(new_node->id, id, MAX_ID_LEN - 1);
+    new_node->id[MAX_ID_LEN - 1] = '\0';
+
+    strncpy(new_node->name, name, MAX_NAME_LEN - 1);
+    new_node->name[MAX_NAME_LEN - 1] = '\0';
+    new_node->age = age;
+    
+    // 初始化业务状态
+    new_node->balance = 0.0;
+    new_node->status = STATUS_PENDING; // 默认待诊状态
+    
+    // 🚀 终极防御：必须把该患者的处方小链表头指针置空！
+    // 否则里面是乱码内存，药房一发药就会直接导致系统闪退！
+    new_node->script_head = NULL;
+    new_node->script_count = 0;
+
+    // 断开一切外界联系，等待被插入大链表
+    new_node->prev = NULL;
+    new_node->next = NULL;
+
+    return new_node;
+}
+
+// ---------------------------------------------------------
+// 功能 3：尾插法 (将新患者排到链表最后)
+// ---------------------------------------------------------
+void insert_patient_tail(PatientNode* head, PatientNode* new_node)
+ {
+    // 💡 防御阵地：永远怀疑指针是空的
+    if (head == NULL || new_node == NULL) return;
+
+    PatientNode* curr = head;
+    // 沿着 next 指针一直走到黑，直到遇到 NULL
+    while (curr->next != NULL) {
+        curr = curr->next;
+    }
+
+    // 此时 curr 绝对停在最后一个节点上，开始双向绑定！
+    curr->next = new_node;       // 老尾巴的 next 指向新节点
+    new_node->prev = curr;       // 新节点的 prev 指向老尾巴
+    // new_node 的 next 已经在 create 阶段设为 NULL 了，完美收尾。
+}
+// 功能 4：查找
+PatientNode* find_patient_by_id(PatientNode* head, const char* target_id) 
+{
+    if (head == NULL || target_id == NULL) return NULL;
+    PatientNode* curr = head->next; 
+// 🚀 细节：跳过无用的 HEAD 头结点，直接从第一个真实数据开始找
+    while (curr != NULL)
+    {
+        if (strcmp(curr->id, target_id) == 0) return curr; // 找到了，直接把这个人拎出来！
+        curr = curr->next;
+    }
+    return NULL; // 找遍了也没这个人，返回空指针
+}
+// 二、医生链表操作
+DoctorNode* init_doctor_list() 
+{
+    DoctorNode* head = (DoctorNode*)malloc(sizeof(DoctorNode));
+    if (head == NULL) exit(1);
+    strncpy(head->id, "HEAD", MAX_ID_LEN - 1);
+    head->id[MAX_ID_LEN - 1] = '\0';
+    head->prev = NULL; head->next = NULL;
+    return head;
+}
+
+DoctorNode* create_doctor_node(const char* id, const char* name, const char* dept) 
+{
+    DoctorNode* new_node = (DoctorNode*)malloc(sizeof(DoctorNode));
+    if (new_node == NULL) return NULL;
+    strncpy(new_node->id, id, MAX_ID_LEN - 1);
+    new_node->id[MAX_ID_LEN - 1] = '\0';
+    strncpy(new_node->name, name, MAX_NAME_LEN - 1);
+    new_node->name[MAX_NAME_LEN - 1] = '\0';
+    strncpy(new_node->department, dept, MAX_NAME_LEN - 1);
+    new_node->department[MAX_NAME_LEN - 1] = '\0';
+    new_node->queue_length = 0; // 初始排队人数为0
+    new_node->prev = NULL; 
+    new_node->next = NULL;
+    return new_node;
+}
+
+void insert_doctor_tail(DoctorNode* head, DoctorNode* new_node) 
+{
+    if (head == NULL || new_node == NULL) return;
+    DoctorNode* curr = head;
+    while (curr->next != NULL) curr = curr->next;
+    curr->next = new_node; new_node->prev = curr;
+}
+DoctorNode* find_doctor_by_id(DoctorNode* head, const char* target_id) 
+{
+    if (head == NULL || target_id == NULL) return NULL;
+    DoctorNode* curr = head->next;
+    while (curr != NULL) 
+    {
+        if (strcmp(curr->id, target_id) == 0) return curr;
+        curr = curr->next;
+    }
+    return NULL;
+}
+//三、药品链表操作
+MedicineNode* init_medicine_list() 
+{
+    MedicineNode* head = (MedicineNode*)malloc(sizeof(MedicineNode));
+    if (head == NULL) exit(1);
+    strncpy(head->id, "HEAD", MAX_ID_LEN - 1);
+    head->id[MAX_ID_LEN - 1] = '\0';
+    head->prev = NULL; head->next = NULL;
+    return head;
+}
+
+MedicineNode* create_medicine_node(const char* id, const char* name, double price, int stock, MedicareType m_type) 
+{
+    MedicineNode* new_node = (MedicineNode*)malloc(sizeof(MedicineNode));
+    if (new_node == NULL) return NULL;
+    strncpy(new_node->id, id, MAX_ID_LEN - 1);
+    new_node->id[MAX_ID_LEN - 1] = '\0';
+    strncpy(new_node->name, name, MAX_NAME_LEN - 1);
+    new_node->name[MAX_NAME_LEN - 1] = '\0';
+    new_node->price = price; new_node->stock = stock; new_node->m_type = m_type;
+    new_node->prev = NULL; new_node->next = NULL;
+    return new_node;
+}
+
+void insert_medicine_tail(MedicineNode* head, MedicineNode* new_node) 
+{
+    if (head == NULL || new_node == NULL) return;
+    MedicineNode* curr = head;
+    while (curr->next != NULL) curr = curr->next;
+    curr->next = new_node; new_node->prev = curr;
+}
+MedicineNode* find_medicine_by_id(MedicineNode* head, const char* target_id) 
+{
+    if (head == NULL || target_id == NULL) return NULL;
+    MedicineNode* curr = head->next;
+    while (curr != NULL) 
+    {
+        if (strcmp(curr->id, target_id) == 0) return curr;
+        curr = curr->next;
+    }
+    return NULL;
+}
+//四、病房床位链表操作
+WardNode* init_ward_list() 
+{
+    WardNode* head = (WardNode*)malloc(sizeof(WardNode));
+    if (head == NULL) exit(1);
+    strncpy(head->bed_id, "HEAD", MAX_ID_LEN - 1);
+    head->bed_id[MAX_ID_LEN - 1] = '\0';
+    head->prev = NULL; head->next = NULL;
+    return head;
+}
+
+WardNode* create_ward_node(const char* bed_id) 
+{
+    WardNode* new_node = (WardNode*)malloc(sizeof(WardNode));
+    if (!new_node) return NULL;
+    strncpy(new_node->bed_id, bed_id, MAX_ID_LEN - 1);
+    new_node->bed_id[MAX_ID_LEN - 1] = '\0';
+    new_node->is_occupied = 0; // 默认空闲
+    new_node->patient_id[0] = '\0'; // 暂无病人
+    new_node->prev = NULL; new_node->next = NULL;
+    return new_node;
+}
+
+void insert_ward_tail(WardNode* head, WardNode* new_node) 
+{
+    if (head == NULL || new_node == NULL) return;
+    WardNode* curr = head;
+    while (curr->next != NULL) curr = curr->next;
+    curr->next = new_node; new_node->prev = curr;
+}
+WardNode* find_ward_by_id(WardNode* head, const char* target_bed_id) 
+{
+    if  (head == NULL || target_bed_id == NULL) return NULL;
+    WardNode* curr = head->next;
+    while (curr != NULL)
+     {
+        if (strcmp(curr->bed_id, target_bed_id) == 0) return curr;
+        curr = curr->next;
+    }
+    return NULL;
+}
+//五、账号权限链表操作
+AccountNode* init_account_list() 
+{
+    AccountNode* head = (AccountNode*)malloc(sizeof(AccountNode));
+    if (head == NULL) exit(1);
+    strncpy(head->username, "HEAD", MAX_NAME_LEN - 1);
+    head->username[MAX_NAME_LEN - 1] = '\0';
+    head->prev = NULL; head->next = NULL;
+    return head;
+}
+
+AccountNode* create_account_node(const char* username, const char* pwd, const char* real_name, RoleType role) 
+{
+    AccountNode* new_node = (AccountNode*)malloc(sizeof(AccountNode));
+    if (new_node == NULL) return NULL;
+    strncpy(new_node->username, username, MAX_NAME_LEN - 1);
+    new_node->username[MAX_NAME_LEN - 1] = '\0';
+    strncpy(new_node->password, pwd, MAX_ID_LEN - 1);
+    new_node->password[MAX_ID_LEN - 1] = '\0';
+    strncpy(new_node->real_name, real_name, MAX_NAME_LEN - 1);
+    new_node->real_name[MAX_NAME_LEN - 1] = '\0';
+    new_node->role = role;
+    new_node->prev = NULL; new_node->next = NULL;
+    return new_node;
+}
+
+void insert_account_tail(AccountNode* head, AccountNode* new_node) 
+{
+    if (head == NULL || new_node == NULL ) return;
+    AccountNode* curr = head;
+    while (curr->next != NULL) curr = curr->next;
+    curr->next = new_node; new_node->prev = curr;
+}
+AccountNode* find_account_by_username(AccountNode* head, const char* target_username) 
+{
+    if (head == NULL || target_username == NULL) return NULL;
+    AccountNode* curr = head->next;
+    while (curr != NULL) 
+    {
+        if (strcmp(curr->username, target_username) == 0) return curr;
+        curr = curr->next;
+    }
+    return NULL;
+}
+// ==========================================
+// 六、 功能：安全删除节点 (双向链表断链重建术)
+// ==========================================
+
+int delete_patient_by_id(PatientNode* head, const char* target_id) 
+{
+    PatientNode* target = find_patient_by_id(head, target_id);
+    if (target == NULL) return 0; // 没找到这个人，删除失败
+
+    // 1. 让前面的节点，指向后面的节点
+    if (target->prev != NULL) { target->prev->next = target->next; }
+    
+    // 2. 让后面的节点，指向前面的节点 (如果 target 不是最后一个节点的话)
+    if (target->next != NULL) { target->next->prev = target->prev; }
+
+    // 🚀 终极内存防御：销毁患者前，必须先销毁他口袋里的处方本！
+    PrescriptionNode* p_curr = target->script_head;
+    while (p_curr != NULL)
+     {
+        PrescriptionNode* temp = p_curr;
+        p_curr = p_curr->next;
+        free(temp); // 把处方单一张张撕掉
+    }
+
+    // 3. 彻底释放该患者占用的内存
+    free(target);
+    return 1; // 删除成功
+}
+
+// 医生、药品、病房、账号的删除逻辑完全一致 (纯粹的指针手术)
+int delete_doctor_by_id(DoctorNode* head, const char* target_id) 
+{
+    DoctorNode* target = find_doctor_by_id(head, target_id);
+    if (!target) return 0;
+    if (target->prev) target->prev->next = target->next;
+    if (target->next) target->next->prev = target->prev;
+    free(target);
+    return 1;
+}
+
+int delete_medicine_by_id(MedicineNode* head, const char* target_id) 
+{
+    MedicineNode* target = find_medicine_by_id(head, target_id);
+    if (!target) return 0;
+    if (target->prev) target->prev->next = target->next;
+    if (target->next) target->next->prev = target->prev;
+    free(target);
+    return 1;
+}
+
+int delete_ward_by_id(WardNode* head, const char* target_bed_id)
+ {
+    WardNode* target = find_ward_by_id(head, target_bed_id);
+    if (!target) return 0;
+    if (target->prev) target->prev->next = target->next;
+    if (target->next) target->next->prev = target->prev;
+    free(target);
+    return 1;
+}
+
+int delete_account_by_username(AccountNode* head, const char* target_username) 
+{
+    AccountNode* target = find_account_by_username(head, target_username);
+    if (!target) return 0;
+    if (target->prev) target->prev->next = target->next;
+    if (target->next) target->next->prev = target->prev;
+    free(target);
+    return 1;
+}
+
+// ==========================================
+// 7. 嵌套链表挂载：给患者的“处方本”开药
+// ==========================================
+void add_prescription_to_patient(PatientNode* patient, const char* med_id, int quantity) 
+{
+    if (patient == NULL || med_id == NULL) return;
+
+    // 1. 制造一张新的处方单 (单向节点)
+    PrescriptionNode* new_script = (PrescriptionNode*)malloc(sizeof(PrescriptionNode));
+    if (!new_script) return;
+    strcpy(new_script->med_id, med_id);
+    new_script->quantity = quantity;
+    new_script->next = NULL;
+
+    // 2. 塞进患者口袋 (单向链表尾插法)
+    if (patient->script_head == NULL)
+     {
+        // 口袋是空的，这是第一张处方
+        patient->script_head = new_script;
+    } 
+    else
+     {
+        // 口袋里有药了，顺着找，放到最后面
+        PrescriptionNode* curr = patient->script_head;
+        while (curr->next != NULL) 
+        {
+            curr = curr->next;
+        }
+        curr->next = new_script;
+    }
+    
+    // 3. 统计数量加一
+    patient->script_count++;
+}
+// End of Selection
+
