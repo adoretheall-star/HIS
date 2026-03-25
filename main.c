@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "utils.h"
+#include "global.h"
+#include "list_ops.h"
 // 这里未来会引入你们自己写的头文件
 // #include "global.h"     // 全局常量与结构体定义
 // #include "data_io.h"    // 负责读写 txt 文件的模块
@@ -36,6 +38,57 @@ int main()
     // ---------------------------------------------------------
     // 第二阶段：主事件循环 (防崩溃核心)
     // ---------------------------------------------------------
+    printf("⚙️ 正在点火启动底层双向链表引擎...\n"
+);
+    
+    // 1. 初始化所有链表头节点
+    g_patient_list = init_patient_list();
+    g_doctor_list = init_doctor_list();
+    g_medicine_list = init_medicine_list();
+    g_ward_list = init_ward_list();
+    g_account_list = init_account_list();
+
+    // 2. 注入一组极端测试数据
+    insert_patient_tail(g_patient_list, create_patient_node(
+"P-001", "张三", 19
+));
+    insert_doctor_tail(g_doctor_list, create_doctor_node(
+"D-001", "李大夫", "外科"
+));
+    insert_medicine_tail(g_medicine_list, create_medicine_node(
+"M-001", "阿莫西林", 15.5, 100
+, MEDICARE_CLASS_A));
+    insert_ward_tail(g_ward_list, create_ward_node(
+"W-101"
+));
+    insert_account_tail(g_account_list, create_account_node(
+"admin", "123456", "超级管理员"
+, ROLE_ADMIN));
+
+    // 3. 打印核验
+    printf("✅ 引擎全部就绪！\n"
+);
+    printf(" -> 测试患者: %s\n"
+, g_patient_list->next->name);
+    printf(" -> 测试医生: %s (%s)\n"
+, g_doctor_list->next->name, g_doctor_list->next->department);
+    printf(" -> 测试药品: %s (库存:%d)\n"
+, g_medicine_list->next->name, g_medicine_list->next->stock);
+    printf(" -> 测试床位: %s\n"
+, g_ward_list->next->bed_id);
+    printf(" -> 测试超管: %s (权限级别:%d)\n\n"
+, g_account_list->next->real_name, g_account_list->next->role);
+// 测试查找引擎
+    PatientNode* search_result = find_patient_by_id(g_patient_list, "P-001");
+    if (search_result != NULL) {
+        printf("🔍 雷达搜索成功！找到目标：患者姓名 [%s]，当前余额 [%.2f]\n\n", search_result->name, search_result->balance);
+    } else {
+        printf("❌ 雷达搜索失败，查无此人！\n\n");
+    }
+    // 🚀 时停魔法：按任意键后才清屏进入菜单！
+    system(
+"pause"
+);
     int running = 1; // 控制系统运行状态的标志位
 
     while (running) 
