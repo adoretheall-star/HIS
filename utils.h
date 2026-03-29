@@ -15,6 +15,12 @@ double get_safe_double(const char* prompt);
 // 参数说明：prompt是提示语，buffer是存放文本的数组，max_len是数组最大长度
 void get_safe_string(const char* prompt, char* buffer, int max_len);
 
+// 4. 身份证基础格式校验
+int validate_id_card(const char* id_card);
+
+// 5. 身份证号脱敏
+void mask_id_card(const char* src, char* dest);
+
 // 以后如果有通用功能，比如隐藏密码输入、暂停程序，也全声明在这里
 // void clear_screen(); 
 
