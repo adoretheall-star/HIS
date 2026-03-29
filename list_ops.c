@@ -12,6 +12,7 @@
 // 🚀 极其重要：在这里为 global.h 中声明的全局头指针真正分配内存空间！
 // 如果不写这几行，整个系统就会报“未解析的外部符号”错误。
 PatientNode* g_patient_list = NULL;
+AppointmentNode* g_appointment_list = NULL;
 DoctorNode* g_doctor_list  = NULL;
 MedicineNode* g_medicine_list = NULL;
 WardNode* g_ward_list    = NULL;
@@ -48,7 +49,7 @@ PatientNode* init_patient_list()
 // ---------------------------------------------------------
 // 功能 2：在内存中捏造一个“干净”的患者节点
 // ---------------------------------------------------------
-PatientNode* create_patient_node(const char* id, const char* name, int age) {
+PatientNode* create_patient_node(const char* id, const char* name, int age, const char* id_card) {
     PatientNode* new_node = (PatientNode*)malloc(sizeof(PatientNode));
     if (new_node == NULL) return NULL;
 
@@ -59,6 +60,9 @@ PatientNode* create_patient_node(const char* id, const char* name, int age) {
     strncpy(new_node->name, name, MAX_NAME_LEN - 1);
     new_node->name[MAX_NAME_LEN - 1] = '\0';
     new_node->age = age;
+    
+    strncpy(new_node->id_card, id_card, MAX_ID_LEN - 1);
+    new_node->id_card[MAX_ID_LEN - 1] = '\0';
     
     // 初始化业务状态
     new_node->balance = 0.0;
@@ -108,7 +112,66 @@ PatientNode* find_patient_by_id(PatientNode* head, const char* target_id)
     }
     return NULL; // 找遍了也没这个人，返回空指针
 }
-// 二、医生链表操作
+// 二、预约记录链表操作
+AppointmentNode* init_appointment_list() 
+{
+    AppointmentNode* head = (AppointmentNode*)malloc(sizeof(AppointmentNode));
+    if (head == NULL) exit(1);
+    strncpy(head->appointment_id, "HEAD", MAX_ID_LEN - 1);
+    head->appointment_id[MAX_ID_LEN - 1] = '\0';
+    head->prev = NULL; head->next = NULL;
+    return head;
+}
+
+AppointmentNode* create_appointment_node(const char* appointment_id, const char* patient_id, const char* appointment_date, const char* appointment_slot, const char* appoint_doctor, const char* appoint_dept, AppointmentStatus appointment_status) 
+{
+    AppointmentNode* new_node = (AppointmentNode*)malloc(sizeof(AppointmentNode));
+    if (new_node == NULL) return NULL;
+    
+    strncpy(new_node->appointment_id, appointment_id, MAX_ID_LEN - 1);
+    new_node->appointment_id[MAX_ID_LEN - 1] = '\0';
+    
+    strncpy(new_node->patient_id, patient_id, MAX_ID_LEN - 1);
+    new_node->patient_id[MAX_ID_LEN - 1] = '\0';
+    
+    strncpy(new_node->appointment_date, appointment_date, MAX_NAME_LEN - 1);
+    new_node->appointment_date[MAX_NAME_LEN - 1] = '\0';
+    
+    strncpy(new_node->appointment_slot, appointment_slot, MAX_NAME_LEN - 1);
+    new_node->appointment_slot[MAX_NAME_LEN - 1] = '\0';
+    
+    strncpy(new_node->appoint_doctor, appoint_doctor, MAX_NAME_LEN - 1);
+    new_node->appoint_doctor[MAX_NAME_LEN - 1] = '\0';
+    
+    strncpy(new_node->appoint_dept, appoint_dept, MAX_NAME_LEN - 1);
+    new_node->appoint_dept[MAX_NAME_LEN - 1] = '\0';
+    
+    new_node->appointment_status = appointment_status;
+    
+    new_node->prev = NULL; new_node->next = NULL;
+    return new_node;
+}
+
+void insert_appointment_tail(AppointmentNode* head, AppointmentNode* new_node) 
+{
+    if (head == NULL || new_node == NULL) return;
+    AppointmentNode* curr = head;
+    while (curr->next != NULL) curr = curr->next;
+    curr->next = new_node; new_node->prev = curr;
+}
+
+AppointmentNode* find_appointment_by_id(AppointmentNode* head, const char* target_appointment_id) 
+{
+    if (head == NULL || target_appointment_id == NULL) return NULL;
+    AppointmentNode* curr = head->next;
+    while (curr != NULL) 
+    {
+        if (strcmp(curr->appointment_id, target_appointment_id) == 0) return curr;
+        curr = curr->next;
+    }
+    return NULL;
+}
+// 三、医生链表操作
 DoctorNode* init_doctor_list() 
 {
     DoctorNode* head = (DoctorNode*)malloc(sizeof(DoctorNode));
@@ -153,7 +216,7 @@ DoctorNode* find_doctor_by_id(DoctorNode* head, const char* target_id)
     }
     return NULL;
 }
-//三、药品链表操作
+//四、药品链表操作
 MedicineNode* init_medicine_list() 
 {
     MedicineNode* head = (MedicineNode*)malloc(sizeof(MedicineNode));
@@ -195,7 +258,7 @@ MedicineNode* find_medicine_by_id(MedicineNode* head, const char* target_id)
     }
     return NULL;
 }
-//四、病房床位链表操作
+//五、病房床位链表操作
 WardNode* init_ward_list() 
 {
     WardNode* head = (WardNode*)malloc(sizeof(WardNode));
@@ -236,7 +299,7 @@ WardNode* find_ward_by_id(WardNode* head, const char* target_bed_id)
     }
     return NULL;
 }
-//五、账号权限链表操作
+//六、账号权限链表操作
 AccountNode* init_account_list() 
 {
     AccountNode* head = (AccountNode*)malloc(sizeof(AccountNode));

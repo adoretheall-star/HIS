@@ -50,7 +50,7 @@ int main()
 
     // 2. 注入一组极端测试数据
     insert_patient_tail(g_patient_list, create_patient_node(
-"P-001", "张三", 19
+"P-001", "张三", 19, "110101199001011234"
 ));
     insert_doctor_tail(g_doctor_list, create_doctor_node(
 "D-001", "李大夫", "外科"
