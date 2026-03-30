@@ -9,14 +9,187 @@
 #include "utils.h"
 #include "global.h"
 #include "list_ops.h"
+#include "patient_service.h"
+#include "appointment.h"
 // 这里未来会引入你们自己写的头文件
 // #include "global.h"     // 全局常量与结构体定义
 // #include "data_io.h"    // 负责读写 txt 文件的模块
 // #include "auth.h"       // 负责登录与权限的模块
 // #include "utils.h"      // 存放 get_safe_int 终端输入拦截器等工具函数
+static void quick_register_menu();
+static void patient_self_service_menu();
+static void handle_patient_register();
+static void handle_appointment_register();
+static void handle_appointment_query();
+static void handle_appointment_cancel();
+static void handle_appointment_check_in();
+static void handle_patient_register()
+{
+    char name[MAX_NAME_LEN];
+    char id_card[MAX_ID_LEN];
+    int age;
+    printf("\n================ 患者建档 ================\n");
+    get_safe_string("请输入患者姓名: ", name, MAX_NAME_LEN);
+    age = get_safe_int("请输入患者年龄: ");
+    get_safe_string("请输入身份证号: ", id_card, MAX_ID_LEN);
+    register_patient(name, age, id_card);
+    system("pause");
+}
+static void handle_appointment_register()
+{
+    char patient_id[MAX_ID_LEN];
+    char appointment_date[MAX_NAME_LEN];
+    char appointment_slot[MAX_NAME_LEN];
+    char appoint_doctor[MAX_NAME_LEN];
+    char appoint_dept[MAX_NAME_LEN];
+    printf("\n================ 预约登记 ================\n");
+    get_safe_string("请输入患者编号: ", patient_id, MAX_ID_LEN);
+    get_safe_string("请输入预约日期: ", appointment_date, MAX_NAME_LEN);
+    get_safe_string("请输入预约时段: ", appointment_slot, MAX_NAME_LEN);
+    get_safe_string("请输入预约医生编号(可留空): ", appoint_doctor, MAX_NAME_LEN);
+    get_safe_string("请输入预约科室(可留空): ", appoint_dept, MAX_NAME_LEN);
+    register_appointment(
+        patient_id,
+        appointment_date,
+        appointment_slot,
+        appoint_doctor,
+        appoint_dept
+    );
+    system("pause");
+}
+static void handle_appointment_query()
+{
+    int choice;
+    char patient_id[MAX_ID_LEN];
+    char id_card[MAX_ID_LEN];
+    while (1)
+    {
+        system("cls");
+        printf("\n================ 预约查询 ================\n");
+        printf("  [1] 按患者编号查询\n");
+        printf("  [2] 按身份证号查询\n");
+        printf("  [0] 返回上一级\n");
+        printf("------------------------------------------\n");
+        choice = get_safe_int("👉 请输入操作编号: ");
+        if (choice == 0) return;
+        switch (choice)
+        {
+            case 1:
+                get_safe_string("请输入患者编号: ", patient_id, MAX_ID_LEN);
+                query_appointments_by_patient_id(patient_id);
+                system("pause");
+                break;
+            case 2:
+                get_safe_string("请输入身份证号: ", id_card, MAX_ID_LEN);
+                query_appointments_by_id_card(id_card);
+                system("pause");
+                break;
+            default:
+                printf("\n⚠️ 无效的选项，请重新输入！\n");
+                system("pause");
+                break;
+        }
+    }
+}
+static void handle_appointment_cancel()
+{
+    char appointment_id[MAX_ID_LEN];
+    printf("\n================ 预约取消 ================\n");
+    get_safe_string("请输入预约编号: ", appointment_id, MAX_ID_LEN);
+    cancel_appointment(appointment_id);
+    system("pause");
+}
+static void handle_appointment_check_in()
+{
+    char appointment_id[MAX_ID_LEN];
+    printf("\n================ 预约签到 ================\n");
+    get_safe_string("请输入预约编号: ", appointment_id, MAX_ID_LEN);
+    check_in_appointment(appointment_id);
+    system("pause");
+}
+static void quick_register_menu()
+{
+    int running = 1;
+    while (running)
+    {
+        system("cls");
+        printf("\n======================================================\n");
+        printf("               👨‍⚕️ 快捷挂号业务菜单\n");
+        printf("======================================================\n");
+        printf("  [1] 患者建档\n");
+        printf("  [2] 预约登记\n");
+        printf("  [3] 预约查询\n");
+        printf("  [4] 预约取消\n");
+        printf("  [5] 预约签到\n");
+        printf("  [0] 返回上一级\n");
+        printf("------------------------------------------------------\n");
+        switch (get_safe_int("👉 请输入操作编号: "))
+        {
+            case 1:
+                handle_patient_register();
+                break;
+            case 2:
+                handle_appointment_register();
+                break;
+            case 3:
+                handle_appointment_query();
+                break;
+            case 4:
+                handle_appointment_cancel();
+                break;
+            case 5:
+                handle_appointment_check_in();
+                break;
+            case 0:
+                running = 0;
+                break;
+            default:
+                printf("\n⚠️ 无效的选项，请重新输入！\n");
+                system("pause");
+                break;
+        }
+    }
+}
+static void patient_self_service_menu()
+{
+    int running = 1;
+    char patient_id[MAX_ID_LEN];
+    char id_card[MAX_ID_LEN];
+    while (running)
+    {
+        system("cls");
+        printf("\n======================================================\n");
+        printf("               🔍 患者自助查询菜单\n");
+        printf("======================================================\n");
+        printf("  [1] 按患者ID查询预约\n");
+        printf("  [2] 按身份证号查询预约\n");
+        printf("  [0] 返回上一级\n");
+        printf("------------------------------------------------------\n");
+        switch (get_safe_int("👉 请输入操作编号: "))
+        {
+            case 1:
+                get_safe_string("请输入患者编号: ", patient_id, MAX_ID_LEN);
+                query_appointments_by_patient_id(patient_id);
+                system("pause");
+                break;
+            case 2:
+                get_safe_string("请输入身份证号: ", id_card, MAX_ID_LEN);
+                query_appointments_by_id_card(id_card);
+                system("pause");
+                break;
+            case 0:
+                running = 0;
+                break;
+            default:
+                printf("\n⚠️ 无效的选项，请重新输入！\n");
+                system("pause");
+                break;
+        }
+    }
+}
 int main() 
 {
-    // ---------------------------------------------------------
+    // ---------------------------------------------------
     // 第一阶段：系统初始化 (加载数据)
     // ---------------------------------------------------------
     printf("======================================================\n");
@@ -50,7 +223,7 @@ int main()
 
     // 2. 注入一组极端测试数据
     insert_patient_tail(g_patient_list, create_patient_node(
-"P-001", "张三", 19
+"P-001", "张三", 19, "110101199001011234"
 ));
     insert_doctor_tail(g_doctor_list, create_doctor_node(
 "D-001", "李大夫", "外科"
@@ -115,12 +288,12 @@ int main()
                 break;
             case 2:
                 printf("\n[跳转] -> 进入快捷挂号通道...\n");
-                // quick_register();
+                quick_register_menu();
                 break;
             case 3:
                 // 🌟 这里就是专门为患者视角设计的通道！
                 printf("\n[跳转] -> 进入患者自助查询终端...\n");
-                // patient_self_service(); 
+                patient_self_service_menu(); 
                 // 在这个函数里，患者输入姓名或编号，系统遍历处方链表打印结算单
                 break;
             case 4:

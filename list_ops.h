@@ -11,14 +11,21 @@
 // 1. 初始化带头结点的双向链表
 PatientNode* init_patient_list();
 // 2. 创建一个干净的患者节点
-PatientNode* create_patient_node(const char* id, const char* name, int age);
+PatientNode* create_patient_node(const char* id, const char* name, int age, const char* id_card);
 // 3. 尾部安全插入法
 void insert_patient_tail(PatientNode* head, PatientNode* new_node);
 // 4. 按 ID 查找患者 (防瞎找)
 PatientNode* find_patient_by_id(PatientNode* head, const char* target_id);
 // ==========================================
 // ==========================================
-//二、医生链表操作
+//二、预约记录链表操作
+AppointmentNode* init_appointment_list();
+AppointmentNode* create_appointment_node(const char* appointment_id, const char* patient_id, const char* appointment_date, const char* appointment_slot, const char* appoint_doctor, const char* appoint_dept, AppointmentStatus appointment_status);
+void insert_appointment_tail(AppointmentNode* head, AppointmentNode* new_node);
+AppointmentNode* find_appointment_by_id(AppointmentNode* head, const char* target_appointment_id);
+// ==========================================
+// ==========================================
+//三、医生链表操作
 DoctorNode* init_doctor_list();
 DoctorNode* create_doctor_node(const char* id, const char* name, const char* dept);
 void insert_doctor_tail(DoctorNode* head, DoctorNode* new_node);

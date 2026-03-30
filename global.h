@@ -40,6 +40,14 @@ typedef enum //医保类型
     MEDICARE_CLASS_B = 2  // 乙类医保 (报销 50%)
 } MedicareType;
 
+typedef enum //预约状态
+{
+    RESERVED = 1,   // 已预约
+    CHECKED_IN = 2, // 已签到
+    CANCELLED = 3,  // 已取消
+    MISSED = 4      // 已过号
+} AppointmentStatus;
+
 // ==========================================
 // 3. 附属结构体定义
 // ==========================================
@@ -62,7 +70,8 @@ typedef struct PatientNode
     char id[MAX_ID_LEN];       //患者唯一编号    
     char name[MAX_NAME_LEN];   //患者姓名      
     int age;                   //患者年龄
-    MedicareType m_type;       //个人医保类型 
+    char id_card[MAX_ID_LEN];  //身份证号
+    MedicareType m_type;       //个人医保类型
     //高级业务字段 
     char symptom[MAX_SYMPTOM_LEN];//症状描述（供智能分诊系统使用）  
     char target_dept[MAX_NAME_LEN]; //患者挂号科室
@@ -78,7 +87,22 @@ typedef struct PatientNode
     struct PatientNode* next; //后继指针
 } PatientNode;
 
-// 【实体 2：医生与科室双向链表】
+// 【实体 2：预约记录双向链表】
+typedef struct AppointmentNode 
+{
+    char appointment_id[MAX_ID_LEN];      //预约编号
+    char patient_id[MAX_ID_LEN];          //患者编号
+    char appointment_date[MAX_NAME_LEN];  //预约日期
+    char appointment_slot[MAX_NAME_LEN];  //预约时段
+    char appoint_doctor[MAX_NAME_LEN];    //预约医生
+    char appoint_dept[MAX_NAME_LEN];      //预约科室
+    AppointmentStatus appointment_status; //预约状态
+
+    struct AppointmentNode* prev;//前驱指针
+    struct AppointmentNode* next; //后继指针
+} AppointmentNode;
+
+// 【实体 3：医生与科室双向链表】
 typedef struct DoctorNode 
 {
     char id[MAX_ID_LEN];      //医生工号     
@@ -90,7 +114,7 @@ typedef struct DoctorNode
     struct DoctorNode* next; //后继指针
 } DoctorNode;
 
-// 【实体 3：药品库房双向链表】
+// 【实体 4：药品库房双向链表】
 typedef struct MedicineNode 
 {
     char id[MAX_ID_LEN];       //药品编号     
@@ -103,7 +127,7 @@ typedef struct MedicineNode
     struct MedicineNode* next; //后继指针
 } MedicineNode;
 
-// 【实体 4：病房与床位双向链表】
+// 【实体 5：病房与床位双向链表】
 typedef struct WardNode 
 {
     char bed_id[MAX_ID_LEN];       // 床位编号 (如: W-101)
@@ -113,7 +137,7 @@ typedef struct WardNode
     struct WardNode* prev;//前驱指针
     struct WardNode* next; //后继指针
 } WardNode;
-// 【实体 5：系统账号与权限控制双向链表 (解决所有员工的登录问题)】
+// 【实体 6：系统账号与权限控制双向链表 (解决所有员工的登录问题)】
 typedef struct AccountNode {
     char username[MAX_ID_LEN];     // 登录账号 (工号)
     char password[MAX_ID_LEN];     // 登录密码 (阶段一可以先存明文，阶段二再加异或加密)
@@ -128,6 +152,7 @@ typedef struct AccountNode {
 // 6. 全局头结点声明 (外部文件通过 extern 共享)
 // ==========================================
 extern PatientNode* g_patient_list;
+extern AppointmentNode* g_appointment_list;
 extern DoctorNode* g_doctor_list;
 extern MedicineNode* g_medicine_list;
 extern WardNode* g_ward_list; 

@@ -2,6 +2,7 @@
 // 作用: 工具函数的具体实现逻辑
 #define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
+#include <ctype.h>
 #include <string.h>
 #include "utils.h" // 必须把自己的说明书引进来
 //1.整数拦截器
@@ -57,4 +58,47 @@ void get_safe_string(const char* prompt, char* buffer, int max_len)
     {
         buffer[0] = '\0'; // 异常情况，返回空字符串
     }
+}
+//4.身份证基础格式校验
+int validate_id_card(const char* id_card) 
+{
+    int i;
+    if (id_card == NULL) return 0;
+    if (strlen(id_card) != 18) return 0;
+    for (i = 0; i < 17; i++) 
+    {
+        if (!isdigit((unsigned char)id_card[i])) 
+        {
+            return 0;
+        }
+    }
+    if (!isdigit((unsigned char)id_card[17]) && id_card[17] != 'X' && id_card[17] != 'x') 
+    {
+        return 0;
+    }
+    return 1;
+}
+//5.身份证号脱敏
+void mask_id_card(const char* src, char* dest) 
+{
+    int i;
+    if (dest == NULL) return;
+    if (src == NULL || strlen(src) < 18) 
+    {
+        dest[0] = '\0';
+        return;
+    }
+    for (i = 0; i < 6; i++) 
+    {
+        dest[i] = src[i];
+    }
+    for (i = 6; i < 14; i++) 
+    {
+        dest[i] = '*';
+    }
+    for (i = 14; i < 18; i++) 
+    {
+        dest[i] = src[i];
+    }
+    dest[18] = '\0';
 }
