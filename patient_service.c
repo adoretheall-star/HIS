@@ -10,6 +10,19 @@
 #include "list_ops.h"
 #include "utils.h"
 #include "patient_service.h"
+// 就诊状态转文字
+static const char* get_med_status_text(MedStatus status)
+{
+    switch (status)
+    {
+        case STATUS_PENDING: return "待诊";
+        case STATUS_DIAGNOSED: return "已看诊待缴费";
+        case STATUS_PAID: return "已缴费待取药";
+        case STATUS_COMPLETED: return "就诊结束";
+        default: return "未知状态";
+    }
+}
+
 // 生成下一个患者编号
 static void generate_patient_id(char* new_id)
 {
@@ -94,4 +107,52 @@ PatientNode* register_patient(const char* name, int age, const char* id_card)
     mask_id_card(new_patient->id_card, masked_id);
     printf("✅ 患者建档成功！患者编号：%s，身份证号：%s\n", new_patient->id, masked_id);
     return new_patient;
+}
+
+// 身份核验后查询基础病历信息
+int query_basic_patient_record(const char* patient_id, const char* id_card)
+{
+    char masked_id[19];
+    PatientNode* patient = NULL;
+
+    if (g_patient_list == NULL)
+    {
+        printf("⚠️ 患者链表尚未初始化，无法查询病历！\n");
+        return 0;
+    }
+
+    if (patient_id == NULL || strlen(patient_id) == 0)
+    {
+        printf("⚠️ 患者编号不能为空！\n");
+        return 0;
+    }
+
+    if (!validate_id_card(id_card))
+    {
+        printf("⚠️ 身份证号格式不合法，无法进行身份核验！\n");
+        return 0;
+    }
+
+    patient = find_patient_by_id(g_patient_list, patient_id);
+    if (patient == NULL)
+    {
+        printf("⚠️ 未找到对应患者，病历查询失败！\n");
+        return 0;
+    }
+
+    if (strcmp(patient->id_card, id_card) != 0)
+    {
+        printf("⚠️ 身份核验失败，禁止访问基础病历信息！\n");
+        return 0;
+    }
+
+    mask_id_card(patient->id_card, masked_id);
+    printf("\n================ 基础病历信息 ================\n");
+    printf("患者编号: %s\n", patient->id);
+    printf("姓名: %s\n", patient->name);
+    printf("年龄: %d\n", patient->age);
+    printf("当前就诊状态: %s\n", get_med_status_text(patient->status));
+    printf("身份证号: %s\n", masked_id);
+
+    return 1;
 }
