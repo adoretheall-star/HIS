@@ -50,5 +50,5 @@ WardNode* find_ward_by_id(WardNode* head, const char* target_bed_id);
 AccountNode* init_account_list();
 AccountNode* create_account_node(const char* username, const char* pwd, const char* real_name, RoleType role);
 void insert_account_tail(AccountNode* head, AccountNode* new_node);
-AccountNode* find_account_by_id(AccountNode* head, const char* target_username);
+AccountNode* find_account_by_username(AccountNode* head, const char* target_username);
 #endif // LIST_OPS_H

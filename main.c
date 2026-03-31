@@ -6,6 +6,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "utils.h"
 #include "global.h"
 #include "list_ops.h"
@@ -24,6 +25,181 @@ static void handle_appointment_query();
 static void handle_appointment_cancel();
 static void handle_appointment_check_in();
 static void handle_basic_record_query();
+static void internal_login_menu();
+static void admin_menu();
+static void nurse_menu();
+static void doctor_menu();
+static void pharmacist_menu();
+
+static void admin_menu()
+{
+    int running = 1;
+
+    while (running)
+    {
+        system("cls");
+        printf("\n======================================================\n");
+        printf("               🔐 管理员菜单\n");
+        printf("======================================================\n");
+        printf("  [1] 管理员菜单（后续开发）\n");
+        printf("  [0] 退出登录\n");
+        printf("------------------------------------------------------\n");
+
+        switch (get_safe_int("👉 请输入操作编号: "))
+        {
+            case 1:
+                printf("\n[提示] 管理员菜单（后续开发）...\n");
+                system("pause");
+                break;
+            case 0:
+                running = 0;
+                break;
+            default:
+                printf("\n⚠️ 无效的选项，请重新输入！\n");
+                system("pause");
+                break;
+        }
+    }
+}
+
+static void nurse_menu()
+{
+    int running = 1;
+
+    while (running)
+    {
+        system("cls");
+        printf("\n======================================================\n");
+        printf("               👩‍⚕️ 护士/前台菜单\n");
+        printf("======================================================\n");
+        printf("  [1] 进入快捷挂号业务菜单\n");
+        printf("  [0] 退出登录\n");
+        printf("------------------------------------------------------\n");
+
+        switch (get_safe_int("👉 请输入操作编号: "))
+        {
+            case 1:
+                quick_register_menu();
+                break;
+            case 0:
+                running = 0;
+                break;
+            default:
+                printf("\n⚠️ 无效的选项，请重新输入！\n");
+                system("pause");
+                break;
+        }
+    }
+}
+
+static void doctor_menu()
+{
+    int running = 1;
+
+    while (running)
+    {
+        system("cls");
+        printf("\n======================================================\n");
+        printf("               👨‍⚕️ 医生接诊菜单\n");
+        printf("======================================================\n");
+        printf("  [1] 医生接诊菜单（后续开发）\n");
+        printf("  [0] 退出登录\n");
+        printf("------------------------------------------------------\n");
+
+        switch (get_safe_int("👉 请输入操作编号: "))
+        {
+            case 1:
+                printf("\n[提示] 医生接诊菜单（后续开发）...\n");
+                system("pause");
+                break;
+            case 0:
+                running = 0;
+                break;
+            default:
+                printf("\n⚠️ 无效的选项，请重新输入！\n");
+                system("pause");
+                break;
+        }
+    }
+}
+
+static void pharmacist_menu()
+{
+    int running = 1;
+
+    while (running)
+    {
+        system("cls");
+        printf("\n======================================================\n");
+        printf("               💊 药房菜单\n");
+        printf("======================================================\n");
+        printf("  [1] 药房菜单（后续开发）\n");
+        printf("  [0] 退出登录\n");
+        printf("------------------------------------------------------\n");
+
+        switch (get_safe_int("👉 请输入操作编号: "))
+        {
+            case 1:
+                printf("\n[提示] 药房菜单（后续开发）...\n");
+                system("pause");
+                break;
+            case 0:
+                running = 0;
+                break;
+            default:
+                printf("\n⚠️ 无效的选项，请重新输入！\n");
+                system("pause");
+                break;
+        }
+    }
+}
+
+static void internal_login_menu()
+{
+    char username[MAX_ID_LEN];
+    char password[MAX_ID_LEN];
+    AccountNode* account = NULL;
+
+    system("cls");
+    printf("\n======================================================\n");
+    printf("               🔑 内部人员登录\n");
+    printf("======================================================\n");
+
+    get_safe_string("请输入账号: ", username, MAX_ID_LEN);
+    get_safe_string("请输入密码: ", password, MAX_ID_LEN);
+
+    account = find_account_by_username(g_account_list, username);
+    if (account == NULL || strcmp(account->password, password) != 0)
+    {
+        printf("\n⚠️ 登录失败，账号或密码错误！\n");
+        system("pause");
+        return;
+    }
+
+    printf("\n✅ 登录成功，欢迎你：%s\n", account->real_name);
+    system("pause");
+
+    switch (account->role)
+    {
+        case ROLE_ADMIN:
+            admin_menu();
+            break;
+        case ROLE_NURSE:
+            nurse_menu();
+            break;
+        case ROLE_DOCTOR:
+            doctor_menu();
+            break;
+        case ROLE_PHARMACIST:
+            pharmacist_menu();
+            break;
+        default:
+            printf("\n⚠️ 当前角色暂未开放内部菜单！\n");
+            system("pause");
+            break;
+    }
+}
+
 static void handle_patient_register()
 {
     char name[MAX_NAME_LEN];
@@ -257,6 +433,15 @@ int main()
     insert_account_tail(g_account_list, create_account_node(
 "admin", "123456", "超级管理员"
 , ROLE_ADMIN));
+    insert_account_tail(g_account_list, create_account_node(
+"nurse", "123456", "护士"
+, ROLE_NURSE));
+    insert_account_tail(g_account_list, create_account_node(
+"doctor", "123456", "医生"
+, ROLE_DOCTOR));
+    insert_account_tail(g_account_list, create_account_node(
+"pharm", "123456", "药剂师"
+, ROLE_PHARMACIST));
 
     // 3. 打印核验
     printf("✅ 引擎全部就绪！\n"
@@ -306,7 +491,7 @@ int main()
         switch (choice) {
             case 1:
                 printf("\n[跳转] -> 进入内部人员登录模块...\n");
-                // system_login(); 
+                internal_login_menu(); 
                 break;
             case 2:
                 printf("\n[跳转] -> 进入快捷挂号通道...\n");
@@ -315,7 +500,6 @@ int main()
             case 3:
                 // 🌟 这里就是专门为患者视角设计的通道！
                 printf("\n[跳转] -> 进入患者自助预约查询终端...\n");
-                system("pause");
                 patient_self_service_menu(); 
                 // 在这个函数里，患者输入姓名或编号，系统遍历处方链表打印结算单
                 break;
