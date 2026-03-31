@@ -23,6 +23,7 @@ static void handle_appointment_register();
 static void handle_appointment_query();
 static void handle_appointment_cancel();
 static void handle_appointment_check_in();
+static void handle_basic_record_query();
 static void handle_patient_register()
 {
     char name[MAX_NAME_LEN];
@@ -107,6 +108,17 @@ static void handle_appointment_check_in()
     check_in_appointment(appointment_id);
     system("pause");
 }
+static void handle_basic_record_query()
+{
+    char patient_id[MAX_ID_LEN];
+    char id_card[MAX_ID_LEN];
+
+    printf("\n================ 基础病历查询 ================\n");
+    get_safe_string("请输入患者编号: ", patient_id, MAX_ID_LEN);
+    get_safe_string("请输入身份证号: ", id_card, MAX_ID_LEN);
+    query_basic_patient_record(patient_id, id_card);
+    system("pause");
+}
 static void quick_register_menu()
 {
     int running = 1;
@@ -163,6 +175,7 @@ static void patient_self_service_menu()
         printf("======================================================\n");
         printf("  [1] 按患者ID查询预约\n");
         printf("  [2] 按身份证号查询预约\n");
+        printf("  [3] 身份核验后查询基础病历信息\n");
         printf("  [0] 返回上一级\n");
         printf("------------------------------------------------------\n");
         switch (get_safe_int("👉 请输入操作编号: "))
@@ -176,6 +189,9 @@ static void patient_self_service_menu()
                 get_safe_string("请输入身份证号: ", id_card, MAX_ID_LEN);
                 query_appointments_by_id_card(id_card);
                 system("pause");
+                break;
+            case 3:
+                handle_basic_record_query();
                 break;
             case 0:
                 running = 0;
@@ -216,6 +232,7 @@ int main()
     
     // 1. 初始化所有链表头节点
     g_patient_list = init_patient_list();
+    g_appointment_list = init_appointment_list();
     g_doctor_list = init_doctor_list();
     g_medicine_list = init_medicine_list();
     g_ward_list = init_ward_list();
@@ -231,6 +248,9 @@ int main()
     insert_medicine_tail(g_medicine_list, create_medicine_node(
 "M-001", "阿莫西林", 15.5, 100
 , MEDICARE_CLASS_A));
+    insert_appointment_tail(g_appointment_list, create_appointment_node(
+"A-001", "P-001", "2026-04-01", "上午", "D-001", "外科", RESERVED
+));
     insert_ward_tail(g_ward_list, create_ward_node(
 "W-101"
 ));
@@ -247,6 +267,8 @@ int main()
 , g_doctor_list->next->name, g_doctor_list->next->department);
     printf(" -> 测试药品: %s (库存:%d)\n"
 , g_medicine_list->next->name, g_medicine_list->next->stock);
+    printf(" -> 测试预约: %s (%s %s)\n"
+, g_appointment_list->next->appointment_id, g_appointment_list->next->appointment_date, g_appointment_list->next->appointment_slot);
     printf(" -> 测试床位: %s\n"
 , g_ward_list->next->bed_id);
     printf(" -> 测试超管: %s (权限级别:%d)\n\n"
@@ -274,7 +296,7 @@ int main()
         printf("======================================================\n");
         printf("  [1] 🔑 内部登录 (医生/护士/药房专员/管理员)\n");
         printf("  [2] 👨‍⚕️ 快捷挂号 (智能分诊通道)\n");
-        printf("  [3] 🔍 患者自助 (查病历 / 医保账单结算)  <-- 新增的患者视角\n");
+        printf("  [3] 🔍 患者自助 (预约查询 / 基础病历)\n");
         printf("  [4] 📊 医疗大屏 (内部数据可视化展示)\n");
         printf("  [0] 🚪 安全退出系统\n");
         printf("------------------------------------------------------\n");
@@ -292,7 +314,8 @@ int main()
                 break;
             case 3:
                 // 🌟 这里就是专门为患者视角设计的通道！
-                printf("\n[跳转] -> 进入患者自助查询终端...\n");
+                printf("\n[跳转] -> 进入患者自助预约查询终端...\n");
+                system("pause");
                 patient_self_service_menu(); 
                 // 在这个函数里，患者输入姓名或编号，系统遍历处方链表打印结算单
                 break;
