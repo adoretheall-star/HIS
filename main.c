@@ -12,6 +12,7 @@
 #include "list_ops.h"
 #include "patient_service.h"
 #include "appointment.h"
+#include "doctor_service.h"
 // 这里未来会引入你们自己写的头文件
 // #include "global.h"     // 全局常量与结构体定义
 // #include "data_io.h"    // 负责读写 txt 文件的模块
@@ -25,11 +26,13 @@ static void handle_appointment_query();
 static void handle_appointment_cancel();
 static void handle_appointment_check_in();
 static void handle_basic_record_query();
-static void internal_login_menu();
-static void admin_menu();
 static void nurse_menu();
 static void doctor_menu();
 static void pharmacist_menu();
+static void handle_view_waiting_patients();
+static void handle_doctor_consultation();
+static void internal_login_menu();
+static void admin_menu();
 
 static void admin_menu()
 {
@@ -50,6 +53,72 @@ static void admin_menu()
             case 1:
                 printf("\n[提示] 管理员菜单（后续开发）...\n");
                 system("pause");
+                break;
+            case 0:
+                running = 0;
+                break;
+            default:
+                printf("\n⚠️ 无效的选项，请重新输入！\n");
+                system("pause");
+                break;
+        }
+    }
+}
+
+static void handle_view_waiting_patients()
+{
+    char doctor_id[MAX_ID_LEN];
+
+    printf("\n================ 查看待诊患者 ================\n");
+    get_safe_string("请输入医生编号: ", doctor_id, MAX_ID_LEN);
+    show_waiting_patients_by_doctor(doctor_id);
+    system("pause");
+}
+
+static void handle_doctor_consultation()
+{
+    char doctor_id[MAX_ID_LEN];
+    char patient_id[MAX_ID_LEN];
+    int decision;
+
+    printf("\n================ 医生接诊 ================\n");
+    get_safe_string("请输入医生编号: ", doctor_id, MAX_ID_LEN);
+    get_safe_string("请输入患者编号: ", patient_id, MAX_ID_LEN);
+
+    printf("\n请选择诊疗决策:\n");
+    printf("  [1] 结束就诊\n");
+    printf("  [2] 开药\n");
+    printf("  [3] 开检查\n");
+    printf("  [4] 办理住院\n");
+    printf("------------------------------------------\n");
+
+    decision = get_safe_int("👉 请输入操作编号: ");
+    doctor_consult_patient(doctor_id, patient_id, decision);
+    system("pause");
+}
+
+static void doctor_menu()
+{
+    int running = 1;
+
+    while (running)
+    {
+        system("cls");
+        printf("\n======================================================\n");
+        printf("               👨‍⚕️ 医生接诊菜单\n");
+        printf("======================================================\n");
+        printf("  [1] 查看待诊患者\n");
+        printf("  [2] 接诊并做诊疗决策\n");
+        printf("  [0] 退出登录\n");
+        printf("------------------------------------------------------\n");
+
+        switch (get_safe_int("👉 请输入操作编号: "))
+        {
+            case 1:
+                handle_view_waiting_patients();
+                break;
+            case 2:
+                handle_doctor_consultation();
                 break;
             case 0:
                 running = 0;
@@ -92,36 +161,7 @@ static void nurse_menu()
     }
 }
 
-static void doctor_menu()
-{
-    int running = 1;
 
-    while (running)
-    {
-        system("cls");
-        printf("\n======================================================\n");
-        printf("               👨‍⚕️ 医生接诊菜单\n");
-        printf("======================================================\n");
-        printf("  [1] 医生接诊菜单（后续开发）\n");
-        printf("  [0] 退出登录\n");
-        printf("------------------------------------------------------\n");
-
-        switch (get_safe_int("👉 请输入操作编号: "))
-        {
-            case 1:
-                printf("\n[提示] 医生接诊菜单（后续开发）...\n");
-                system("pause");
-                break;
-            case 0:
-                running = 0;
-                break;
-            default:
-                printf("\n⚠️ 无效的选项，请重新输入！\n");
-                system("pause");
-                break;
-        }
-    }
-}
 
 static void pharmacist_menu()
 {
