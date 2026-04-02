@@ -16,8 +16,10 @@ static const char* get_med_status_text(MedStatus status)
     switch (status)
     {
         case STATUS_PENDING: return "待诊";
-        case STATUS_DIAGNOSED: return "已看诊待缴费";
-        case STATUS_PAID: return "已缴费待取药";
+        case STATUS_EXAMINING: return "检查中";
+        case STATUS_UNPAID: return "已看诊待缴费";
+        case STATUS_WAIT_MED: return "已缴费待取药";
+        case STATUS_HOSPITALIZED: return "住院中";
         case STATUS_COMPLETED: return "就诊结束";
         default: return "未知状态";
     }
@@ -63,8 +65,14 @@ PatientNode* find_patient_by_id_card(const char* id_card)
     }
     return NULL;
 }
-// 患者建档
-PatientNode* register_patient(const char* name, int age, const char* id_card)
+// 患者建档（扩展版）
+PatientNode* register_patient(
+    const char* name,
+    int age,
+    const char* id_card,
+    const char* symptom,
+    const char* target_dept
+)
 {
     char new_id[MAX_ID_LEN];
     char masked_id[19];
@@ -103,9 +111,31 @@ PatientNode* register_patient(const char* name, int age, const char* id_card)
     }
     strncpy(new_patient->id_card, id_card, MAX_ID_LEN - 1);
     new_patient->id_card[MAX_ID_LEN - 1] = '\0';
+
+    if (symptom != NULL)
+    {
+        strncpy(new_patient->symptom, symptom, MAX_SYMPTOM_LEN - 1);
+        new_patient->symptom[MAX_SYMPTOM_LEN - 1] = '\0';
+    }
+
+    if (target_dept != NULL)
+    {
+        strncpy(new_patient->target_dept, target_dept, MAX_NAME_LEN - 1);
+        new_patient->target_dept[MAX_NAME_LEN - 1] = '\0';
+    }
+
     insert_patient_tail(g_patient_list, new_patient);
     mask_id_card(new_patient->id_card, masked_id);
-    printf("✅ 患者建档成功！患者编号：%s，身份证号：%s\n", new_patient->id, masked_id);
+    printf("\n================ 患者建档成功 ================\n");
+    printf("患者编号: %s\n", new_patient->id);
+    printf("姓名: %s\n", new_patient->name);
+    printf("年龄: %d\n", new_patient->age);
+    printf("症状描述: %s\n", strlen(new_patient->symptom) > 0 ? new_patient->symptom : "暂无");
+    printf("目标科室: %s\n", strlen(new_patient->target_dept) > 0 ? new_patient->target_dept : "暂无");
+    printf("当前就诊状态: %s\n", get_med_status_text(new_patient->status));
+    printf("身份证号: %s\n", masked_id);
+    printf("==============================================\n");
+
     return new_patient;
 }
 
@@ -151,7 +181,13 @@ int query_basic_patient_record(const char* patient_id, const char* id_card)
     printf("患者编号: %s\n", patient->id);
     printf("姓名: %s\n", patient->name);
     printf("年龄: %d\n", patient->age);
+    printf("症状描述: %s\n", strlen(patient->symptom) > 0 ? patient->symptom : "暂无");
+    printf("目标科室: %s\n", strlen(patient->target_dept) > 0 ? patient->target_dept : "暂无");
     printf("当前就诊状态: %s\n", get_med_status_text(patient->status));
+    printf("最近一次诊断结论: %s\n",
+        strlen(patient->diagnosis_text) > 0 ? patient->diagnosis_text : "暂无诊断记录");
+    printf("最近一次处理意见: %s\n",
+        strlen(patient->treatment_advice) > 0 ? patient->treatment_advice : "暂无处理意见");
     printf("身份证号: %s\n", masked_id);
 
     return 1;

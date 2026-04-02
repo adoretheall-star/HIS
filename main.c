@@ -79,6 +79,8 @@ static void handle_doctor_consultation()
 {
     char doctor_id[MAX_ID_LEN];
     char patient_id[MAX_ID_LEN];
+    char diagnosis_text[MAX_RECORD_LEN];
+    char treatment_advice[MAX_RECORD_LEN];
     int decision;
 
     printf("\n================ 医生接诊 ================\n");
@@ -93,7 +95,18 @@ static void handle_doctor_consultation()
     printf("------------------------------------------\n");
 
     decision = get_safe_int("👉 请输入操作编号: ");
-    doctor_consult_patient(doctor_id, patient_id, decision);
+    
+    get_safe_string("请输入诊断结论: ", diagnosis_text, MAX_RECORD_LEN);
+    get_safe_string("请输入处理意见: ", treatment_advice, MAX_RECORD_LEN);
+    
+    doctor_consult_patient(
+        doctor_id,
+        patient_id,
+        decision,
+        diagnosis_text,
+        treatment_advice
+    );
+    
     system("pause");
 }
 
@@ -244,12 +257,17 @@ static void handle_patient_register()
 {
     char name[MAX_NAME_LEN];
     char id_card[MAX_ID_LEN];
+    char symptom[MAX_SYMPTOM_LEN];
+    char target_dept[MAX_NAME_LEN];
     int age;
     printf("\n================ 患者建档 ================\n");
     get_safe_string("请输入患者姓名: ", name, MAX_NAME_LEN);
     age = get_safe_int("请输入患者年龄: ");
     get_safe_string("请输入身份证号: ", id_card, MAX_ID_LEN);
-    register_patient(name, age, id_card);
+    get_safe_string("请输入症状描述: ", symptom, MAX_SYMPTOM_LEN);
+    get_safe_string("请输入目标科室: ", target_dept, MAX_NAME_LEN);
+
+    register_patient(name, age, id_card, symptom, target_dept);
     system("pause");
 }
 static void handle_appointment_register()
