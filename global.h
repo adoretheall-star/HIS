@@ -12,6 +12,10 @@
 #define MAX_ID_LEN 32
 #define MAX_NAME_LEN 50
 #define MAX_SYMPTOM_LEN 100
+#define MAX_MED_NAME_LEN 100
+#define MAX_ALIAS_LEN 50
+#define MAX_GENERIC_NAME_LEN 50
+#define MAX_DATE_LEN 20
 
 // ==========================================
 // 2. 全局枚举定义 
@@ -117,11 +121,14 @@ typedef struct DoctorNode
 // 【实体 4：药品库房双向链表】
 typedef struct MedicineNode 
 {
-    char id[MAX_ID_LEN];       //药品编号     
-    char name[MAX_NAME_LEN];   //药品名称      
-    double price;          //单价
-    int stock;             //当前实际库存
-    MedicareType m_type;   //药品所属的医保类型（决定打几折）
+    char id[MAX_ID_LEN];                     //药品编号
+    char name[MAX_MED_NAME_LEN];             //药品商品名
+    char alias[MAX_ALIAS_LEN];               //药品别名
+    char generic_name[MAX_GENERIC_NAME_LEN]; //药品通用名
+    double price;                            //单价
+    int stock;                               //当前实际库存
+    MedicareType m_type;                     //药品所属的医保类型（决定打几折）
+    char expiry_date[MAX_DATE_LEN];          //效期 YYYY-MM-DD
 
     struct MedicineNode* prev;//前驱指针
     struct MedicineNode* next; //后继指针

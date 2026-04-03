@@ -34,7 +34,16 @@ DoctorNode* find_doctor_by_id(DoctorNode* head, const char* target_id);
 // ==========================================
 //三、药品链表操作
 MedicineNode* init_medicine_list();
-MedicineNode* create_medicine_node(const char* id, const char* name, double price, int stock, MedicareType m_type);
+MedicineNode* create_medicine_node(
+    const char* id,
+    const char* name,
+    const char* alias,
+    const char* generic_name,
+    double price,
+    int stock,
+    MedicareType m_type,
+    const char* expiry_date
+);
 void insert_medicine_tail(MedicineNode* head, MedicineNode* new_node);
 MedicineNode* find_medicine_by_id(MedicineNode* head, const char* target_id);
 // ==========================================

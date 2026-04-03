@@ -12,6 +12,10 @@
 #include "list_ops.h"
 #include "patient_service.h"
 #include "appointment.h"
+//#include "pharmacy_service.h"
+#include "medicine_service.h"
+
+
 // 这里未来会引入你们自己写的头文件
 // #include "global.h"     // 全局常量与结构体定义
 // #include "data_io.h"    // 负责读写 txt 文件的模块
@@ -126,6 +130,12 @@ static void doctor_menu()
 static void pharmacist_menu()
 {
     int running = 1;
+    int choice;
+    int threshold;
+    char keyword[MAX_MED_NAME_LEN];
+    char patient_id[MAX_ID_LEN];
+
+
 
     while (running)
     {
@@ -133,16 +143,42 @@ static void pharmacist_menu()
         printf("\n======================================================\n");
         printf("               💊 药房菜单\n");
         printf("======================================================\n");
-        printf("  [1] 药房菜单（后续开发）\n");
+        printf("  [1] 查看全部药品\n");
+        printf("  [2] 查询药品\n");
+        printf("  [3] 低库存预警\n");
+        //printf("  [4] 查看待发药患者\n");
+        //printf("  [5] 为患者发药\n");
         printf("  [0] 退出登录\n");
         printf("------------------------------------------------------\n");
 
-        switch (get_safe_int("👉 请输入操作编号: "))
+        choice = get_safe_int("👉 请输入操作编号: ");
+
+        switch (choice)
         {
             case 1:
-                printf("\n[提示] 药房菜单（后续开发）...\n");
+                show_all_medicines();
                 system("pause");
                 break;
+            case 2:
+                get_safe_string("请输入药品关键字: ", keyword, MAX_MED_NAME_LEN);
+                search_medicine_by_keyword(keyword);
+                system("pause");
+                break;
+            case 3:
+                threshold = get_safe_int("请输入低库存阈值: ");
+                show_low_stock_medicines(threshold);
+                system("pause");
+                break;
+            /*case 4:
+                show_paid_patients_waiting_for_dispense();
+                system("pause");
+                break;
+            case 5:
+                get_safe_string("请输入患者编号: ", patient_id, MAX_ID_LEN);
+                dispense_medicine_for_patient(patient_id);
+                system("pause");
+                break;
+            */
             case 0:
                 running = 0;
                 break;
@@ -422,8 +458,8 @@ int main()
 "D-001", "李大夫", "外科"
 ));
     insert_medicine_tail(g_medicine_list, create_medicine_node(
-"M-001", "阿莫西林", 15.5, 100
-, MEDICARE_CLASS_A));
+"M-001", "阿莫西林", "Amoxicillin", "阿莫西林胶囊", 15.5, 100
+, MEDICARE_CLASS_A, "2027-12-31"));
     insert_appointment_tail(g_appointment_list, create_appointment_node(
 "A-001", "P-001", "2026-04-01", "上午", "D-001", "外科", RESERVED
 ));

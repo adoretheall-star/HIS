@@ -223,19 +223,57 @@ MedicineNode* init_medicine_list()
     if (head == NULL) exit(1);
     strncpy(head->id, "HEAD", MAX_ID_LEN - 1);
     head->id[MAX_ID_LEN - 1] = '\0';
+    head->name[0] = '\0';
+    head->alias[0] = '\0';
+    head->generic_name[0] = '\0';
+    head->price = 0.0;
+    head->stock = 0;
+    head->m_type = MEDICARE_NONE;
+    head->expiry_date[0] = '\0';
     head->prev = NULL; head->next = NULL;
     return head;
 }
 
-MedicineNode* create_medicine_node(const char* id, const char* name, double price, int stock, MedicareType m_type) 
+MedicineNode* create_medicine_node(
+    const char* id,
+    const char* name,
+    const char* alias,
+    const char* generic_name,
+    double price,
+    int stock,
+    MedicareType m_type,
+    const char* expiry_date
+) 
 {
     MedicineNode* new_node = (MedicineNode*)malloc(sizeof(MedicineNode));
     if (new_node == NULL) return NULL;
-    strncpy(new_node->id, id, MAX_ID_LEN - 1);
+
+    strncpy(new_node->id, id != NULL ? id : "", MAX_ID_LEN - 1);
     new_node->id[MAX_ID_LEN - 1] = '\0';
-    strncpy(new_node->name, name, MAX_NAME_LEN - 1);
-    new_node->name[MAX_NAME_LEN - 1] = '\0';
-    new_node->price = price; new_node->stock = stock; new_node->m_type = m_type;
+
+    strncpy(new_node->name, name != NULL ? name : "", MAX_MED_NAME_LEN - 1);
+    new_node->name[MAX_MED_NAME_LEN - 1] = '\0';
+
+    if (alias != NULL)
+    {
+        strncpy(new_node->alias, alias, MAX_ALIAS_LEN - 1);
+        new_node->alias[MAX_ALIAS_LEN - 1] = '\0';
+    }
+    else
+    {
+        new_node->alias[0] = '\0';
+    }
+
+    strncpy(new_node->generic_name, generic_name != NULL ? generic_name : "", MAX_GENERIC_NAME_LEN - 1);
+    new_node->generic_name[MAX_GENERIC_NAME_LEN - 1] = '\0';
+
+    new_node->price = price;
+    new_node->stock = stock;
+    new_node->m_type = m_type;
+
+    strncpy(new_node->expiry_date, expiry_date != NULL ? expiry_date : "", MAX_DATE_LEN - 1);
+    new_node->expiry_date[MAX_DATE_LEN - 1] = '\0';
+
     new_node->prev = NULL; new_node->next = NULL;
     return new_node;
 }

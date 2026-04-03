@@ -50,19 +50,3 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
-
-
-# Visual Studio 专属隐藏文件和缓存
-.vs/
-*.pdb
-*.idb
-*.ilk
-*.suo
-*.user
-*.slnx
-*.sqlite
-*.db
-Debug/
-Release/
-x64/
-x86/
