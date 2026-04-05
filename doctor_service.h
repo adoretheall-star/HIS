@@ -12,6 +12,12 @@
 void show_waiting_patients_by_doctor(const char* doctor_id);
 
 // 2. 医生接诊并做最小诊疗决策
-int doctor_consult_patient(const char* doctor_id, const char* patient_id, int decision);
+int doctor_consult_patient(
+    const char* doctor_id,
+    const char* patient_id,
+    int decision,
+    const char* diagnosis_text,
+    const char* treatment_advice
+);
 
 #endif

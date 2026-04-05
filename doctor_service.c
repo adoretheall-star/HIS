@@ -15,8 +15,10 @@ static const char* get_med_status_text(MedStatus status)
     switch (status)
     {
         case STATUS_PENDING: return "待诊";
-        case STATUS_DIAGNOSED: return "已看诊待缴费";
-        case STATUS_PAID: return "已缴费待取药";
+        case STATUS_EXAMINING: return "检查中";
+        case STATUS_UNPAID: return "已看诊待缴费";
+        case STATUS_WAIT_MED: return "已缴费待取药";
+        case STATUS_HOSPITALIZED: return "住院中";
         case STATUS_COMPLETED: return "就诊结束";
         default: return "未知状态";
     }
@@ -136,7 +138,13 @@ void show_waiting_patients_by_doctor(const char* doctor_id)
 }
 
 // 医生接诊并做最小诊疗决策
-int doctor_consult_patient(const char* doctor_id, const char* patient_id, int decision)
+int doctor_consult_patient(
+    const char* doctor_id,
+    const char* patient_id,
+    int decision,
+    const char* diagnosis_text,
+    const char* treatment_advice
+)
 {
     DoctorNode* doctor = NULL;
     PatientNode* patient = NULL;
@@ -175,6 +183,18 @@ int doctor_consult_patient(const char* doctor_id, const char* patient_id, int de
         return 0;
     }
 
+    if (diagnosis_text != NULL)
+    {
+        strncpy(patient->diagnosis_text, diagnosis_text, MAX_RECORD_LEN - 1);
+        patient->diagnosis_text[MAX_RECORD_LEN - 1] = '\0';
+    }
+
+    if (treatment_advice != NULL)
+    {
+        strncpy(patient->treatment_advice, treatment_advice, MAX_RECORD_LEN - 1);
+        patient->treatment_advice[MAX_RECORD_LEN - 1] = '\0';
+    }
+
     switch (decision)
     {
         case 1:
@@ -182,16 +202,16 @@ int doctor_consult_patient(const char* doctor_id, const char* patient_id, int de
             printf("✅ 接诊完成，患者已结束就诊。\n");
             break;
         case 2:
-            patient->status = STATUS_DIAGNOSED;
+            patient->status = STATUS_UNPAID;
             printf("✅ 已完成开药处理，患者状态变为“已看诊待缴费”。\n");
             break;
         case 3:
-            patient->status = STATUS_DIAGNOSED;
-            printf("✅ 已完成开检查处理，当前版本先兼容为“已看诊待缴费”状态。\n");
+            patient->status = STATUS_EXAMINING;
+            printf("✅ 已完成开检查处理，患者状态变为“检查中”。\n");
             break;
         case 4:
-            patient->status = STATUS_DIAGNOSED;
-            printf("✅ 已完成住院办理占位处理，当前版本先兼容为“已看诊待缴费”状态。\n");
+            patient->status = STATUS_HOSPITALIZED;
+            printf("✅ 已完成住院办理占位处理，患者状态变为“住院中”。\n");
             break;
         default:
             printf("⚠️ 无效的诊疗决策，操作取消！\n");
