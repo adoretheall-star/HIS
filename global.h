@@ -12,6 +12,7 @@
 #define MAX_ID_LEN 32
 #define MAX_NAME_LEN 50
 #define MAX_SYMPTOM_LEN 100
+#define MAX_RECORD_LEN 200
 
 // ==========================================
 // 2. 全局枚举定义 
@@ -27,10 +28,12 @@ typedef enum //权限管理
 
 typedef enum //就医状态流转
 {
-    STATUS_PENDING = 1,   // 待诊
-    STATUS_DIAGNOSED = 2, // 已看诊待缴费
-    STATUS_PAID = 3,      // 已缴费待取药
-    STATUS_COMPLETED = 4  // 就诊结束
+    STATUS_PENDING = 1,      // 待诊
+    STATUS_EXAMINING = 2,    // 检查中
+    STATUS_UNPAID = 3,       // 已看诊待缴费
+    STATUS_WAIT_MED = 4,     // 已缴费待取药
+    STATUS_HOSPITALIZED = 5, // 住院中
+    STATUS_COMPLETED = 6     // 就诊结束
 } MedStatus;
 
 typedef enum //医保类型
@@ -79,6 +82,8 @@ typedef struct PatientNode
     char card_id[MAX_NAME_LEN];    //虚拟诊疗卡号  
     double balance;              //账户余额
     MedStatus status;            //就医状态（对应状态流转功能）
+    char diagnosis_text[MAX_RECORD_LEN]; //诊断文本
+    char treatment_advice[MAX_RECORD_LEN]; //治疗建议
     // 患者的处方本
     PrescriptionNode* script_head; // 指向该患者开的第一种药(此处为单向链表)
     int script_count;      // 当前开了几种药 (默认 0)

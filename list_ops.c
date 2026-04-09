@@ -64,6 +64,14 @@ PatientNode* create_patient_node(const char* id, const char* name, int age, cons
     strncpy(new_node->id_card, id_card, MAX_ID_LEN - 1);
     new_node->id_card[MAX_ID_LEN - 1] = '\0';
     
+    // 初始化字符串字段
+    new_node->symptom[0] = '\0';
+    new_node->target_dept[0] = '\0';
+    new_node->doctor_id[0] = '\0';
+    new_node->diagnosis_text[0] = '\0';
+    new_node->treatment_advice[0] = '\0';
+    new_node->card_id[0] = '\0';
+    
     // 初始化业务状态
     new_node->balance = 0.0;
     new_node->status = STATUS_PENDING; // 默认待诊状态
