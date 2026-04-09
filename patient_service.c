@@ -1,7 +1,8 @@
 // ==========================================
 // 文件名: patient_service.c
-// 作用: 患者建档、档案管理与基础病历查询
-// 描述: 实现患者信息管理的核心业务逻辑，包括患者建档、档案查询、信息修改等功能
+// 作用: 患者相关业务服务层 / 患者数据服务层实现
+// 描述: 实现患者信息管理的核心业务逻辑，被护士端和患者端共同复用
+// 说明: 本模块只包含业务逻辑实现，不包含菜单和界面逻辑
 // ==========================================
 #define _CRT_SECURE_NO_WARNINGS
 
@@ -204,57 +205,7 @@ static void name_to_pinyin(const char* name, char* pinyin, int max_len)
     pinyin[pos] = '\0';
 }
 
-/**
- * @brief 获取预约状态文本描述
- * @param status 预约状态枚举值
- * @return 状态对应的中文描述字符串
- */
-static const char* get_appointment_status_text(AppointmentStatus status)
-{
-    switch (status)
-    {
-        case RESERVED:
-            return "已预约";
-        case CHECKED_IN:
-            return "已签到";
-        case CANCELLED:
-            return "已取消";
-        case MISSED:
-            return "已过号";
-        default:
-            return "未知状态";
-    }
-}
 
-/**
- * @brief 根据患者编号查找最近一次预约记录
- * @param patient_id 患者编号
- * @return 找到返回预约节点指针，未找到返回NULL
- */
-static AppointmentNode* find_latest_appointment_by_patient_id(const char* patient_id)
-{
-    AppointmentNode* curr = NULL;
-    AppointmentNode* latest = NULL;
-
-    // 参数校验
-    if (g_appointment_list == NULL || patient_id == NULL || patient_id[0] == '\0')
-    {
-        return NULL;
-    }
-
-    // 遍历预约链表查找该患者的所有预约记录
-    curr = g_appointment_list->next;
-    while (curr != NULL)
-    {
-        if (strcmp(curr->patient_id, patient_id) == 0)
-        {
-            latest = curr;
-        }
-        curr = curr->next;
-    }
-
-    return latest;
-}
 
 /**
  * @brief 根据患者编号获取患者节点（带错误检查）
@@ -304,6 +255,8 @@ const char* get_patient_status_text(MedStatus status)
             return "待诊";
         case STATUS_EXAMINING:
             return "检查中";
+        case STATUS_RECHECK_PENDING:
+            return "检查后待复诊";
         case STATUS_UNPAID:
             return "已看诊待缴费";
         case STATUS_WAIT_MED:

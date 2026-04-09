@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
+#include "global.h" // 需要访问全局链表和结构体
 #include "utils.h" // 必须把自己的说明书引进来
 //1.整数拦截器
 int get_safe_int(const char* prompt) 
@@ -101,4 +102,42 @@ void mask_id_card(const char* src, char* dest)
         dest[i] = src[i];
     }
     dest[18] = '\0';
+}
+
+// 获取预约状态文本
+const char* get_appointment_status_text(int status)
+{
+    switch (status)
+    {
+        case RESERVED: return "已预约";
+        case CHECKED_IN: return "已签到";
+        case CANCELLED: return "已取消";
+        case MISSED: return "已过号";
+        default: return "未知状态";
+    }
+}
+
+// 查找患者最新预约记录
+struct AppointmentNode* find_latest_appointment_by_patient_id(const char* patient_id)
+{
+    AppointmentNode* curr = NULL;
+    AppointmentNode* latest = NULL;
+
+    // 参数校验
+    if (g_appointment_list == NULL || patient_id == NULL || patient_id[0] == '\0')
+    {
+        return NULL;
+    }
+
+    curr = g_appointment_list->next;
+    while (curr != NULL)
+    {
+        if (strcmp(curr->patient_id, patient_id) == 0)
+        {
+            latest = curr;
+        }
+        curr = curr->next;
+    }
+
+    return latest;
 }

@@ -26,14 +26,15 @@ typedef enum //权限管理
     ROLE_PHARMACIST = 5 //药房管理人员 
 } RoleType;
 
-typedef enum //就医状态流转
+typedef enum //就医状态
 {
-    STATUS_PENDING = 1,      // 待诊
+    STATUS_PENDING = 1,     // 待诊
     STATUS_EXAMINING = 2,    // 检查中
-    STATUS_UNPAID = 3,       // 已看诊待缴费
-    STATUS_WAIT_MED = 4,     // 已缴费待取药
-    STATUS_HOSPITALIZED = 5, // 住院中
-    STATUS_COMPLETED = 6     // 就诊结束
+    STATUS_RECHECK_PENDING = 3, // 检查后待复诊
+    STATUS_UNPAID = 4,       // 已看诊待缴费
+    STATUS_WAIT_MED = 5,     // 已缴费待取药
+    STATUS_HOSPITALIZED = 6, // 住院中
+    STATUS_COMPLETED = 7     // 就诊结束
 } MedStatus;
 
 typedef enum //医保类型
@@ -65,6 +66,24 @@ typedef struct PrescriptionNode
 // ==========================================
 // 4. 核心双向链表结构体定义
 // ==========================================
+
+// 【实体 7：接诊记录双向链表】
+typedef struct ConsultRecordNode
+{
+    char record_id[MAX_ID_LEN];       // 接诊记录编号
+    char patient_id[MAX_ID_LEN];      // 患者编号
+    char doctor_id[MAX_ID_LEN];       // 医生编号
+    char appointment_id[MAX_ID_LEN];  // 对应预约编号（可选）
+    char consult_time[MAX_NAME_LEN];  // 接诊时间（字符串占位）
+    char diagnosis_text[MAX_RECORD_LEN]; // 本次诊断结论
+    char treatment_advice[MAX_RECORD_LEN]; // 本次处理意见
+    int decision;                     // 本次诊疗决策
+    MedStatus pre_status;             // 接诊前状态
+    MedStatus post_status;            // 接诊后状态
+    
+    struct ConsultRecordNode* prev;   // 前驱指针
+    struct ConsultRecordNode* next;   // 后继指针
+} ConsultRecordNode;
 
 // 【实体 1：患者与就诊档案双向链表】
 typedef struct PatientNode
@@ -162,6 +181,7 @@ extern DoctorNode* g_doctor_list;
 extern MedicineNode* g_medicine_list;
 extern WardNode* g_ward_list; 
 extern AccountNode* g_account_list;
+extern ConsultRecordNode* g_consult_record_list;
 // ==========================================
 // 7. 功能：安全删除节点 (Delete)
 // ==========================================

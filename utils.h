@@ -21,6 +21,12 @@ int validate_id_card(const char* id_card);
 // 5. 身份证号脱敏
 void mask_id_card(const char* src, char* dest);
 
+// 6. 获取预约状态文本
+const char* get_appointment_status_text(int status);
+
+// 7. 查找患者最新预约记录
+struct AppointmentNode* find_latest_appointment_by_patient_id(const char* patient_id);
+
 // 以后如果有通用功能，比如隐藏密码输入、暂停程序，也全声明在这里
 // void clear_screen(); 
 

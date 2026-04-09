@@ -51,4 +51,22 @@ AccountNode* init_account_list();
 AccountNode* create_account_node(const char* username, const char* pwd, const char* real_name, RoleType role);
 void insert_account_tail(AccountNode* head, AccountNode* new_node);
 AccountNode* find_account_by_username(AccountNode* head, const char* target_username);
+// ==========================================
+// ==========================================
+//六、接诊记录链表操作
+ConsultRecordNode* init_consult_record_list();
+ConsultRecordNode* create_consult_record_node(
+    const char* record_id,
+    const char* patient_id,
+    const char* doctor_id,
+    const char* appointment_id,
+    const char* consult_time,
+    const char* diagnosis_text,
+    const char* treatment_advice,
+    int decision,
+    MedStatus pre_status,
+    MedStatus post_status
+);
+void insert_consult_record_tail(ConsultRecordNode* head, ConsultRecordNode* new_node);
+ConsultRecordNode* find_consult_record_by_id(ConsultRecordNode* head, const char* target_record_id);
 #endif // LIST_OPS_H

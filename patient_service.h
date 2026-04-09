@@ -1,17 +1,19 @@
 //==========================================
 // 文件名: patient_service.h
-// 作用: 患者建档、档案管理与基础病历查询业务接口
-// 描述: 提供患者信息管理的核心业务逻辑，包括患者建档、档案查询、信息修改等功能
+// 作用: 患者相关业务服务层 / 患者数据服务层
+// 描述: 提供患者信息管理的核心业务逻辑，被内部业务端和患者自助端共同复用
+// 说明: 本模块是底层服务层，不包含菜单和界面逻辑，只提供业务数据处理能力
+// 注意: 底层业务函数可被内部业务端（代患者办理）和患者自助端（本人自助服务）共同调用
 // ==========================================
 #ifndef PATIENT_SERVICE_H
 #define PATIENT_SERVICE_H
 #include "global.h"
 
 // ==========================================
-// 1. 患者建档功能
+// 内部业务端会调用的患者数据管理能力（需要内部登录）
 // ==========================================
 /**
- * @brief 患者建档
+ * @brief 患者建档（内部业务功能：代患者办理建档）
  * @param name 患者姓名
  * @param age 患者年龄
  * @param id_card 患者身份证号
@@ -27,75 +29,49 @@ PatientNode* register_patient(
     const char* target_dept
 );
 
-// ==========================================
-// 2. 常用查询功能
-// ==========================================
 /**
- * @brief 根据身份证号查找患者
+ * @brief 根据身份证号查找患者（通用辅助函数：内部业务端和患者自助端均可使用）
  * @param id_card 患者身份证号
  * @return 找到返回患者节点指针，未找到返回NULL
  */
 PatientNode* find_patient_by_id_card(const char* id_card);
 
 /**
- * @brief 获取患者状态文本描述
+ * @brief 获取患者状态文本描述（通用辅助函数：内部业务端和患者自助端均可使用）
  * @param status 患者就医状态枚举值
  * @return 状态对应的中文描述字符串
  */
 const char* get_patient_status_text(MedStatus status);
 
-// ==========================================
-// 3. 患者档案管理功能
-// ==========================================
 /**
- * @brief 显示患者档案详细信息
+ * @brief 显示患者档案详细信息（内部业务功能：档案管理）
  * @param patient 患者节点指针
  */
 void display_patient_archive(const PatientNode* patient);
 
 /**
- * @brief 根据患者编号查询档案
+ * @brief 根据患者编号查询档案（内部业务功能：档案管理）
  * @param patient_id 患者编号
  * @return 成功返回1，失败返回0
  */
 int query_patient_archive_by_id(const char* patient_id);
 
 /**
- * @brief 根据身份证号查询档案
+ * @brief 根据身份证号查询档案（内部业务功能：档案管理）
  * @param id_card 患者身份证号
  * @return 成功返回1，失败返回0
  */
 int query_patient_archive_by_id_card(const char* id_card);
 
 /**
- * @brief 根据姓名关键词查询档案（支持模糊查询）
+ * @brief 根据姓名关键词查询档案（内部业务功能：档案管理，支持模糊查询）
  * @param name_keyword 姓名关键词
  * @return 成功返回1，失败返回0
  */
 int query_patient_archive_by_name(const char* name_keyword);
 
 /**
- * @brief 显示患者就诊概览信息
- * @param patient 患者节点指针
- */
-void display_patient_visit_overview(const PatientNode* patient);
-
-/**
- * @brief 根据患者编号查询就诊概览
- * @param patient_id 患者编号
- * @return 成功返回1，失败返回0
- */
-int query_patient_visit_overview_by_id(const char* patient_id);
-
-/**
- * @brief 根据身份证号查询就诊概览
- * @param id_card 患者身份证号
- * @return 成功返回1，失败返回0
- */
-int query_patient_visit_overview_by_id_card(const char* id_card);
-
-/**
- * @brief 更新患者档案信息
+ * @brief 更新患者档案信息（内部业务功能：档案维护）
  * @param patient_id 患者编号（不可修改）
  * @param name 新姓名（留空表示不修改）
  * @param age 新年龄（0表示不修改）
@@ -108,7 +84,7 @@ int query_patient_visit_overview_by_id_card(const char* id_card);
 int update_patient_archive(const char* patient_id, const char* name, int age, const char* symptom, const char* target_dept, const char* id_card, double balance);
 
 // ==========================================
-// 4. 患者自助基础病历查询功能
+// 患者自助端会调用的查询能力（外部直接访问）
 // ==========================================
 /**
  * @brief 患者自助查询基础病历信息（需要身份核验）
@@ -117,4 +93,19 @@ int update_patient_archive(const char* patient_id, const char* name, int age, co
  * @return 成功返回1，失败返回0
  */
 int query_basic_patient_record(const char* patient_id, const char* id_card);
+
+/**
+ * @brief 根据患者编号查询就诊概览（患者自助功能：查询本人就诊概览）
+ * @param patient_id 患者编号
+ * @return 成功返回1，失败返回0
+ */
+int query_patient_visit_overview_by_id(const char* patient_id);
+
+/**
+ * @brief 根据身份证号查询就诊概览（患者自助功能：查询本人就诊概览）
+ * @param id_card 患者身份证号
+ * @return 成功返回1，失败返回0
+ */
+int query_patient_visit_overview_by_id_card(const char* id_card);
+
 #endif

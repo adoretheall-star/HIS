@@ -7,29 +7,40 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "utils.h"
+#include <time.h>
 #include "global.h"
 #include "list_ops.h"
-#include "patient_service.h"
+#include "utils.h"
 #include "appointment.h"
+#include "patient_service.h"
 #include "doctor_service.h"
+
+// 当前登录的医生信息
+static DoctorNode* g_current_doctor = NULL;
+
 // 这里未来会引入你们自己写的头文件
 // #include "global.h"     // 全局常量与结构体定义
 // #include "data_io.h"    // 负责读写 txt 文件的模块
 // #include "auth.h"       // 负责登录与权限的模块
 // #include "utils.h"      // 存放 get_safe_int 终端输入拦截器等工具函数
+// 内部业务相关处理函数（需要内部登录后访问）
 static void quick_register_menu();
-static void patient_self_service_menu();
 static void patient_archive_menu();
+static void handle_internal_patient_register();
+static void handle_internal_appointment_register();
+static void handle_internal_appointment_query();
+static void handle_internal_appointment_cancel();
+static void handle_internal_appointment_check_in();
 
-static void handle_patient_register();
-static void handle_appointment_register();
-static void handle_appointment_query();
-static void handle_appointment_cancel();
-static void handle_appointment_check_in();
-static void handle_basic_record_query();
-static void handle_patient_visit_overview();
-static void handle_patient_visit_overview_by_id_card();
+// 患者自助端菜单和处理函数（外部直接访问，支持本人自助服务）
+static void patient_self_service_menu();
+static void handle_patient_self_first_visit();
+static void handle_patient_self_appointment_register();
+static void handle_patient_self_registration();
+static void handle_patient_self_appointment_cancel();
+static void handle_patient_self_basic_record_query();
+static void handle_patient_self_visit_overview_query();
+
 static void handle_patient_archive_query_by_id();
 static void handle_patient_archive_query_by_id_card();
 static void handle_patient_archive_query_by_name();
@@ -42,6 +53,7 @@ static void doctor_menu();
 static void pharmacist_menu();
 static void handle_view_waiting_patients();
 static void handle_doctor_consultation();
+static void handle_doctor_view_patient_overview();
 
 static void admin_menu()
 {
@@ -76,26 +88,54 @@ static void admin_menu()
 
 static void handle_view_waiting_patients()
 {
-    char doctor_id[MAX_ID_LEN];
-
     printf("\n================ 查看待诊患者 ================\n");
-    get_safe_string("请输入医生编号: ", doctor_id, MAX_ID_LEN);
-    show_waiting_patients_by_doctor(doctor_id);
+    show_waiting_patients_by_doctor(g_current_doctor->id);
     system("pause");
 }
 
 static void handle_doctor_consultation()
 {
-    char doctor_id[MAX_ID_LEN];
-    char patient_id[MAX_ID_LEN];
+    PatientNode* patient_list[100];
     char diagnosis_text[MAX_RECORD_LEN];
     char treatment_advice[MAX_RECORD_LEN];
     int decision;
+    int count;
+    int choice;
 
     printf("\n================ 医生接诊 ================\n");
-    get_safe_string("请输入医生编号: ", doctor_id, MAX_ID_LEN);
-    get_safe_string("请输入患者编号: ", patient_id, MAX_ID_LEN);
-
+    
+    // 显示待诊患者列表
+    show_waiting_patients_by_doctor(g_current_doctor->id);
+    
+    // 获取待诊患者列表
+    count = get_waiting_patients_by_doctor(g_current_doctor->id, patient_list);
+    if (count == 0)
+    {
+        system("pause");
+        return;
+    }
+    
+    // 选择患者
+    printf("\n请选择要接诊的患者序号 (1-%d): ", count);
+    choice = get_safe_int("👉 ");
+    
+    if (choice < 1 || choice > count)
+    {
+        printf("\n⚠️ 无效的选择！\n");
+        system("pause");
+        return;
+    }
+    
+    // 显示患者信息确认
+    printf("\n========================================\n");
+    printf("确认接诊患者：\n");
+    printf("患者编号：%s\n", patient_list[choice - 1]->id);
+    printf("姓名：%s\n", patient_list[choice - 1]->name);
+    printf("年龄：%d\n", patient_list[choice - 1]->age);
+    printf("症状：%s\n", patient_list[choice - 1]->symptom[0] != '\0' ? patient_list[choice - 1]->symptom : "暂无");
+    printf("========================================\n");
+    
+    // 选择诊疗决策
     printf("\n请选择诊疗决策:\n");
     printf("  [1] 结束就诊\n");
     printf("  [2] 开药\n");
@@ -109,12 +149,147 @@ static void handle_doctor_consultation()
     get_safe_string("请输入处理意见: ", treatment_advice, MAX_RECORD_LEN);
     
     doctor_consult_patient(
-        doctor_id,
-        patient_id,
+        g_current_doctor->id,
+        patient_list[choice - 1]->id,
         decision,
         diagnosis_text,
         treatment_advice
     );
+    
+    system("pause");
+}
+
+static void handle_doctor_view_patient_overview()
+{
+    PatientNode* patient_list[100];
+    int count;
+    int choice;
+    
+    printf("\n================ 查看患者接诊前信息 ================\n");
+    
+    // 显示待诊患者列表
+    show_waiting_patients_by_doctor(g_current_doctor->id);
+    
+    // 获取待诊患者列表
+    count = get_waiting_patients_by_doctor(g_current_doctor->id, patient_list);
+    if (count == 0)
+    {
+        system("pause");
+        return;
+    }
+    
+    // 选择患者
+    printf("\n请选择要查看的患者序号 (1-%d): ", count);
+    choice = get_safe_int("👉 ");
+    
+    if (choice < 1 || choice > count)
+    {
+        printf("\n⚠️ 无效的选择！\n");
+        system("pause");
+        return;
+    }
+    
+    // 查看患者概览
+    doctor_view_patient_overview(g_current_doctor->id, patient_list[choice - 1]->id);
+    system("pause");
+}
+
+static void handle_doctor_view_processed_patients()
+{
+    printf("\n================ 查看已处理患者 ================\n");
+    doctor_view_processed_patients(g_current_doctor->id);
+    system("pause");
+}
+
+static void handle_doctor_view_processed_patient_detail()
+{
+    PatientNode* patient_list[100];
+    int count = 0;
+    int choice;
+    
+    printf("\n================ 查看已处理患者详情 ================\n");
+    
+    // 获取已处理患者列表
+    count = get_processed_patients_by_doctor(g_current_doctor->id, patient_list);
+    
+    if (count == 0)
+    {
+        printf("暂无已处理患者记录\n");
+        system("pause");
+        return;
+    }
+    
+    // 显示已处理患者列表（带序号）
+    doctor_view_processed_patients(g_current_doctor->id);
+    
+    // 选择患者
+    printf("\n请选择要查看详情的患者序号 (1-%d): ", count);
+    choice = get_safe_int("👉 ");
+    
+    if (choice < 1 || choice > count)
+    {
+        printf("\n⚠️ 无效的选择！\n");
+        system("pause");
+        return;
+    }
+    
+    // 查看患者详情
+    doctor_view_processed_patient_detail(g_current_doctor->id, patient_list[choice - 1]->id);
+    system("pause");
+}
+
+static void handle_doctor_view_consult_history()
+{
+    PatientNode* patient_list[100];
+    int count = 0;
+    int choice;
+    
+    printf("\n================ 查看历史接诊记录 ================\n");
+    
+    // 获取已处理患者列表
+    count = get_processed_patients_by_doctor(g_current_doctor->id, patient_list);
+    
+    if (count == 0)
+    {
+        printf("暂无已处理患者记录\n");
+        system("pause");
+        return;
+    }
+    
+    // 显示已处理患者列表（带序号）
+    doctor_view_processed_patients(g_current_doctor->id);
+    
+    // 选择患者查看历史记录
+    printf("\n请选择要查看历史记录的患者序号 (1-%d): ", count);
+    choice = get_safe_int("👉 ");
+    
+    if (choice < 1 || choice > count)
+    {
+        printf("\n⚠️ 无效的选择！\n");
+        system("pause");
+        return;
+    }
+    
+    // 查看该患者的历史接诊记录
+    doctor_view_consult_history(g_current_doctor->id, patient_list[choice - 1]->id);
+    system("pause");
+}
+
+static void handle_exam_return_registration()
+{
+    char patient_id[MAX_ID_LEN];
+    
+    printf("\n================ 检查完成回诊登记 ================\n");
+    get_safe_string("请输入患者编号: ", patient_id, MAX_ID_LEN);
+    
+    if (complete_exam_and_return_to_doctor(patient_id))
+    {
+        printf("\n✅ 回诊登记成功！\n");
+    }
+    else
+    {
+        printf("\n❌ 回诊登记失败！\n");
+    }
     
     system("pause");
 }
@@ -129,8 +304,14 @@ static void doctor_menu()
         printf("\n======================================================\n");
         printf("               👨‍⚕️ 医生接诊菜单\n");
         printf("======================================================\n");
+        printf(" 当前医生：%s（编号：%s）\n", g_current_doctor->name, g_current_doctor->id);
+        printf("------------------------------------------------------\n");
         printf("  [1] 查看待诊患者\n");
-        printf("  [2] 接诊并做诊疗决策\n");
+        printf("  [2] 查看患者接诊前信息\n");
+        printf("  [3] 接诊并做诊疗决策\n");
+        printf("  [4] 查看已处理患者\n");
+        printf("  [5] 查看已处理患者详情\n");
+        printf("  [6] 查看历史接诊记录\n");
         printf("  [0] 退出登录\n");
         printf("------------------------------------------------------\n");
 
@@ -140,7 +321,19 @@ static void doctor_menu()
                 handle_view_waiting_patients();
                 break;
             case 2:
+                handle_doctor_view_patient_overview();
+                break;
+            case 3:
                 handle_doctor_consultation();
+                break;
+            case 4:
+                handle_doctor_view_processed_patients();
+                break;
+            case 5:
+                handle_doctor_view_processed_patient_detail();
+                break;
+            case 6:
+                handle_doctor_view_consult_history();
                 break;
             case 0:
                 running = 0;
@@ -165,6 +358,7 @@ static void nurse_menu()
         printf("               👩‍⚕️ 护士/前台菜单\n");
         printf("======================================================\n");
         printf("  [1] 进入快捷挂号业务菜单\n");
+        printf("  [2] 患者档案管理\n");
         printf("  [0] 退出登录\n");
         printf("------------------------------------------------------\n");
 
@@ -172,6 +366,9 @@ static void nurse_menu()
         {
             case 1:
                 quick_register_menu();
+                break;
+            case 2:
+                patient_archive_menu();
                 break;
             case 0:
                 running = 0;
@@ -251,7 +448,17 @@ static void internal_login_menu()
             nurse_menu();
             break;
         case ROLE_DOCTOR:
+            // 查找并保存当前医生信息
+            g_current_doctor = find_doctor_by_id(g_doctor_list, account->username);
+            if (g_current_doctor == NULL)
+            {
+                printf("\n⚠️ 未找到对应医生信息！\n");
+                system("pause");
+                return;
+            }
             doctor_menu();
+            // 退出医生菜单后，清除当前医生信息
+            g_current_doctor = NULL;
             break;
         case ROLE_PHARMACIST:
             pharmacist_menu();
@@ -263,7 +470,7 @@ static void internal_login_menu()
     }
 }
 
-static void handle_patient_register()
+static void handle_internal_patient_register()
 {
     char name[MAX_NAME_LEN];
     char id_card[MAX_ID_LEN];
@@ -321,7 +528,7 @@ static void handle_patient_register()
     register_patient(name, age, id_card, symptom, target_dept);
     system("pause");
 }
-static void handle_appointment_register()
+static void handle_internal_appointment_register()
 {
     char patient_id[MAX_ID_LEN];
     char appointment_date[MAX_NAME_LEN];
@@ -343,7 +550,7 @@ static void handle_appointment_register()
     );
     system("pause");
 }
-static void handle_appointment_query()
+static void handle_internal_appointment_query()
 {
     int choice;
     char patient_id[MAX_ID_LEN];
@@ -377,7 +584,7 @@ static void handle_appointment_query()
         }
     }
 }
-static void handle_appointment_cancel()
+static void handle_internal_appointment_cancel()
 {
     char appointment_id[MAX_ID_LEN];
     printf("\n================ 预约取消 ================\n");
@@ -385,7 +592,7 @@ static void handle_appointment_cancel()
     cancel_appointment(appointment_id);
     system("pause");
 }
-static void handle_appointment_check_in()
+static void handle_internal_appointment_check_in()
 {
     char appointment_id[MAX_ID_LEN];
     printf("\n================ 预约签到 ================\n");
@@ -393,7 +600,7 @@ static void handle_appointment_check_in()
     check_in_appointment(appointment_id);
     system("pause");
 }
-static void handle_basic_record_query()
+static void handle_patient_self_basic_record_query()
 {
     char patient_id[MAX_ID_LEN];
     char id_card[MAX_ID_LEN];
@@ -405,23 +612,223 @@ static void handle_basic_record_query()
     system("pause");
 }
 
-static void handle_patient_visit_overview()
+static void handle_patient_self_visit_overview_query()
 {
     char patient_id[MAX_ID_LEN];
-
-    printf("\n================ 患者就诊概览 ================\n");
+    char id_card[MAX_ID_LEN];
+    
+    printf("\n================ 查询自己的就诊概览 ================\n");
     get_safe_string("请输入患者编号: ", patient_id, MAX_ID_LEN);
+    get_safe_string("请输入身份证号: ", id_card, MAX_ID_LEN);
+    
+    // 身份核验：检查患者编号和身份证号是否匹配
+    PatientNode* patient = find_patient_by_id_card(id_card);
+    if (patient == NULL || strcmp(patient->id, patient_id) != 0)
+    {
+        printf("\n❌ 身份核验失败！患者编号与身份证号不匹配\n");
+        system("pause");
+        return;
+    }
+    
+    printf("\n身份核验成功！欢迎，%s\n", patient->name);
     query_patient_visit_overview_by_id(patient_id);
     system("pause");
 }
 
-static void handle_patient_visit_overview_by_id_card()
+static void handle_patient_self_appointment_register()
 {
+    char patient_id[MAX_ID_LEN];
     char id_card[MAX_ID_LEN];
+    char appointment_date[MAX_NAME_LEN];
+    char appointment_slot[MAX_NAME_LEN];
+    char appoint_doctor[MAX_NAME_LEN];
+    char appoint_dept[MAX_NAME_LEN];
+    
+    printf("\n================ 自助预约登记 ================\n");
+    printf("温馨提示：请确保您输入的是本人信息\n");
+    
+    get_safe_string("请输入您的患者编号: ", patient_id, MAX_ID_LEN);
+    get_safe_string("请输入您的身份证号（身份核验）: ", id_card, MAX_ID_LEN);
+    
+    // 身份核验：检查患者编号和身份证号是否匹配
+    PatientNode* patient = find_patient_by_id_card(id_card);
+    if (patient == NULL || strcmp(patient->id, patient_id) != 0)
+    {
+        printf("\n❌ 身份核验失败！患者编号与身份证号不匹配\n");
+        system("pause");
+        return;
+    }
+    
+    printf("\n身份核验成功！欢迎，%s\n", patient->name);
+    
+    get_safe_string("请输入预约日期: ", appointment_date, MAX_NAME_LEN);
+    get_safe_string("请输入预约时段: ", appointment_slot, MAX_NAME_LEN);
+    get_safe_string("请输入预约医生编号(可留空): ", appoint_doctor, MAX_NAME_LEN);
+    get_safe_string("请输入预约科室(可留空): ", appoint_dept, MAX_NAME_LEN);
+    
+    register_appointment(
+        patient_id,
+        appointment_date,
+        appointment_slot,
+        appoint_doctor,
+        appoint_dept
+    );
+    
+    printf("\n✅ 自助预约登记成功！\n");
+    system("pause");
+}
 
-    printf("\n================ 患者就诊概览 ================\n");
-    get_safe_string("请输入身份证号: ", id_card, MAX_ID_LEN);
-    query_patient_visit_overview_by_id_card(id_card);
+static void handle_patient_self_first_visit()
+{
+    char name[MAX_NAME_LEN];
+    int age;
+    char id_card[MAX_ID_LEN];
+    char symptom[MAX_SYMPTOM_LEN];
+    char target_dept[MAX_NAME_LEN];
+    
+    printf("\n================ 首次来院登记 ================\n");
+    printf("温馨提示：本功能用于首次来院患者建档或已建档患者复用档案\n");
+    printf("系统将通过身份证号判断您是否为首次来院\n\n");
+    
+    get_safe_string("请输入您的身份证号: ", id_card, MAX_ID_LEN);
+    
+    // 检查身份证号是否已存在
+    PatientNode* existing_patient = find_patient_by_id_card(id_card);
+    if (existing_patient != NULL)
+    {
+        // 情况B：身份证号已存在，不重复建档
+        printf("\n🎉 系统已存在您的患者档案！\n");
+        printf("您的患者编号是：%s\n", existing_patient->id);
+        printf("您的姓名是：%s\n", existing_patient->name);
+        printf("\n请使用上述患者编号进行后续的预约/挂号操作\n");
+        system("pause");
+        return;
+    }
+    
+    // 情况A：身份证号不存在，首次来院，进行建档
+    printf("\n您是首次来院患者，请完成建档信息录入\n");
+    
+    get_safe_string("请输入您的姓名: ", name, MAX_NAME_LEN);
+    age = get_safe_int("请输入您的年龄: ");
+    get_safe_string("请输入您的症状描述: ", symptom, MAX_SYMPTOM_LEN);
+    get_safe_string("请输入您要就诊的科室: ", target_dept, MAX_NAME_LEN);
+    
+    // 调用建档函数
+    PatientNode* new_patient = register_patient(name, age, id_card, symptom, target_dept);
+    
+    if (new_patient != NULL)
+    {
+        printf("\n✅ 建档成功！\n");
+        printf("您的新患者编号是：%s\n", new_patient->id);
+        printf("请妥善保管您的患者编号，后续就诊时使用\n");
+        printf("\n建档完成后，您可以继续进行预约/挂号操作\n");
+    }
+    else
+    {
+        printf("\n❌ 建档失败！请稍后重试\n");
+    }
+    
+    system("pause");
+}
+
+static void handle_patient_self_registration()
+{
+    char patient_id[MAX_ID_LEN];
+    char id_card[MAX_ID_LEN];
+    char appointment_date[MAX_NAME_LEN];
+    char appointment_slot[MAX_NAME_LEN];
+    char appoint_doctor[MAX_NAME_LEN];
+    char appoint_dept[MAX_NAME_LEN];
+    
+    printf("\n================ 自助挂号（现场挂号） ================\n");
+    printf("温馨提示：本功能仅支持已建档患者使用\n");
+    printf("如果您是首次就诊，请先到服务台建档\n");
+    
+    get_safe_string("请输入您的患者编号: ", patient_id, MAX_ID_LEN);
+    get_safe_string("请输入您的身份证号（身份核验）: ", id_card, MAX_ID_LEN);
+    
+    // 身份核验：检查患者编号和身份证号是否匹配
+    PatientNode* patient = find_patient_by_id_card(id_card);
+    if (patient == NULL || strcmp(patient->id, patient_id) != 0)
+    {
+        printf("\n❌ 身份核验失败！患者编号与身份证号不匹配\n");
+        system("pause");
+        return;
+    }
+    
+    printf("\n身份核验成功！欢迎，%s\n", patient->name);
+    
+    // 现场挂号使用当天日期
+    time_t now = time(NULL);
+    struct tm *local_time = localtime(&now);
+    sprintf(appointment_date, "%04d-%02d-%02d", 
+            local_time->tm_year + 1900, 
+            local_time->tm_mon + 1, 
+            local_time->tm_mday);
+    
+    printf("\n当前日期：%s\n", appointment_date);
+    get_safe_string("请输入挂号时段: ", appointment_slot, MAX_NAME_LEN);
+    get_safe_string("请输入挂号医生编号(可留空): ", appoint_doctor, MAX_NAME_LEN);
+    get_safe_string("请输入挂号科室(可留空): ", appoint_dept, MAX_NAME_LEN);
+    
+    register_appointment(
+        patient_id,
+        appointment_date,
+        appointment_slot,
+        appoint_doctor,
+        appoint_dept
+    );
+    
+    printf("\n✅ 自助挂号成功！\n");
+    system("pause");
+}
+
+static void handle_patient_self_appointment_cancel()
+{
+    char patient_id[MAX_ID_LEN];
+    char id_card[MAX_ID_LEN];
+    char appointment_id[MAX_ID_LEN];
+    
+    printf("\n================ 自助预约取消 ================\n");
+    printf("温馨提示：请确保您输入的是本人信息\n");
+    
+    get_safe_string("请输入您的患者编号: ", patient_id, MAX_ID_LEN);
+    get_safe_string("请输入您的身份证号（身份核验）: ", id_card, MAX_ID_LEN);
+    
+    // 身份核验：检查患者编号和身份证号是否匹配
+    PatientNode* patient = find_patient_by_id_card(id_card);
+    if (patient == NULL || strcmp(patient->id, patient_id) != 0)
+    {
+        printf("\n❌ 身份核验失败！患者编号与身份证号不匹配\n");
+        system("pause");
+        return;
+    }
+    
+    get_safe_string("请输入要取消的预约编号: ", appointment_id, MAX_ID_LEN);
+    
+    // 校验预约是否属于当前患者
+    AppointmentNode* appointment = find_appointment_by_id(g_appointment_list, appointment_id);
+    if (appointment == NULL)
+    {
+        printf("\n❌ 未找到对应预约记录！\n");
+        system("pause");
+        return;
+    }
+    
+    if (strcmp(appointment->patient_id, patient_id) != 0)
+    {
+        printf("\n❌ 无权取消他人预约！\n");
+        system("pause");
+        return;
+    }
+    
+    // 调用取消函数并检查返回值
+    int result = cancel_appointment(appointment_id);
+    if (result == 1)
+    {
+        printf("\n✅ 自助预约取消成功！\n");
+    }
+    // 失败信息已在cancel_appointment函数内部打印
     system("pause");
 }
 
@@ -607,27 +1014,31 @@ static void quick_register_menu()
         printf("  [4] 预约取消\n");
         printf("  [5] 预约签到\n");
         printf("  [6] 患者档案管理\n");
+        printf("  [7] 检查完成回诊登记\n");
         printf("  [0] 返回上一级\n");
         printf("------------------------------------------------------\n");
         switch (get_safe_int("👉 请输入操作编号: "))
         {
             case 1:
-                handle_patient_register();
+                handle_internal_patient_register();
                 break;
             case 2:
-                handle_appointment_register();
+                handle_internal_appointment_register();
                 break;
             case 3:
-                handle_appointment_query();
+                handle_internal_appointment_query();
                 break;
             case 4:
-                handle_appointment_cancel();
+                handle_internal_appointment_cancel();
                 break;
             case 5:
-                handle_appointment_check_in();
+                handle_internal_appointment_check_in();
                 break;
             case 6:
                 patient_archive_menu();
+                break;
+            case 7:
+                handle_exam_return_registration();
                 break;
             case 0:
                 running = 0;
@@ -648,35 +1059,53 @@ static void patient_self_service_menu()
     {
         system("cls");
         printf("\n======================================================\n");
-        printf("               🔍 患者自助查询菜单\n");
+        printf("               🤗 患者自助服务菜单\n");
         printf("======================================================\n");
-        printf("  [1] 按患者ID查询预约\n");
-        printf("  [2] 按身份证号查询预约\n");
-        printf("  [3] 身份核验后查询基础病历信息\n");
-        printf("  [4] 按患者编号查看就诊概览\n");
-        printf("  [5] 按身份证号查看就诊概览\n");
+        printf("  [1] 首次来院登记\n");
+        printf("  [2] 自助预约登记\n");
+        printf("  [3] 自助挂号（现场挂号）\n");
+        printf("  [4] 查询自己的预约\n");
+        printf("  [5] 取消自己的预约\n");
+        printf("  [6] 查询自己的基础病历\n");
+        printf("  [7] 查询自己的就诊概览\n");
         printf("  [0] 返回上一级\n");
         printf("------------------------------------------------------\n");
         switch (get_safe_int("👉 请输入操作编号: "))
         {
             case 1:
-                get_safe_string("请输入患者编号: ", patient_id, MAX_ID_LEN);
+                handle_patient_self_first_visit();
+                break;
+            case 2:
+                handle_patient_self_appointment_register();
+                break;
+            case 3:
+                handle_patient_self_registration();
+                break;
+            case 4:
+                get_safe_string("请输入您的患者编号: ", patient_id, MAX_ID_LEN);
+                get_safe_string("请输入您的身份证号（身份核验）: ", id_card, MAX_ID_LEN);
+                
+                // 身份核验：检查患者编号和身份证号是否匹配
+                PatientNode* patient = find_patient_by_id_card(id_card);
+                if (patient == NULL || strcmp(patient->id, patient_id) != 0)
+                {
+                    printf("\n❌ 身份核验失败！患者编号与身份证号不匹配\n");
+                    system("pause");
+                    break;
+                }
+                
+                printf("\n身份核验成功！欢迎，%s\n", patient->name);
                 query_appointments_by_patient_id(patient_id);
                 system("pause");
                 break;
-            case 2:
-                get_safe_string("请输入身份证号: ", id_card, MAX_ID_LEN);
-                query_appointments_by_id_card(id_card);
-                system("pause");
-                break;
-            case 3:
-                handle_basic_record_query();
-                break;
-            case 4:
-                handle_patient_visit_overview();
-                break;
             case 5:
-                handle_patient_visit_overview_by_id_card();
+                handle_patient_self_appointment_cancel();
+                break;
+            case 6:
+                handle_patient_self_basic_record_query();
+                break;
+            case 7:
+                handle_patient_self_visit_overview_query();
                 break;
             case 0:
                 running = 0;
@@ -722,6 +1151,7 @@ int main()
     g_medicine_list = init_medicine_list();
     g_ward_list = init_ward_list();
     g_account_list = init_account_list();
+    g_consult_record_list = init_consult_record_list();
 
     // 2. 注入一组极端测试数据
     insert_patient_tail(g_patient_list, create_patient_node(
@@ -746,7 +1176,7 @@ int main()
 "nurse", "123456", "护士"
 , ROLE_NURSE));
     insert_account_tail(g_account_list, create_account_node(
-"doctor", "123456", "医生"
+"D-001", "123456", "医生"
 , ROLE_DOCTOR));
     insert_account_tail(g_account_list, create_account_node(
 "pharm", "123456", "药剂师"
@@ -790,7 +1220,7 @@ int main()
         printf("======================================================\n");
         printf("  [1] 🔑 内部登录 (医生/护士/药房专员/管理员)\n");
         printf("  [2] 👨‍⚕️ 快捷挂号 (智能分诊通道)\n");
-        printf("  [3] 🔍 患者自助 (预约查询 / 基础病历)\n");
+        printf("  [3] 🤗 患者自助 (预约挂号/查询/取消/病历查询)\n");
         printf("  [4] 📊 医疗大屏 (内部数据可视化展示)\n");
         printf("  [0] 🚪 安全退出系统\n");
         printf("------------------------------------------------------\n");
@@ -813,8 +1243,8 @@ int main()
                 // 在这个函数里，患者输入姓名或编号，系统遍历处方链表打印结算单
                 break;
             case 4:
-                printf("\n[跳转] -> 加载数据可视化大屏...\n");
-                // show_dashboard();
+                printf("\n[提示] 医疗大屏功能后续开发...\n");
+                system("pause");
                 break;
             case 0:
                 // 准备退出主循环

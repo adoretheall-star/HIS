@@ -17,6 +17,7 @@ DoctorNode* g_doctor_list  = NULL;
 MedicineNode* g_medicine_list = NULL;
 WardNode* g_ward_list    = NULL;
 AccountNode* g_account_list = NULL;
+ConsultRecordNode* g_consult_record_list = NULL;
 //一、患者链表操作
 // ---------------------------------------------------------
 // 功能 1：初始化带头结点的双向链表
@@ -312,8 +313,8 @@ AccountNode* init_account_list()
 {
     AccountNode* head = (AccountNode*)malloc(sizeof(AccountNode));
     if (head == NULL) exit(1);
-    strncpy(head->username, "HEAD", MAX_NAME_LEN - 1);
-    head->username[MAX_NAME_LEN - 1] = '\0';
+    strncpy(head->username, "HEAD", MAX_ID_LEN - 1);
+    head->username[MAX_ID_LEN - 1] = '\0';
     head->prev = NULL; head->next = NULL;
     return head;
 }
@@ -322,8 +323,8 @@ AccountNode* create_account_node(const char* username, const char* pwd, const ch
 {
     AccountNode* new_node = (AccountNode*)malloc(sizeof(AccountNode));
     if (new_node == NULL) return NULL;
-    strncpy(new_node->username, username, MAX_NAME_LEN - 1);
-    new_node->username[MAX_NAME_LEN - 1] = '\0';
+    strncpy(new_node->username, username, MAX_ID_LEN - 1);
+    new_node->username[MAX_ID_LEN - 1] = '\0';
     strncpy(new_node->password, pwd, MAX_ID_LEN - 1);
     new_node->password[MAX_ID_LEN - 1] = '\0';
     strncpy(new_node->real_name, real_name, MAX_NAME_LEN - 1);
@@ -454,6 +455,139 @@ void add_prescription_to_patient(PatientNode* patient, const char* med_id, int q
     
     // 3. 统计数量加一
     patient->script_count++;
+}
+
+// ==========================================
+// ==========================================
+//六、接诊记录链表操作
+// ---------------------------------------------------------
+// 功能 1：初始化带头结点的接诊记录链表
+// ---------------------------------------------------------
+ConsultRecordNode* init_consult_record_list()
+{
+    ConsultRecordNode* head = (ConsultRecordNode*)malloc(sizeof(ConsultRecordNode));
+    if (head == NULL)
+    {
+        printf("🔥 致命错误：内存分配失败，系统无法启动！\n");
+        exit(1);
+    }
+    
+    // 给头结点打上标记，防止和真实数据混淆
+    strncpy(head->record_id, "HEAD", MAX_ID_LEN - 1);
+    head->record_id[MAX_ID_LEN - 1] = '\0';
+    
+    // 防御阵地：头结点的指针必须干干净净
+    head->prev = NULL;
+    head->next = NULL;
+    
+    return head;
+}
+
+// ---------------------------------------------------------
+// 功能 2：创建一个干净的接诊记录节点
+// ---------------------------------------------------------
+ConsultRecordNode* create_consult_record_node(
+    const char* record_id,
+    const char* patient_id,
+    const char* doctor_id,
+    const char* appointment_id,
+    const char* consult_time,
+    const char* diagnosis_text,
+    const char* treatment_advice,
+    int decision,
+    MedStatus pre_status,
+    MedStatus post_status
+)
+{
+    ConsultRecordNode* node = (ConsultRecordNode*)malloc(sizeof(ConsultRecordNode));
+    if (node == NULL) return NULL;
+    
+    // 安全复制字符串，防止缓冲区溢出
+    strncpy(node->record_id, record_id, MAX_ID_LEN - 1);
+    node->record_id[MAX_ID_LEN - 1] = '\0';
+    
+    strncpy(node->patient_id, patient_id, MAX_ID_LEN - 1);
+    node->patient_id[MAX_ID_LEN - 1] = '\0';
+    
+    strncpy(node->doctor_id, doctor_id, MAX_ID_LEN - 1);
+    node->doctor_id[MAX_ID_LEN - 1] = '\0';
+    
+    if (appointment_id != NULL)
+    {
+        strncpy(node->appointment_id, appointment_id, MAX_ID_LEN - 1);
+    }
+    else
+    {
+        node->appointment_id[0] = '\0';
+    }
+    node->appointment_id[MAX_ID_LEN - 1] = '\0';
+    
+    if (consult_time != NULL)
+    {
+        strncpy(node->consult_time, consult_time, MAX_NAME_LEN - 1);
+    }
+    else
+    {
+        node->consult_time[0] = '\0';
+    }
+    node->consult_time[MAX_NAME_LEN - 1] = '\0';
+    
+    if (diagnosis_text != NULL)
+    {
+        strncpy(node->diagnosis_text, diagnosis_text, MAX_RECORD_LEN - 1);
+    }
+    else
+    {
+        node->diagnosis_text[0] = '\0';
+    }
+    node->diagnosis_text[MAX_RECORD_LEN - 1] = '\0';
+    
+    if (treatment_advice != NULL)
+    {
+        strncpy(node->treatment_advice, treatment_advice, MAX_RECORD_LEN - 1);
+    }
+    else
+    {
+        node->treatment_advice[0] = '\0';
+    }
+    node->treatment_advice[MAX_RECORD_LEN - 1] = '\0';
+    
+    node->decision = decision;
+    node->pre_status = pre_status;
+    node->post_status = post_status;
+    
+    node->prev = NULL;
+    node->next = NULL;
+    
+    return node;
+}
+
+// ---------------------------------------------------------
+// 功能 3：尾部安全插入法
+// ---------------------------------------------------------
+void insert_consult_record_tail(ConsultRecordNode* head, ConsultRecordNode* new_node)
+{
+    if (head == NULL || new_node == NULL) return;
+    
+    ConsultRecordNode* curr = head;
+    while (curr->next != NULL) curr = curr->next;
+    curr->next = new_node;
+    new_node->prev = curr;
+}
+
+// ---------------------------------------------------------
+// 功能 4：按记录编号查找接诊记录
+// ---------------------------------------------------------
+ConsultRecordNode* find_consult_record_by_id(ConsultRecordNode* head, const char* target_record_id)
+{
+    if (head == NULL || target_record_id == NULL) return NULL;
+    ConsultRecordNode* curr = head->next;
+    while (curr != NULL)
+    {
+        if (strcmp(curr->record_id, target_record_id) == 0) return curr;
+        curr = curr->next;
+    }
+    return NULL;
 }
 // End of Selection
 
