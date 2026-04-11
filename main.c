@@ -40,20 +40,36 @@ static void handle_patient_self_registration();
 static void handle_patient_self_appointment_cancel();
 static void handle_patient_self_basic_record_query();
 static void handle_patient_self_visit_overview_query();
+static void handle_patient_self_consult_history_query();
 
 static void handle_patient_archive_query_by_id();
 static void handle_patient_archive_query_by_id_card();
 static void handle_patient_archive_query_by_name();
 static void handle_patient_archive_update();
 
+// 判断是否为检查科室
+static int is_check_department(const char* dept)
+{
+    if (dept == NULL) return 0;
+    const char* check_depts[] = {"放射科", "影像科", "检验科", "超声科", "心电图室", NULL};
+    for (int i = 0; check_depts[i] != NULL; i++) {
+        if (strcmp(dept, check_depts[i]) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 static void internal_login_menu();
 static void admin_menu();
 static void nurse_menu();
 static void doctor_menu();
 static void pharmacist_menu();
+static void check_dept_doctor_menu();
 static void handle_view_waiting_patients();
 static void handle_doctor_consultation();
 static void handle_doctor_view_patient_overview();
+static int is_check_department(const char* dept);
 
 static void admin_menu()
 {
@@ -101,6 +117,8 @@ static void handle_doctor_consultation()
     int decision;
     int count;
     int choice;
+    char check_item_ids[10][MAX_ID_LEN] = {0};
+    int check_count = 0;
 
     printf("\n================ 医生接诊 ================\n");
     
@@ -145,6 +163,56 @@ static void handle_doctor_consultation()
 
     decision = get_safe_int("👉 请输入操作编号: ");
     
+    // 如果选择开检查，显示检查项目列表供选择
+    if (decision == 3)
+    {
+        printf("\n================ 选择检查项目 ================\n");
+        printf("可用检查项目：\n");
+        
+        CheckItemNode* curr = g_check_item_list->next;
+        int item_index = 1;
+        while (curr != NULL)
+        {
+            printf("  [%d] %s（%s）- ¥%.2f\n", item_index, curr->item_name, curr->dept, curr->price);
+            curr = curr->next;
+            item_index++;
+        }
+        
+        printf("\n请选择检查项目（可多选，输入编号后按回车，输入0结束选择）：\n");
+        int item_choice;
+        while (1)
+        {
+            item_choice = get_safe_int("👉 ");
+            if (item_choice == 0) break;
+            
+            CheckItemNode* selected_item = g_check_item_list->next;
+            int i = 1;
+            while (selected_item != NULL && i < item_choice)
+            {
+                selected_item = selected_item->next;
+                i++;
+            }
+            
+            if (selected_item != NULL && check_count < 10)
+            {
+                strcpy(check_item_ids[check_count], selected_item->item_id);
+                printf("✓ 已选择：%s\n", selected_item->item_name);
+                check_count++;
+            }
+            else
+            {
+                printf("⚠️ 无效的选择！\n");
+            }
+        }
+        
+        if (check_count == 0)
+        {
+            printf("\n⚠️ 未选择任何检查项目，操作取消！\n");
+            system("pause");
+            return;
+        }
+    }
+    
     get_safe_string("请输入诊断结论: ", diagnosis_text, MAX_RECORD_LEN);
     get_safe_string("请输入处理意见: ", treatment_advice, MAX_RECORD_LEN);
     
@@ -155,6 +223,35 @@ static void handle_doctor_consultation()
         diagnosis_text,
         treatment_advice
     );
+    
+    // 如果选择开检查，创建检查记录
+    if (decision == 3 && check_count > 0)
+    {
+        for (int i = 0; i < check_count; i++)
+        {
+            CheckItemNode* item = find_check_item_by_id(g_check_item_list, check_item_ids[i]);
+            if (item != NULL)
+            {
+                char record_id[MAX_ID_LEN];
+                sprintf(record_id, "CR-%s-%03d", patient_list[choice - 1]->id, i + 1);
+                
+                insert_check_record_tail(g_check_record_list, 
+                    create_check_record_node(
+                        record_id,
+                        patient_list[choice - 1]->id,
+                        item->item_id,
+                        item->item_name,
+                        item->dept,
+                        NULL,
+                        "待检查",
+                        0
+                    )
+                );
+                
+                printf("📋 已开具检查：%s\n", item->item_name);
+            }
+        }
+    }
     
     system("pause");
 }
@@ -305,6 +402,7 @@ static void doctor_menu()
         printf("               👨‍⚕️ 医生接诊菜单\n");
         printf("======================================================\n");
         printf(" 当前医生：%s（编号：%s）\n", g_current_doctor->name, g_current_doctor->id);
+        printf(" 所属科室：%s\n", g_current_doctor->department);
         printf("------------------------------------------------------\n");
         printf("  [1] 查看待诊患者\n");
         printf("  [2] 查看患者接诊前信息\n");
@@ -344,6 +442,90 @@ static void doctor_menu()
                 break;
         }
         
+    }
+}
+
+// 检查科室医生菜单
+static void check_dept_doctor_menu()
+{
+    int running = 1;
+    char result[MAX_RECORD_LEN];
+    int choice;
+    int count;
+
+    while (running)
+    {
+        system("cls");
+        printf("\n======================================================\n");
+        printf("               🔬 检查科室医生菜单\n");
+        printf("======================================================\n");
+        printf(" 当前医生：%s（编号：%s）\n", g_current_doctor->name, g_current_doctor->id);
+        printf(" 所属科室：%s\n", g_current_doctor->department);
+        printf("------------------------------------------------------\n");
+        printf("  [1] 查看待检查列表\n");
+        printf("  [2] 录入检查结果\n");
+        printf("  [0] 退出登录\n");
+        printf("------------------------------------------------------\n");
+
+        switch (get_safe_int("👉 请输入操作编号: "))
+        {
+            case 1:
+                printf("\n================ 查看待检查列表 ================\n");
+                show_waiting_checks_by_dept(g_current_doctor->id);
+                system("pause");
+                break;
+            case 2:
+                printf("\n================ 录入检查结果 ================\n");
+                
+                // 获取待检查列表
+                CheckRecordNode* check_list[100];
+                count = get_waiting_checks_by_dept(g_current_doctor->id, check_list);
+                
+                if (count == 0)
+                {
+                    printf("ℹ️ 当前没有待检查的记录。\n");
+                    system("pause");
+                    break;
+                }
+                
+                // 显示待检查列表
+                printf("待检查列表：\n");
+                for (int i = 0; i < count; i++)
+                {
+                    const char* patient_name = get_patient_name_by_id(check_list[i]->patient_id);
+                    printf("[%d] 检查记录: %s | 患者编号: %s | 患者姓名: %s | 检查项目: %s\n",
+                        i + 1,
+                        check_list[i]->record_id,
+                        check_list[i]->patient_id,
+                        patient_name != NULL ? patient_name : "未知",
+                        check_list[i]->item_name);
+                }
+                
+                // 选择检查记录
+                choice = get_safe_int("\n请选择要录入结果的检查记录序号: ");
+                if (choice < 1 || choice > count)
+                {
+                    printf("⚠️ 无效的序号！\n");
+                    system("pause");
+                    break;
+                }
+                
+                // 显示选中的检查记录详情
+                show_check_record_detail(check_list[choice - 1]);
+                
+                // 录入检查结果
+                get_safe_string("请输入检查结果: ", result, MAX_RECORD_LEN);
+                doctor_update_check_result(g_current_doctor->id, check_list[choice - 1]->record_id, result);
+                system("pause");
+                break;
+            case 0:
+                running = 0;
+                break;
+            default:
+                printf("\n⚠️ 无效的选项，请重新输入！\n");
+                system("pause");
+                break;
+        }
     }
 }
 
@@ -456,7 +638,15 @@ static void internal_login_menu()
                 system("pause");
                 return;
             }
-            doctor_menu();
+            // 根据科室类型进入不同菜单
+            if (is_check_department(g_current_doctor->department))
+            {
+                check_dept_doctor_menu();
+            }
+            else
+            {
+                doctor_menu();
+            }
             // 退出医生菜单后，清除当前医生信息
             g_current_doctor = NULL;
             break;
@@ -539,8 +729,15 @@ static void handle_internal_appointment_register()
     get_safe_string("请输入患者编号: ", patient_id, MAX_ID_LEN);
     get_safe_string("请输入预约日期: ", appointment_date, MAX_NAME_LEN);
     get_safe_string("请输入预约时段: ", appointment_slot, MAX_NAME_LEN);
-    get_safe_string("请输入预约医生编号(可留空): ", appoint_doctor, MAX_NAME_LEN);
     get_safe_string("请输入预约科室(可留空): ", appoint_dept, MAX_NAME_LEN);
+    
+    // 如果输入了科室，显示该科室的医生列表
+    if (strlen(appoint_dept) > 0)
+    {
+        display_doctors_by_dept(appoint_dept);
+    }
+    
+    get_safe_string("请输入预约医生编号(可留空): ", appoint_doctor, MAX_NAME_LEN);
     register_appointment(
         patient_id,
         appointment_date,
@@ -635,6 +832,21 @@ static void handle_patient_self_visit_overview_query()
     system("pause");
 }
 
+static void handle_patient_self_consult_history_query()
+{
+    char patient_id[MAX_ID_LEN];
+    char id_card[MAX_ID_LEN];
+    
+    printf("\n================ 查询自己的历史就诊记录 ================\n");
+    printf("温馨提示：请确保您输入的是本人信息\n");
+    
+    get_safe_string("请输入患者编号: ", patient_id, MAX_ID_LEN);
+    get_safe_string("请输入身份证号: ", id_card, MAX_ID_LEN);
+    
+    query_patient_consult_history_verified(patient_id, id_card);
+    system("pause");
+}
+
 static void handle_patient_self_appointment_register()
 {
     char patient_id[MAX_ID_LEN];
@@ -663,8 +875,15 @@ static void handle_patient_self_appointment_register()
     
     get_safe_string("请输入预约日期: ", appointment_date, MAX_NAME_LEN);
     get_safe_string("请输入预约时段: ", appointment_slot, MAX_NAME_LEN);
-    get_safe_string("请输入预约医生编号(可留空): ", appoint_doctor, MAX_NAME_LEN);
     get_safe_string("请输入预约科室(可留空): ", appoint_dept, MAX_NAME_LEN);
+    
+    // 如果输入了科室，显示该科室的医生列表
+    if (strlen(appoint_dept) > 0)
+    {
+        display_doctors_by_dept(appoint_dept);
+    }
+    
+    get_safe_string("请输入预约医生编号(可留空): ", appoint_doctor, MAX_NAME_LEN);
     
     register_appointment(
         patient_id,
@@ -768,8 +987,15 @@ static void handle_patient_self_registration()
     
     printf("\n当前日期：%s\n", appointment_date);
     get_safe_string("请输入挂号时段: ", appointment_slot, MAX_NAME_LEN);
-    get_safe_string("请输入挂号医生编号(可留空): ", appoint_doctor, MAX_NAME_LEN);
     get_safe_string("请输入挂号科室(可留空): ", appoint_dept, MAX_NAME_LEN);
+    
+    // 如果输入了科室，显示该科室的医生列表
+    if (strlen(appoint_dept) > 0)
+    {
+        display_doctors_by_dept(appoint_dept);
+    }
+    
+    get_safe_string("请输入挂号医生编号(可留空): ", appoint_doctor, MAX_NAME_LEN);
     
     register_appointment(
         patient_id,
@@ -1068,6 +1294,8 @@ static void patient_self_service_menu()
         printf("  [5] 取消自己的预约\n");
         printf("  [6] 查询自己的基础病历\n");
         printf("  [7] 查询自己的就诊概览\n");
+        printf("  [8] 查询自己的历史就诊记录\n");
+        printf("  [9] 查询检查报告\n");
         printf("  [0] 返回上一级\n");
         printf("------------------------------------------------------\n");
         switch (get_safe_int("👉 请输入操作编号: "))
@@ -1106,6 +1334,47 @@ static void patient_self_service_menu()
                 break;
             case 7:
                 handle_patient_self_visit_overview_query();
+                break;
+            case 8:
+                handle_patient_self_consult_history_query();
+                break;
+            case 9:
+                get_safe_string("请输入您的患者编号: ", patient_id, MAX_ID_LEN);
+                get_safe_string("请输入您的身份证号（身份核验）: ", id_card, MAX_ID_LEN);
+                
+                // 身份核验
+                PatientNode* check_patient = find_patient_by_id_card(id_card);
+                if (check_patient == NULL || strcmp(check_patient->id, patient_id) != 0)
+                {
+                    printf("\n❌ 身份核验失败！患者编号与身份证号不匹配\n");
+                    system("pause");
+                    break;
+                }
+                
+                printf("\n身份核验成功！欢迎，%s\n", check_patient->name);
+                printf("\n================ 检查报告列表 ================\n");
+                
+                CheckRecordNode* check_records[100];
+                int check_count = get_check_records_by_patient(g_check_record_list, patient_id, check_records);
+                
+                if (check_count == 0)
+                {
+                    printf("暂无检查记录\n");
+                }
+                else
+                {
+                    for (int i = 0; i < check_count; i++)
+                    {
+                        printf("\n【检查报告 %d】\n", i + 1);
+                        printf("检查项目：%s\n", check_records[i]->item_name);
+                        printf("检查科室：%s\n", check_records[i]->dept);
+                        printf("检查时间：%s\n", check_records[i]->check_time[0] != '\0' ? check_records[i]->check_time : "待安排");
+                        printf("检查状态：%s\n", check_records[i]->is_completed ? "已完成" : "待检查");
+                        printf("检查结果：%s\n", check_records[i]->result);
+                        printf("----------------------------------------\n");
+                    }
+                }
+                system("pause");
                 break;
             case 0:
                 running = 0;
@@ -1152,14 +1421,83 @@ int main()
     g_ward_list = init_ward_list();
     g_account_list = init_account_list();
     g_consult_record_list = init_consult_record_list();
+    g_check_item_list = init_check_item_list();
+    g_check_record_list = init_check_record_list();
+
+    // ==============================================
+    // 检查项目字典初始化
+    // ==============================================
+    // 放射科检查项目
+    insert_check_item_tail(g_check_item_list, create_check_item_node("C-001", "X光检查", "放射科", 150.0));
+    insert_check_item_tail(g_check_item_list, create_check_item_node("C-002", "CT扫描", "放射科", 800.0));
+    insert_check_item_tail(g_check_item_list, create_check_item_node("C-003", "增强CT", "放射科", 1200.0));
+    
+    // 影像科检查项目
+    insert_check_item_tail(g_check_item_list, create_check_item_node("C-004", "MRI磁共振", "影像科", 1200.0));
+    insert_check_item_tail(g_check_item_list, create_check_item_node("C-005", "PET-CT", "影像科", 8000.0));
+    
+    // 超声科检查项目
+    insert_check_item_tail(g_check_item_list, create_check_item_node("C-006", "腹部B超", "超声科", 200.0));
+    insert_check_item_tail(g_check_item_list, create_check_item_node("C-007", "心脏彩超", "超声科", 350.0));
+    insert_check_item_tail(g_check_item_list, create_check_item_node("C-008", "妇科B超", "超声科", 180.0));
+    insert_check_item_tail(g_check_item_list, create_check_item_node("C-009", "甲状腺B超", "超声科", 150.0));
+    
+    // 检验科检查项目
+    insert_check_item_tail(g_check_item_list, create_check_item_node("C-010", "血常规", "检验科", 50.0));
+    insert_check_item_tail(g_check_item_list, create_check_item_node("C-011", "生化全项", "检验科", 300.0));
+    insert_check_item_tail(g_check_item_list, create_check_item_node("C-012", "肝功能", "检验科", 120.0));
+    insert_check_item_tail(g_check_item_list, create_check_item_node("C-013", "肾功能", "检验科", 100.0));
+    insert_check_item_tail(g_check_item_list, create_check_item_node("C-014", "血糖检测", "检验科", 30.0));
+    insert_check_item_tail(g_check_item_list, create_check_item_node("C-015", "血脂四项", "检验科", 80.0));
+    insert_check_item_tail(g_check_item_list, create_check_item_node("C-016", "凝血功能", "检验科", 150.0));
+    insert_check_item_tail(g_check_item_list, create_check_item_node("C-017", "尿常规", "检验科", 30.0));
+    
+    // 心电图室检查项目
+    insert_check_item_tail(g_check_item_list, create_check_item_node("C-018", "心电图", "心电图室", 80.0));
+    insert_check_item_tail(g_check_item_list, create_check_item_node("C-019", "动态心电图", "心电图室", 300.0));
 
     // 2. 注入一组极端测试数据
     insert_patient_tail(g_patient_list, create_patient_node(
 "P-001", "张三", 19, "110101199001011234"
 ));
-    insert_doctor_tail(g_doctor_list, create_doctor_node(
-"D-001", "李大夫", "外科"
-));
+    // 各科室医生数据
+    insert_doctor_tail(g_doctor_list, create_doctor_node("D-001", "李建国", "内科"));
+    insert_doctor_tail(g_doctor_list, create_doctor_node("D-002", "王大明", "外科"));
+    insert_doctor_tail(g_doctor_list, create_doctor_node("D-003", "张小红", "妇产科"));
+    insert_doctor_tail(g_doctor_list, create_doctor_node("D-004", "刘小华", "儿科"));
+    insert_doctor_tail(g_doctor_list, create_doctor_node("D-005", "陈伟强", "骨科"));
+    insert_doctor_tail(g_doctor_list, create_doctor_node("D-006", "赵丽华", "心血管内科"));
+    insert_doctor_tail(g_doctor_list, create_doctor_node("D-007", "孙卫东", "呼吸内科"));
+    insert_doctor_tail(g_doctor_list, create_doctor_node("D-008", "周秀芳", "消化内科"));
+    insert_doctor_tail(g_doctor_list, create_doctor_node("D-009", "吴明德", "神经内科"));
+    insert_doctor_tail(g_doctor_list, create_doctor_node("D-010", "郑美玲", "内分泌科"));
+    insert_doctor_tail(g_doctor_list, create_doctor_node("D-011", "黄志强", "肾内科"));
+    insert_doctor_tail(g_doctor_list, create_doctor_node("D-012", "林建华", "泌尿外科"));
+    insert_doctor_tail(g_doctor_list, create_doctor_node("D-013", "何晓燕", "肿瘤科"));
+    insert_doctor_tail(g_doctor_list, create_doctor_node("D-014", "罗伟民", "急诊科"));
+    insert_doctor_tail(g_doctor_list, create_doctor_node("D-015", "梁丽萍", "眼科"));
+    insert_doctor_tail(g_doctor_list, create_doctor_node("D-016", "谢国华", "耳鼻喉科"));
+    insert_doctor_tail(g_doctor_list, create_doctor_node("D-017", "马文婷", "口腔科"));
+    insert_doctor_tail(g_doctor_list, create_doctor_node("D-018", "唐俊杰", "皮肤科"));
+    insert_doctor_tail(g_doctor_list, create_doctor_node("D-019", "许文静", "风湿免疫科"));
+    insert_doctor_tail(g_doctor_list, create_doctor_node("D-020", "杨浩然", "感染科"));
+    insert_doctor_tail(g_doctor_list, create_doctor_node("D-021", "胡晓峰", "精神科"));
+    insert_doctor_tail(g_doctor_list, create_doctor_node("D-022", "朱秀兰", "康复医学科"));
+    insert_doctor_tail(g_doctor_list, create_doctor_node("D-023", "韩伟东", "普通外科"));
+    insert_doctor_tail(g_doctor_list, create_doctor_node("D-024", "曹丽华", "肝胆外科"));
+    insert_doctor_tail(g_doctor_list, create_doctor_node("D-025", "蒋志明", "心胸外科"));
+    insert_doctor_tail(g_doctor_list, create_doctor_node("D-026", "丁晓明", "神经外科"));
+    insert_doctor_tail(g_doctor_list, create_doctor_node("D-027", "冯彩霞", "全科"));
+    
+    // ==============================================
+    // 辅助检查科室（不直接接诊患者，提供检查服务）
+    // ==============================================
+    insert_doctor_tail(g_doctor_list, create_doctor_node("D-101", "放射科", "放射科"));
+    insert_doctor_tail(g_doctor_list, create_doctor_node("D-102", "影像科", "影像科"));
+    insert_doctor_tail(g_doctor_list, create_doctor_node("D-103", "检验科", "检验科"));
+    insert_doctor_tail(g_doctor_list, create_doctor_node("D-104", "超声科", "超声科"));
+    insert_doctor_tail(g_doctor_list, create_doctor_node("D-105", "心电图室", "心电图室"));
+    
     insert_medicine_tail(g_medicine_list, create_medicine_node(
 "M-001", "阿莫西林", 15.5, 100
 , MEDICARE_CLASS_A));
@@ -1175,9 +1513,23 @@ int main()
     insert_account_tail(g_account_list, create_account_node(
 "nurse", "123456", "护士"
 , ROLE_NURSE));
-    insert_account_tail(g_account_list, create_account_node(
-"D-001", "123456", "医生"
-, ROLE_DOCTOR));
+    // 各科室医生账户（密码均为123456）
+    insert_account_tail(g_account_list, create_account_node("D-001", "123456", "李建国-内科", ROLE_DOCTOR));
+    insert_account_tail(g_account_list, create_account_node("D-002", "123456", "王大明-外科", ROLE_DOCTOR));
+    insert_account_tail(g_account_list, create_account_node("D-003", "123456", "张小红-妇产科", ROLE_DOCTOR));
+    insert_account_tail(g_account_list, create_account_node("D-004", "123456", "刘小华-儿科", ROLE_DOCTOR));
+    insert_account_tail(g_account_list, create_account_node("D-005", "123456", "陈伟强-骨科", ROLE_DOCTOR));
+    insert_account_tail(g_account_list, create_account_node("D-006", "123456", "赵丽华-心血管内科", ROLE_DOCTOR));
+    insert_account_tail(g_account_list, create_account_node("D-007", "123456", "孙卫东-呼吸内科", ROLE_DOCTOR));
+    insert_account_tail(g_account_list, create_account_node("D-008", "123456", "周秀芳-消化内科", ROLE_DOCTOR));
+    insert_account_tail(g_account_list, create_account_node("D-009", "123456", "吴明德-神经内科", ROLE_DOCTOR));
+    insert_account_tail(g_account_list, create_account_node("D-010", "123456", "郑美玲-内分泌科", ROLE_DOCTOR));
+    insert_account_tail(g_account_list, create_account_node("D-014", "123456", "罗伟民-急诊科", ROLE_DOCTOR));
+    insert_account_tail(g_account_list, create_account_node("D-015", "123456", "梁丽萍-眼科", ROLE_DOCTOR));
+    insert_account_tail(g_account_list, create_account_node("D-016", "123456", "谢国华-耳鼻喉科", ROLE_DOCTOR));
+    insert_account_tail(g_account_list, create_account_node("D-017", "123456", "马文婷-口腔科", ROLE_DOCTOR));
+    insert_account_tail(g_account_list, create_account_node("D-018", "123456", "唐俊杰-皮肤科", ROLE_DOCTOR));
+    insert_account_tail(g_account_list, create_account_node("D-027", "123456", "冯彩霞-全科", ROLE_DOCTOR));
     insert_account_tail(g_account_list, create_account_node(
 "pharm", "123456", "药剂师"
 , ROLE_PHARMACIST));
@@ -1219,9 +1571,8 @@ int main()
         printf("               🏥 社区智慧医疗管理系统\n");
         printf("======================================================\n");
         printf("  [1] 🔑 内部登录 (医生/护士/药房专员/管理员)\n");
-        printf("  [2] 👨‍⚕️ 快捷挂号 (智能分诊通道)\n");
-        printf("  [3] 🤗 患者自助 (预约挂号/查询/取消/病历查询)\n");
-        printf("  [4] 📊 医疗大屏 (内部数据可视化展示)\n");
+        printf("  [2] 🤗 患者自助服务 (挂号/预约/查询)\n");
+        printf("  [3] 📊 医疗大屏 (内部数据可视化展示)\n");
         printf("  [0] 🚪 安全退出系统\n");
         printf("------------------------------------------------------\n");
 
@@ -1233,16 +1584,10 @@ int main()
                 internal_login_menu(); 
                 break;
             case 2:
-                printf("\n[跳转] -> 进入快捷挂号通道...\n");
-                quick_register_menu();
+                printf("\n[跳转] -> 进入患者自助服务...\n");
+                patient_self_service_menu();
                 break;
             case 3:
-                // 🌟 这里就是专门为患者视角设计的通道！
-                printf("\n[跳转] -> 进入患者自助预约查询终端...\n");
-                patient_self_service_menu(); 
-                // 在这个函数里，患者输入姓名或编号，系统遍历处方链表打印结算单
-                break;
-            case 4:
                 printf("\n[提示] 医疗大屏功能后续开发...\n");
                 system("pause");
                 break;

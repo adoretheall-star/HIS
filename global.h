@@ -85,6 +85,34 @@ typedef struct ConsultRecordNode
     struct ConsultRecordNode* next;   // 后继指针
 } ConsultRecordNode;
 
+// 【实体 8：检查项目字典】
+typedef struct CheckItemNode
+{
+    char item_id[MAX_ID_LEN];         // 检查项目编号
+    char item_name[MAX_NAME_LEN];     // 检查项目名称
+    char dept[MAX_NAME_LEN];          // 所属检查科室
+    double price;                     // 检查费用
+    
+    struct CheckItemNode* prev;       // 前驱指针
+    struct CheckItemNode* next;       // 后继指针
+} CheckItemNode;
+
+// 【实体 9：检查记录双向链表】
+typedef struct CheckRecordNode
+{
+    char record_id[MAX_ID_LEN];       // 检查记录编号
+    char patient_id[MAX_ID_LEN];      // 患者编号
+    char item_id[MAX_ID_LEN];         // 检查项目编号
+    char item_name[MAX_NAME_LEN];     // 检查项目名称
+    char dept[MAX_NAME_LEN];          // 检查科室
+    char check_time[MAX_NAME_LEN];    // 检查时间
+    char result[MAX_RECORD_LEN];      // 检查结果
+    int is_completed;                 // 是否完成检查 (0:未完成, 1:已完成)
+    
+    struct CheckRecordNode* prev;     // 前驱指针
+    struct CheckRecordNode* next;     // 后继指针
+} CheckRecordNode;
+
 // 【实体 1：患者与就诊档案双向链表】
 typedef struct PatientNode
  {
@@ -182,6 +210,9 @@ extern MedicineNode* g_medicine_list;
 extern WardNode* g_ward_list; 
 extern AccountNode* g_account_list;
 extern ConsultRecordNode* g_consult_record_list;
+extern CheckItemNode* g_check_item_list;     // 检查项目字典
+extern CheckRecordNode* g_check_record_list; // 检查记录
+
 // ==========================================
 // 7. 功能：安全删除节点 (Delete)
 // ==========================================

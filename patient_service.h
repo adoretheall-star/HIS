@@ -44,6 +44,13 @@ PatientNode* find_patient_by_id_card(const char* id_card);
 const char* get_patient_status_text(MedStatus status);
 
 /**
+ * @brief 根据症状智能推荐科室（智能导诊功能）
+ * @param symptom 患者症状描述
+ * @return 推荐的科室名称字符串
+ */
+const char* recommend_dept_by_symptom(const char* symptom);
+
+/**
  * @brief 显示患者档案详细信息（内部业务功能：档案管理）
  * @param patient 患者节点指针
  */
@@ -107,5 +114,13 @@ int query_patient_visit_overview_by_id(const char* patient_id);
  * @return 成功返回1，失败返回0
  */
 int query_patient_visit_overview_by_id_card(const char* id_card);
+
+/**
+ * @brief 患者自助查询自己的历史就诊记录（需要身份核验）
+ * @param patient_id 患者编号
+ * @param id_card 患者身份证号（用于身份核验）
+ * @return 成功返回1，失败返回0
+ */
+int query_patient_consult_history_verified(const char* patient_id, const char* id_card);
 
 #endif

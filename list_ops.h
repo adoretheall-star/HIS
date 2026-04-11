@@ -69,4 +69,32 @@ ConsultRecordNode* create_consult_record_node(
 );
 void insert_consult_record_tail(ConsultRecordNode* head, ConsultRecordNode* new_node);
 ConsultRecordNode* find_consult_record_by_id(ConsultRecordNode* head, const char* target_record_id);
+
+// ==========================================
+// 七、检查项目字典链表操作
+// ==========================================
+CheckItemNode* init_check_item_list();
+CheckItemNode* create_check_item_node(const char* item_id, const char* item_name, const char* dept, double price);
+void insert_check_item_tail(CheckItemNode* head, CheckItemNode* new_node);
+CheckItemNode* find_check_item_by_id(CheckItemNode* head, const char* target_item_id);
+int find_check_items_by_dept(CheckItemNode* head, const char* dept, CheckItemNode** result_list);
+
+// ==========================================
+// 八、检查记录链表操作
+// ==========================================
+CheckRecordNode* init_check_record_list();
+CheckRecordNode* create_check_record_node(
+    const char* record_id,
+    const char* patient_id,
+    const char* item_id,
+    const char* item_name,
+    const char* dept,
+    const char* check_time,
+    const char* result,
+    int is_completed
+);
+void insert_check_record_tail(CheckRecordNode* head, CheckRecordNode* new_node);
+int get_check_records_by_patient(CheckRecordNode* head, const char* patient_id, CheckRecordNode** result_list);
+int update_check_result(CheckRecordNode* head, const char* record_id, const char* result);
+
 #endif // LIST_OPS_H

@@ -8,6 +8,9 @@
 
 #include "global.h"
 
+// 辅助函数：获取患者姓名
+const char* get_patient_name_by_id(const char* patient_id);
+
 // 1. 查看指定医生的待诊患者
 void show_waiting_patients_by_doctor(const char* doctor_id);
 
@@ -40,5 +43,11 @@ void doctor_view_consult_history(const char* doctor_id, const char* patient_id);
 
 // 7. 检查完成回诊登记
 int complete_exam_and_return_to_doctor(const char* patient_id);
+
+// 8. 检查科室医生功能
+void show_waiting_checks_by_dept(const char* doctor_id);
+int get_waiting_checks_by_dept(const char* doctor_id, CheckRecordNode** check_list);
+void show_check_record_detail(CheckRecordNode* record);
+int doctor_update_check_result(const char* doctor_id, const char* record_id, const char* result);
 
 #endif

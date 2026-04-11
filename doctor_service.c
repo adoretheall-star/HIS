@@ -5,6 +5,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include "global.h"
 #include "list_ops.h"
 #include "doctor_service.h"
@@ -748,8 +749,8 @@ int complete_exam_and_return_to_doctor(const char* patient_id)
     return 1;
 }
 
-// 获取患者姓名（辅助函数）
-static const char* get_patient_name_by_id(const char* patient_id)
+// 获取患者姓名
+const char* get_patient_name_by_id(const char* patient_id)
 {
     if (patient_id == NULL || g_patient_list == NULL)
         return "未知";
@@ -1031,4 +1032,168 @@ void doctor_view_patient_overview(const char* doctor_id, const char* patient_id)
     {
         printf("暂无预约记录\n");
     }
+}
+
+// ==========================================
+// 检查科室医生功能
+// ==========================================
+
+// 显示检查科室医生的待检查列表（与医生待诊列表逻辑相同）
+void show_waiting_checks_by_dept(const char* doctor_id)
+{
+    int found = 0;
+    CheckRecordNode* curr = NULL;
+    DoctorNode* doctor = get_doctor_by_id_checked(doctor_id);
+    int index = 1;
+
+    if (doctor == NULL) return;
+
+    if (g_check_record_list == NULL)
+    {
+        printf("⚠️ 检查记录链表尚未初始化！\n");
+        return;
+    }
+
+    printf("\n================ 待检查列表 ================\n");
+    printf("医生编号: %s  医生姓名: %s  科室: %s\n",
+        doctor->id, doctor->name, doctor->department);
+    printf("--------------------------------------------\n");
+
+    curr = g_check_record_list->next;
+    while (curr != NULL && curr != g_check_record_list)
+    {
+        // 筛选出未完成且科室匹配的检查记录
+        if (curr->is_completed == 0 && strcmp(curr->dept, doctor->department) == 0)
+        {
+            const char* patient_name = get_patient_name_by_id(curr->patient_id);
+            printf("[%d] 检查记录: %s | 患者编号: %s | 患者姓名: %s | 检查项目: %s\n",
+                index++,
+                curr->record_id,
+                curr->patient_id,
+                patient_name != NULL ? patient_name : "未知",
+                curr->item_name);
+            found = 1;
+        }
+        curr = curr->next;
+    }
+
+    if (!found)
+    {
+        printf("ℹ️ 当前没有待检查的记录。\n");
+    }
+}
+
+// 获取待检查列表（用于选择）
+int get_waiting_checks_by_dept(const char* doctor_id, CheckRecordNode** check_list)
+{
+    int count = 0;
+    CheckRecordNode* curr = NULL;
+    DoctorNode* doctor = get_doctor_by_id_checked(doctor_id);
+
+    if (doctor == NULL || check_list == NULL) return 0;
+
+    if (g_check_record_list == NULL)
+    {
+        return 0;
+    }
+
+    curr = g_check_record_list->next;
+    while (curr != NULL && curr != g_check_record_list)
+    {
+        if (curr->is_completed == 0 && strcmp(curr->dept, doctor->department) == 0)
+        {
+            check_list[count++] = curr;
+        }
+        curr = curr->next;
+    }
+
+    return count;
+}
+
+// 显示检查记录详情
+void show_check_record_detail(CheckRecordNode* record)
+{
+    if (record == NULL) return;
+
+    printf("\n================ 检查记录详情 ================\n");
+    printf("检查记录编号：%s\n", record->record_id);
+    printf("患者编号：%s\n", record->patient_id);
+    printf("患者姓名：%s\n", get_patient_name_by_id(record->patient_id));
+    printf("检查项目：%s\n", record->item_name);
+    printf("检查项目编号：%s\n", record->item_id);
+    printf("所属科室：%s\n", record->dept);
+    printf("检查状态：%s\n", record->is_completed == 1 ? "已完成" : "待检查");
+    if (record->is_completed == 1)
+    {
+        printf("检查时间：%s\n", record->check_time);
+        printf("检查结果：%s\n", record->result);
+    }
+    printf("--------------------------------------------\n");
+}
+
+// 录入检查结果
+int doctor_update_check_result(const char* doctor_id, const char* record_id, const char* result)
+{
+    DoctorNode* doctor = get_doctor_by_id_checked(doctor_id);
+    CheckRecordNode* curr = NULL;
+
+    if (doctor == NULL) return 0;
+    if (record_id == NULL || strlen(record_id) == 0)
+    {
+        printf("⚠️ 检查记录编号不能为空！\n");
+        return 0;
+    }
+    if (result == NULL || strlen(result) == 0)
+    {
+        printf("⚠️ 检查结果不能为空！\n");
+        return 0;
+    }
+
+    if (g_check_record_list == NULL)
+    {
+        printf("⚠️ 检查记录链表尚未初始化！\n");
+        return 0;
+    }
+
+    curr = g_check_record_list->next;
+    while (curr != NULL && curr != g_check_record_list)
+    {
+        if (strcmp(curr->record_id, record_id) == 0)
+        {
+            // 检查科室是否匹配
+            if (strcmp(curr->dept, doctor->department) != 0)
+            {
+                printf("⚠️ 该检查记录不属于您的科室！\n");
+                return 0;
+            }
+            
+            // 检查是否已完成
+            if (curr->is_completed == 1)
+            {
+                printf("⚠️ 该检查记录已完成，无法修改！\n");
+                return 0;
+            }
+
+            // 更新检查结果
+            strncpy(curr->result, result, MAX_RECORD_LEN - 1);
+            curr->is_completed = 1;
+            
+            // 设置检查完成时间
+            time_t now = time(NULL);
+            struct tm* t = localtime(&now);
+            strftime(curr->check_time, MAX_NAME_LEN, "%Y-%m-%d %H:%M:%S", t);
+
+            printf("✅ 检查结果录入成功！\n");
+            printf("检查记录: %s\n", curr->record_id);
+            printf("患者姓名: %s\n", get_patient_name_by_id(curr->patient_id));
+            printf("检查项目: %s\n", curr->item_name);
+            printf("检查结果: %s\n", curr->result);
+            printf("完成时间: %s\n", curr->check_time);
+            return 1;
+        }
+        curr = curr->next;
+    }
+
+    printf("⚠️ 未找到指定的检查记录！\n");
+    return 0;
 }

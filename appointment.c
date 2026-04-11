@@ -72,6 +72,61 @@ static void print_appointment_info(const AppointmentNode* appointment)
             get_appointment_status_text(appointment->appointment_status));
     }
 }
+/**
+ * @brief 根据科室过滤并显示医生列表（强化按科室选医生功能）
+ * @param dept_name 科室名称
+ * @return 该科室的医生数量
+ */
+int display_doctors_by_dept(const char* dept_name)
+{
+    int count = 0;
+    
+    if (g_doctor_list == NULL)
+    {
+        printf("⚠️ 医生链表尚未初始化！\n");
+        return 0;
+    }
+    
+    if (dept_name == NULL || strlen(dept_name) == 0)
+    {
+        printf("⚠️ 科室名称不能为空！\n");
+        return 0;
+    }
+    
+    printf("\n🏥 【%s】科室医生列表：\n", dept_name);
+    printf("--------------------------------------------------\n");
+    printf("  编号\t姓名\t\t排队人数\n");
+    printf("--------------------------------------------------\n");
+    
+    DoctorNode* curr = g_doctor_list->next;
+    while (curr != NULL)
+    {
+        // 匹配科室
+        if (strcmp(curr->department, dept_name) == 0)
+        {
+            count++;
+            printf("  %s\t%s\t\t%d\n", 
+                   curr->id, 
+                   curr->name, 
+                   curr->queue_length);
+        }
+        curr = curr->next;
+    }
+    
+    printf("--------------------------------------------------\n");
+    
+    if (count == 0)
+    {
+        printf("😔 该科室暂无医生值班，请选择其他科室\n");
+    }
+    else
+    {
+        printf("📝 该科室共有 %d 位医生\n", count);
+    }
+    
+    return count;
+}
+
 // 预约登记
 AppointmentNode* register_appointment(
     const char* patient_id,

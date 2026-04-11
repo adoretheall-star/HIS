@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "global.h"
 #include "list_ops.h"
 #include "utils.h"
@@ -243,6 +244,400 @@ static PatientNode* get_patient_by_id_checked(const char* patient_id, const char
 }
 
 /**
+ * @brief 根据症状智能推荐科室（智能导诊功能）
+ * @param symptom 患者症状描述
+ * @return 推荐的科室名称字符串
+ */
+const char* recommend_dept_by_symptom(const char* symptom)
+{
+    if (symptom == NULL || strlen(symptom) == 0)
+    {
+        return "全科";
+    }
+    
+    // 将症状转换为小写进行匹配（避免大小写问题）
+    char lower_symptom[MAX_SYMPTOM_LEN];
+    strcpy(lower_symptom, symptom);
+    for (int i = 0; lower_symptom[i]; i++)
+    {
+        lower_symptom[i] = tolower(lower_symptom[i]);
+    }
+    
+    // ==============================================
+    // 急诊科 - 紧急情况优先匹配
+    // ==============================================
+    if (strstr(lower_symptom, "紧急") != NULL ||
+        strstr(lower_symptom, "急救") != NULL ||
+        strstr(lower_symptom, "昏迷") != NULL ||
+        strstr(lower_symptom, "休克") != NULL ||
+        strstr(lower_symptom, "大出血") != NULL ||
+        strstr(lower_symptom, "呼吸困难") != NULL ||
+        strstr(lower_symptom, "心跳停止") != NULL ||
+        strstr(lower_symptom, "心梗") != NULL ||
+        strstr(lower_symptom, "中风") != NULL ||
+        strstr(lower_symptom, "车祸") != NULL ||
+        strstr(lower_symptom, "坠落") != NULL)
+    {
+        return "急诊科";
+    }
+    
+    // ==============================================
+    // 妇产科
+    // ==============================================
+    if (strstr(lower_symptom, "怀孕") != NULL ||
+        strstr(lower_symptom, "妊娠") != NULL ||
+        strstr(lower_symptom, "产检") != NULL ||
+        strstr(lower_symptom, "分娩") != NULL ||
+        strstr(lower_symptom, "妇科") != NULL ||
+        strstr(lower_symptom, "月经") != NULL ||
+        strstr(lower_symptom, "痛经") != NULL ||
+        strstr(lower_symptom, "乳腺") != NULL ||
+        strstr(lower_symptom, "子宫") != NULL ||
+        strstr(lower_symptom, "卵巢") != NULL)
+    {
+        return "妇产科";
+    }
+    
+    // ==============================================
+    // 儿科
+    // ==============================================
+    if (strstr(lower_symptom, "儿童") != NULL ||
+        strstr(lower_symptom, "小孩") != NULL ||
+        strstr(lower_symptom, "宝宝") != NULL ||
+        strstr(lower_symptom, "婴儿") != NULL ||
+        strstr(lower_symptom, "幼儿") != NULL ||
+        strstr(lower_symptom, "小儿") != NULL)
+    {
+        return "儿科";
+    }
+    
+    // ==============================================
+    // 骨科
+    // ==============================================
+    if (strstr(lower_symptom, "骨折") != NULL ||
+        strstr(lower_symptom, "骨裂") != NULL ||
+        strstr(lower_symptom, "关节") != NULL ||
+        strstr(lower_symptom, "腰椎") != NULL ||
+        strstr(lower_symptom, "颈椎") != NULL ||
+        strstr(lower_symptom, "脊椎") != NULL ||
+        strstr(lower_symptom, "骨质疏松") != NULL ||
+        strstr(lower_symptom, "股骨头") != NULL)
+    {
+        return "骨科";
+    }
+    
+    // ==============================================
+    // 心血管内科
+    // ==============================================
+    if (strstr(lower_symptom, "心悸") != NULL ||
+        strstr(lower_symptom, "胸闷") != NULL ||
+        strstr(lower_symptom, "心慌") != NULL ||
+        strstr(lower_symptom, "心律不齐") != NULL ||
+        strstr(lower_symptom, "高血压") != NULL ||
+        strstr(lower_symptom, "低血压") != NULL ||
+        strstr(lower_symptom, "冠心病") != NULL ||
+        strstr(lower_symptom, "心绞痛") != NULL ||
+        strstr(lower_symptom, "心肌") != NULL ||
+        strstr(lower_symptom, "心衰") != NULL)
+    {
+        return "心血管内科";
+    }
+    
+    // ==============================================
+    // 呼吸内科
+    // ==============================================
+    if (strstr(lower_symptom, "咳嗽") != NULL ||
+        strstr(lower_symptom, "咳痰") != NULL ||
+        strstr(lower_symptom, "哮喘") != NULL ||
+        strstr(lower_symptom, "肺炎") != NULL ||
+        strstr(lower_symptom, "支气管炎") != NULL ||
+        strstr(lower_symptom, "呼吸困难") != NULL ||
+        strstr(lower_symptom, "胸闷") != NULL ||
+        strstr(lower_symptom, "气短") != NULL)
+    {
+        return "呼吸内科";
+    }
+    
+    // ==============================================
+    // 消化内科
+    // ==============================================
+    if (strstr(lower_symptom, "胃痛") != NULL ||
+        strstr(lower_symptom, "胃胀") != NULL ||
+        strstr(lower_symptom, "胃炎") != NULL ||
+        strstr(lower_symptom, "胃溃疡") != NULL ||
+        strstr(lower_symptom, "腹泻") != NULL ||
+        strstr(lower_symptom, "便秘") != NULL ||
+        strstr(lower_symptom, "便血") != NULL ||
+        strstr(lower_symptom, "黄疸") != NULL ||
+        strstr(lower_symptom, "肝") != NULL ||
+        strstr(lower_symptom, "胆囊") != NULL ||
+        strstr(lower_symptom, "胰腺") != NULL)
+    {
+        return "消化内科";
+    }
+    
+    // ==============================================
+    // 神经内科
+    // ==============================================
+    if (strstr(lower_symptom, "头痛") != NULL ||
+        strstr(lower_symptom, "头晕") != NULL ||
+        strstr(lower_symptom, "眩晕") != NULL ||
+        strstr(lower_symptom, "失眠") != NULL ||
+        strstr(lower_symptom, "癫痫") != NULL ||
+        strstr(lower_symptom, "麻木") != NULL ||
+        strstr(lower_symptom, "瘫痪") != NULL ||
+        strstr(lower_symptom, "帕金森") != NULL ||
+        strstr(lower_symptom, "神经") != NULL)
+    {
+        return "神经内科";
+    }
+    
+    // ==============================================
+    // 内分泌科
+    // ==============================================
+    if (strstr(lower_symptom, "糖尿病") != NULL ||
+        strstr(lower_symptom, "甲亢") != NULL ||
+        strstr(lower_symptom, "甲减") != NULL ||
+        strstr(lower_symptom, "甲状腺") != NULL ||
+        strstr(lower_symptom, "血糖") != NULL ||
+        strstr(lower_symptom, "激素") != NULL ||
+        strstr(lower_symptom, "肥胖") != NULL)
+    {
+        return "内分泌科";
+    }
+    
+    // ==============================================
+    // 肾内科
+    // ==============================================
+    if (strstr(lower_symptom, "肾炎") != NULL ||
+        strstr(lower_symptom, "肾病") != NULL ||
+        strstr(lower_symptom, "尿毒症") != NULL ||
+        strstr(lower_symptom, "蛋白尿") != NULL ||
+        strstr(lower_symptom, "血尿") != NULL ||
+        strstr(lower_symptom, "尿频") != NULL ||
+        strstr(lower_symptom, "尿急") != NULL ||
+        strstr(lower_symptom, "尿痛") != NULL)
+    {
+        return "肾内科";
+    }
+    
+    // ==============================================
+    // 泌尿外科
+    // ==============================================
+    if (strstr(lower_symptom, "前列腺") != NULL ||
+        strstr(lower_symptom, "结石") != NULL ||
+        strstr(lower_symptom, "阳痿") != NULL ||
+        strstr(lower_symptom, "早泄") != NULL ||
+        strstr(lower_symptom, "包皮") != NULL ||
+        strstr(lower_symptom, "睾丸") != NULL ||
+        strstr(lower_symptom, "精索") != NULL)
+    {
+        return "泌尿外科";
+    }
+    
+    // ==============================================
+    // 肿瘤科
+    // ==============================================
+    if (strstr(lower_symptom, "肿瘤") != NULL ||
+        strstr(lower_symptom, "癌症") != NULL ||
+        strstr(lower_symptom, "癌") != NULL ||
+        strstr(lower_symptom, "化疗") != NULL ||
+        strstr(lower_symptom, "放疗") != NULL ||
+        strstr(lower_symptom, "肿块") != NULL)
+    {
+        return "肿瘤科";
+    }
+    
+    // ==============================================
+    // 风湿免疫科
+    // ==============================================
+    if (strstr(lower_symptom, "风湿") != NULL ||
+        strstr(lower_symptom, "类风湿") != NULL ||
+        strstr(lower_symptom, "关节炎") != NULL ||
+        strstr(lower_symptom, "红斑狼疮") != NULL ||
+        strstr(lower_symptom, "干燥综合征") != NULL ||
+        strstr(lower_symptom, "免疫") != NULL)
+    {
+        return "风湿免疫科";
+    }
+    
+    // ==============================================
+    // 感染科
+    // ==============================================
+    if (strstr(lower_symptom, "感染") != NULL ||
+        strstr(lower_symptom, "病毒") != NULL ||
+        strstr(lower_symptom, "细菌") != NULL ||
+        strstr(lower_symptom, "肝炎") != NULL ||
+        strstr(lower_symptom, "结核") != NULL ||
+        strstr(lower_symptom, "艾滋病") != NULL ||
+        strstr(lower_symptom, "梅毒") != NULL)
+    {
+        return "感染科";
+    }
+    
+    // ==============================================
+    // 精神科
+    // ==============================================
+    if (strstr(lower_symptom, "抑郁") != NULL ||
+        strstr(lower_symptom, "焦虑") != NULL ||
+        strstr(lower_symptom, "精神") != NULL ||
+        strstr(lower_symptom, "失眠") != NULL ||
+        strstr(lower_symptom, "心理") != NULL ||
+        strstr(lower_symptom, "情绪") != NULL)
+    {
+        return "精神科";
+    }
+    
+    // ==============================================
+    // 康复医学科
+    // ==============================================
+    if (strstr(lower_symptom, "康复") != NULL ||
+        strstr(lower_symptom, "理疗") != NULL ||
+        strstr(lower_symptom, "针灸") != NULL ||
+        strstr(lower_symptom, "推拿") != NULL ||
+        strstr(lower_symptom, "按摩") != NULL ||
+        strstr(lower_symptom, "康复训练") != NULL)
+    {
+        return "康复医学科";
+    }
+    
+    // ==============================================
+    // 普通外科
+    // ==============================================
+    if (strstr(lower_symptom, "阑尾炎") != NULL ||
+        strstr(lower_symptom, "疝气") != NULL ||
+        strstr(lower_symptom, "痔疮") != NULL ||
+        strstr(lower_symptom, "脂肪瘤") != NULL ||
+        strstr(lower_symptom, "脓肿") != NULL)
+    {
+        return "普通外科";
+    }
+    
+    // ==============================================
+    // 肝胆外科
+    // ==============================================
+    if (strstr(lower_symptom, "胆结石") != NULL ||
+        strstr(lower_symptom, "胆囊炎") != NULL ||
+        strstr(lower_symptom, "肝癌") != NULL ||
+        strstr(lower_symptom, "肝硬化") != NULL ||
+        strstr(lower_symptom, "胆管") != NULL)
+    {
+        return "肝胆外科";
+    }
+    
+    // ==============================================
+    // 心胸外科
+    // ==============================================
+    if (strstr(lower_symptom, "肺癌") != NULL ||
+        strstr(lower_symptom, "食管癌") != NULL ||
+        strstr(lower_symptom, "纵隔") != NULL ||
+        strstr(lower_symptom, "胸") != NULL)
+    {
+        return "心胸外科";
+    }
+    
+    // ==============================================
+    // 神经外科
+    // ==============================================
+    if (strstr(lower_symptom, "脑") != NULL ||
+        strstr(lower_symptom, "颅内") != NULL ||
+        strstr(lower_symptom, "脑膜") != NULL ||
+        strstr(lower_symptom, "垂体") != NULL)
+    {
+        return "神经外科";
+    }
+    
+    // ==============================================
+    // 眼科
+    // ==============================================
+    if (strstr(lower_symptom, "眼睛") != NULL ||
+        strstr(lower_symptom, "视力") != NULL ||
+        strstr(lower_symptom, "近视") != NULL ||
+        strstr(lower_symptom, "远视") != NULL ||
+        strstr(lower_symptom, "散光") != NULL ||
+        strstr(lower_symptom, "眼痛") != NULL ||
+        strstr(lower_symptom, "白内障") != NULL ||
+        strstr(lower_symptom, "青光眼") != NULL ||
+        strstr(lower_symptom, "视网膜") != NULL)
+    {
+        return "眼科";
+    }
+    
+    // ==============================================
+    // 耳鼻喉科
+    // ==============================================
+    if (strstr(lower_symptom, "耳朵") != NULL ||
+        strstr(lower_symptom, "耳鸣") != NULL ||
+        strstr(lower_symptom, "听力") != NULL ||
+        strstr(lower_symptom, "鼻炎") != NULL ||
+        strstr(lower_symptom, "鼻塞") != NULL ||
+        strstr(lower_symptom, "喉咙") != NULL ||
+        strstr(lower_symptom, "咽炎") != NULL ||
+        strstr(lower_symptom, "扁桃体") != NULL ||
+        strstr(lower_symptom, "中耳炎") != NULL)
+    {
+        return "耳鼻喉科";
+    }
+    
+    // ==============================================
+    // 口腔科
+    // ==============================================
+    if (strstr(lower_symptom, "牙痛") != NULL ||
+        strstr(lower_symptom, "蛀牙") != NULL ||
+        strstr(lower_symptom, "牙龈") != NULL ||
+        strstr(lower_symptom, "口腔溃疡") != NULL ||
+        strstr(lower_symptom, "牙齿") != NULL ||
+        strstr(lower_symptom, "牙周") != NULL ||
+        strstr(lower_symptom, "智齿") != NULL)
+    {
+        return "口腔科";
+    }
+    
+    // ==============================================
+    // 皮肤科
+    // ==============================================
+    if (strstr(lower_symptom, "皮肤") != NULL ||
+        strstr(lower_symptom, "过敏") != NULL ||
+        strstr(lower_symptom, "湿疹") != NULL ||
+        strstr(lower_symptom, "皮炎") != NULL ||
+        strstr(lower_symptom, "痘痘") != NULL ||
+        strstr(lower_symptom, "皮疹") != NULL ||
+        strstr(lower_symptom, "痤疮") != NULL ||
+        strstr(lower_symptom, "荨麻疹") != NULL)
+    {
+        return "皮肤科";
+    }
+    
+    // ==============================================
+    // 普通内科（兜底）
+    // ==============================================
+    if (strstr(lower_symptom, "发热") != NULL ||
+        strstr(lower_symptom, "发烧") != NULL ||
+        strstr(lower_symptom, "感冒") != NULL ||
+        strstr(lower_symptom, "乏力") != NULL ||
+        strstr(lower_symptom, "疲劳") != NULL)
+    {
+        return "内科";
+    }
+    
+    // ==============================================
+    // 普通外科（兜底）
+    // ==============================================
+    if (strstr(lower_symptom, "外伤") != NULL ||
+        strstr(lower_symptom, "摔伤") != NULL ||
+        strstr(lower_symptom, "撞伤") != NULL ||
+        strstr(lower_symptom, "割伤") != NULL ||
+        strstr(lower_symptom, "肿胀") != NULL ||
+        strstr(lower_symptom, "脱臼") != NULL)
+    {
+        return "外科";
+    }
+    
+    // 默认分诊到全科
+    return "全科";
+}
+
+/**
  * @brief 获取患者状态文本描述
  * @param status 患者就医状态枚举值
  * @return 状态对应的中文描述字符串
@@ -337,6 +732,31 @@ PatientNode* register_patient(
         return NULL;
     }
     
+    // 智能导诊：根据症状推荐科室
+    const char* recommended_dept = recommend_dept_by_symptom(symptom);
+    
+    // 如果用户没有指定科室，则使用推荐的科室
+    char actual_dept[MAX_NAME_LEN] = "";
+    if (target_dept == NULL || strlen(target_dept) == 0)
+    {
+        strcpy(actual_dept, recommended_dept);
+    }
+    else
+    {
+        strcpy(actual_dept, target_dept);
+    }
+    
+    // 显示智能导诊提示
+    printf("🤖 智能导诊提示：根据您的症状\"%s\"，系统推荐您前往【%s】就诊\n", 
+           symptom != NULL && strlen(symptom) > 0 ? symptom : "未描述", 
+           recommended_dept);
+    
+    // 如果用户指定的科室与推荐科室不一致，给出提示
+    if (target_dept != NULL && strlen(target_dept) > 0 && strcmp(target_dept, recommended_dept) != 0)
+    {
+        printf("💡 您选择的科室是【%s】，系统推荐科室是【%s】\n", target_dept, recommended_dept);
+    }
+    
     // 生成新的患者编号
     generate_patient_id(new_id);
     
@@ -351,7 +771,7 @@ PatientNode* register_patient(
     // 复制患者信息到节点中
     copy_text_field(new_patient->id_card, MAX_ID_LEN, id_card);
     copy_text_field(new_patient->symptom, MAX_SYMPTOM_LEN, symptom);
-    copy_text_field(new_patient->target_dept, MAX_NAME_LEN, target_dept);
+    copy_text_field(new_patient->target_dept, MAX_NAME_LEN, actual_dept);
 
     // 将患者节点插入到链表尾部
     insert_patient_tail(g_patient_list, new_patient);
@@ -829,5 +1249,145 @@ int query_patient_visit_overview_by_id_card(const char* id_card)
     
     // 显示患者就诊概览信息
     display_patient_visit_overview(patient);
+    return 1;
+}
+
+/**
+ * @brief 获取诊疗决策文字描述（患者视角）
+ * @param decision 诊疗决策整数值
+ * @return 决策对应的中文描述字符串
+ */
+static const char* get_decision_text_for_patient(int decision)
+{
+    switch (decision) {
+        case 1: // 结束就诊
+            return "结束就诊";
+        case 2: // 开药
+            return "开药";
+        case 3: // 开检查
+            return "开检查";
+        case 4: // 办理住院
+            return "办理住院";
+        default:
+            return "未记录决策";
+    }
+}
+
+/**
+ * @brief 患者自助查询自己的历史就诊记录（需要身份核验）
+ * @param patient_id 患者编号
+ * @param id_card 患者身份证号（用于身份核验）
+ * @return 成功返回1，失败返回0
+ */
+int query_patient_consult_history_verified(const char* patient_id, const char* id_card)
+{
+    // 第一步：身份核验
+    if (patient_id == NULL || strlen(patient_id) == 0 || id_card == NULL || strlen(id_card) == 0)
+    {
+        printf("⚠️ 患者编号或身份证号不能为空！\n");
+        return 0;
+    }
+    
+    // 根据身份证号查找患者
+    PatientNode* patient = find_patient_by_id_card(id_card);
+    if (patient == NULL)
+    {
+        printf("⚠️ 身份核验失败，未找到对应患者！\n");
+        return 0;
+    }
+    
+    // 检查患者编号是否匹配
+    if (strcmp(patient->id, patient_id) != 0)
+    {
+        printf("⚠️ 身份核验失败，患者编号与身份证号不匹配！\n");
+        return 0;
+    }
+    
+    printf("\n==============================================\n");
+    printf("          历史就诊记录查询\n");
+    printf("==============================================\n");
+    printf("患者姓名: %s\n", patient->name);
+    printf("患者编号: %s\n", patient->id);
+    printf("==============================================\n\n");
+    
+    // 第二步：遍历现有接诊记录链表（最新在前）
+    ConsultRecordNode* head = g_consult_record_list;
+    
+    // 判断空链表：头结点为空 或 没有真实节点
+    if (head == NULL || head->next == NULL)
+    {
+        printf("暂无历史就诊记录\n");
+        printf("==============================================\n");
+        return 1;
+    }
+    
+    // 找到最后一条记录（最新的记录）
+    ConsultRecordNode* curr = head->next;  // 从第一个真实节点开始
+    while (curr->next != NULL)
+    {
+        curr = curr->next;
+    }
+    
+    int record_count = 0;
+    ConsultRecordNode* temp = curr;
+    
+    // 从最新记录开始向前遍历，确保不会遍历到头结点
+    while (temp != NULL && temp != head)
+    {
+        if (strcmp(temp->patient_id, patient_id) == 0)
+        {
+            record_count++;
+            
+            printf("【历史就诊记录 %d】\n", record_count);
+            printf("--------------------------------------------------\n");
+            printf("接诊记录编号: %s\n", temp->record_id);
+            printf("接诊时间: %s\n", temp->consult_time);
+            
+            // 优先显示接诊医生姓名
+            DoctorNode* doctor = find_doctor_by_id(g_doctor_list, temp->doctor_id);
+            if (doctor != NULL)
+            {
+                printf("接诊医生: %s（%s）\n", doctor->name, temp->doctor_id);
+            }
+            else
+            {
+                printf("接诊医生: 未知医生（%s）\n", temp->doctor_id);
+            }
+            
+            printf("诊断结论: %s\n", temp->diagnosis_text);
+            printf("处理意见: %s\n", temp->treatment_advice);
+            printf("诊疗决策: %s\n", get_decision_text_for_patient(temp->decision));
+            printf("接诊前状态: %s\n", get_patient_status_text(temp->pre_status));
+            printf("接诊后状态: %s\n", get_patient_status_text(temp->post_status));
+            
+            // 预约编号（如果有）
+            if (temp->appointment_id[0] != '\0')
+            {
+                printf("预约编号: %s\n", temp->appointment_id);
+            }
+            else
+            {
+                printf("预约编号: 无\n");
+            }
+            
+            // 检查结果（当前系统暂不支持单独检查结果记录，简化处理）
+            printf("检查结果: 暂无检查结果（课设简化版）\n");
+            
+            printf("--------------------------------------------------\n\n");
+        }
+        
+        temp = temp->prev;
+    }
+    
+    if (record_count == 0)
+    {
+        printf("暂无历史就诊记录\n");
+    }
+    else
+    {
+        printf("共找到 %d 条历史就诊记录\n", record_count);
+    }
+    
+    printf("==============================================\n");
     return 1;
 }

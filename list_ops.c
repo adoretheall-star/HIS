@@ -18,6 +18,8 @@ MedicineNode* g_medicine_list = NULL;
 WardNode* g_ward_list    = NULL;
 AccountNode* g_account_list = NULL;
 ConsultRecordNode* g_consult_record_list = NULL;
+CheckItemNode* g_check_item_list = NULL;     // 检查项目字典
+CheckRecordNode* g_check_record_list = NULL; // 检查记录
 //一、患者链表操作
 // ---------------------------------------------------------
 // 功能 1：初始化带头结点的双向链表
@@ -589,5 +591,208 @@ ConsultRecordNode* find_consult_record_by_id(ConsultRecordNode* head, const char
     }
     return NULL;
 }
+
+// ==========================================
+// 七、检查项目字典链表操作
+// ==========================================
+
+// 初始化带头结点的检查项目链表
+CheckItemNode* init_check_item_list()
+{
+    CheckItemNode* head = (CheckItemNode*)malloc(sizeof(CheckItemNode));
+    if (head == NULL) exit(1);
+    strncpy(head->item_id, "HEAD", MAX_ID_LEN - 1);
+    head->item_id[MAX_ID_LEN - 1] = '\0';
+    head->prev = NULL; head->next = NULL;
+    return head;
+}
+
+// 创建检查项目节点
+CheckItemNode* create_check_item_node(const char* item_id, const char* item_name, const char* dept, double price)
+{
+    CheckItemNode* new_node = (CheckItemNode*)malloc(sizeof(CheckItemNode));
+    if (new_node == NULL) return NULL;
+    
+    strncpy(new_node->item_id, item_id, MAX_ID_LEN - 1);
+    new_node->item_id[MAX_ID_LEN - 1] = '\0';
+    
+    strncpy(new_node->item_name, item_name, MAX_NAME_LEN - 1);
+    new_node->item_name[MAX_NAME_LEN - 1] = '\0';
+    
+    strncpy(new_node->dept, dept, MAX_NAME_LEN - 1);
+    new_node->dept[MAX_NAME_LEN - 1] = '\0';
+    
+    new_node->price = price;
+    new_node->prev = NULL;
+    new_node->next = NULL;
+    
+    return new_node;
+}
+
+// 尾部插入检查项目
+void insert_check_item_tail(CheckItemNode* head, CheckItemNode* new_node)
+{
+    if (head == NULL || new_node == NULL) return;
+    CheckItemNode* curr = head;
+    while (curr->next != NULL) curr = curr->next;
+    curr->next = new_node;
+    new_node->prev = curr;
+}
+
+// 根据检查项目编号查找
+CheckItemNode* find_check_item_by_id(CheckItemNode* head, const char* target_item_id)
+{
+    if (head == NULL || target_item_id == NULL) return NULL;
+    CheckItemNode* curr = head->next;
+    while (curr != NULL)
+    {
+        if (strcmp(curr->item_id, target_item_id) == 0) return curr;
+        curr = curr->next;
+    }
+    return NULL;
+}
+
+// 根据科室查找检查项目
+int find_check_items_by_dept(CheckItemNode* head, const char* dept, CheckItemNode** result_list)
+{
+    if (head == NULL || dept == NULL || result_list == NULL) return 0;
+    
+    int count = 0;
+    CheckItemNode* curr = head->next;
+    
+    while (curr != NULL && count < 100)
+    {
+        if (strcmp(curr->dept, dept) == 0)
+        {
+            result_list[count++] = curr;
+        }
+        curr = curr->next;
+    }
+    
+    return count;
+}
+
+// ==========================================
+// 八、检查记录链表操作
+// ==========================================
+
+// 初始化带头结点的检查记录链表
+CheckRecordNode* init_check_record_list()
+{
+    CheckRecordNode* head = (CheckRecordNode*)malloc(sizeof(CheckRecordNode));
+    if (head == NULL) exit(1);
+    strncpy(head->record_id, "HEAD", MAX_ID_LEN - 1);
+    head->record_id[MAX_ID_LEN - 1] = '\0';
+    head->prev = NULL; head->next = NULL;
+    return head;
+}
+
+// 创建检查记录节点
+CheckRecordNode* create_check_record_node(
+    const char* record_id,
+    const char* patient_id,
+    const char* item_id,
+    const char* item_name,
+    const char* dept,
+    const char* check_time,
+    const char* result,
+    int is_completed)
+{
+    CheckRecordNode* new_node = (CheckRecordNode*)malloc(sizeof(CheckRecordNode));
+    if (new_node == NULL) return NULL;
+    
+    strncpy(new_node->record_id, record_id, MAX_ID_LEN - 1);
+    new_node->record_id[MAX_ID_LEN - 1] = '\0';
+    
+    strncpy(new_node->patient_id, patient_id, MAX_ID_LEN - 1);
+    new_node->patient_id[MAX_ID_LEN - 1] = '\0';
+    
+    strncpy(new_node->item_id, item_id, MAX_ID_LEN - 1);
+    new_node->item_id[MAX_ID_LEN - 1] = '\0';
+    
+    strncpy(new_node->item_name, item_name, MAX_NAME_LEN - 1);
+    new_node->item_name[MAX_NAME_LEN - 1] = '\0';
+    
+    strncpy(new_node->dept, dept, MAX_NAME_LEN - 1);
+    new_node->dept[MAX_NAME_LEN - 1] = '\0';
+    
+    if (check_time != NULL)
+    {
+        strncpy(new_node->check_time, check_time, MAX_NAME_LEN - 1);
+    }
+    else
+    {
+        new_node->check_time[0] = '\0';
+    }
+    new_node->check_time[MAX_NAME_LEN - 1] = '\0';
+    
+    if (result != NULL)
+    {
+        strncpy(new_node->result, result, MAX_RECORD_LEN - 1);
+    }
+    else
+    {
+        new_node->result[0] = '\0';
+    }
+    new_node->result[MAX_RECORD_LEN - 1] = '\0';
+    
+    new_node->is_completed = is_completed;
+    new_node->prev = NULL;
+    new_node->next = NULL;
+    
+    return new_node;
+}
+
+// 尾部插入检查记录
+void insert_check_record_tail(CheckRecordNode* head, CheckRecordNode* new_node)
+{
+    if (head == NULL || new_node == NULL) return;
+    CheckRecordNode* curr = head;
+    while (curr->next != NULL) curr = curr->next;
+    curr->next = new_node;
+    new_node->prev = curr;
+}
+
+// 根据患者编号查找检查记录数量
+int get_check_records_by_patient(CheckRecordNode* head, const char* patient_id, CheckRecordNode** result_list)
+{
+    if (head == NULL || patient_id == NULL || result_list == NULL) return 0;
+    
+    int count = 0;
+    CheckRecordNode* curr = head->next;
+    
+    while (curr != NULL && count < 100)
+    {
+        if (strcmp(curr->patient_id, patient_id) == 0)
+        {
+            result_list[count++] = curr;
+        }
+        curr = curr->next;
+    }
+    
+    return count;
+}
+
+// 更新检查结果
+int update_check_result(CheckRecordNode* head, const char* record_id, const char* result)
+{
+    if (head == NULL || record_id == NULL) return 0;
+    
+    CheckRecordNode* curr = head->next;
+    while (curr != NULL)
+    {
+        if (strcmp(curr->record_id, record_id) == 0)
+        {
+            strncpy(curr->result, result, MAX_RECORD_LEN - 1);
+            curr->result[MAX_RECORD_LEN - 1] = '\0';
+            curr->is_completed = 1;
+            return 1;
+        }
+        curr = curr->next;
+    }
+    
+    return 0;
+}
+
 // End of Selection
 
