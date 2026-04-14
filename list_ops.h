@@ -74,7 +74,7 @@ ConsultRecordNode* find_consult_record_by_id(ConsultRecordNode* head, const char
 // 七、检查项目字典链表操作
 // ==========================================
 CheckItemNode* init_check_item_list();
-CheckItemNode* create_check_item_node(const char* item_id, const char* item_name, const char* dept, double price);
+CheckItemNode* create_check_item_node(const char* item_id, const char* item_name, const char* dept, double price, MedicareType m_type);
 void insert_check_item_tail(CheckItemNode* head, CheckItemNode* new_node);
 CheckItemNode* find_check_item_by_id(CheckItemNode* head, const char* target_item_id);
 int find_check_items_by_dept(CheckItemNode* head, const char* dept, CheckItemNode** result_list);
@@ -91,7 +91,8 @@ CheckRecordNode* create_check_record_node(
     const char* dept,
     const char* check_time,
     const char* result,
-    int is_completed
+    int is_completed,
+    int is_paid
 );
 void insert_check_record_tail(CheckRecordNode* head, CheckRecordNode* new_node);
 int get_check_records_by_patient(CheckRecordNode* head, const char* patient_id, CheckRecordNode** result_list);

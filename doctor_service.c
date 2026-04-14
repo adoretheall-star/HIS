@@ -368,7 +368,8 @@ int doctor_consult_patient(
             patient->unpaid_time = time(NULL); // ⏱️ 补丁：按下72小时作废的秒表！
             break;
         case 3:
-            patient->status = STATUS_EXAMINING;
+            patient->status = STATUS_UNPAID;
+            patient->unpaid_time = time(NULL);
             break;
         case 4:
             patient->status = STATUS_HOSPITALIZED;
@@ -698,56 +699,6 @@ void doctor_view_processed_patient_detail(const char* doctor_id, const char* pat
         printf("暂无预约记录\n");
     }
     printf("==============================================\n");
-}
-
-// 检查完成回诊登记
-int complete_exam_and_return_to_doctor(const char* patient_id)
-{
-    PatientNode* patient = NULL;
-    DoctorNode* doctor = NULL;
-    
-    // 参数校验
-    if (patient_id == NULL || strlen(patient_id) == 0)
-    {
-        printf("⚠️ 患者编号不能为空！\n");
-        return 0;
-    }
-    
-    // 查找患者
-    patient = find_patient_by_id(g_patient_list, patient_id);
-    if (patient == NULL)
-    {
-        printf("⚠️ 未找到对应患者！\n");
-        return 0;
-    }
-    
-    // 检查患者当前状态是否为检查中
-    if (patient->status != STATUS_EXAMINING)
-    {
-        printf("⚠️ 当前患者状态为[%s]，不是检查中状态，无法办理回诊登记！\n", get_med_status_text(patient->status));
-        return 0;
-    }
-    
-    // 检查患者是否有对应的医生
-    if (patient->doctor_id[0] == '\0')
-    {
-        printf("⚠️ 当前患者未分配医生，无法办理回诊登记！\n");
-        return 0;
-    }
-    
-    // 查找对应的医生
-    doctor = find_doctor_by_id(g_doctor_list, patient->doctor_id);
-    
-    // 更新患者状态为检查后待复诊
-    patient->status = STATUS_RECHECK_PENDING;
-    
-    // 输出提示信息
-    printf("\n✅ 检查完成回诊登记成功！\n");
-    printf("患者：%s（编号：%s）已完成检查\n", patient->name, patient->id);
-    printf("已回到原医生待复诊队列\n");
-    printf("对应医生：%s（编号：%s）\n", doctor ? doctor->name : "未知", patient->doctor_id);
-    
-    return 1;
 }
 
 // 获取患者姓名
@@ -1183,6 +1134,13 @@ int doctor_update_check_result(const char* doctor_id, const char* record_id, con
             time_t now = time(NULL);
             struct tm* t = localtime(&now);
             strftime(curr->check_time, MAX_NAME_LEN, "%Y-%m-%d %H:%M:%S", t);
+            
+            // 自动识别患者并拨转状态
+            PatientNode* patient = find_patient_by_id(g_patient_list, curr->patient_id);
+            if (patient != NULL)
+            {
+                patient->status = STATUS_RECHECK_PENDING;
+            }
 
             printf("✅ 检查结果录入成功！\n");
             printf("检查记录: %s\n", curr->record_id);
@@ -1190,6 +1148,7 @@ int doctor_update_check_result(const char* doctor_id, const char* record_id, con
             printf("检查项目: %s\n", curr->item_name);
             printf("检查结果: %s\n", curr->result);
             printf("完成时间: %s\n", curr->check_time);
+            printf("🔄 [系统联动] 该患者状态已自动更新为：检查后待复诊 (STATUS_RECHECK_PENDING)，已重新回到原接诊医生队列。\n");
             return 1;
         }
         curr = curr->next;

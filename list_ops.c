@@ -86,9 +86,10 @@ PatientNode* create_patient_node(const char* id, const char* name, int age, cons
     new_node->script_count = 0;
     
     // 初始化信用黑名单相关字段
-    new_node->missed_times[0] = 0;
-    new_node->missed_times[1] = 0;
-    new_node->missed_times[2] = 0;
+    new_node->missed_time_1 = 0;
+    new_node->missed_time_2 = 0;
+    new_node->missed_time_3 = 0;
+    new_node->missed_count = 0;
     new_node->blacklist_expire = 0;
     new_node->is_blacklisted = 0;
     new_node->is_emergency = 0;
@@ -619,7 +620,7 @@ CheckItemNode* init_check_item_list()
 }
 
 // 创建检查项目节点
-CheckItemNode* create_check_item_node(const char* item_id, const char* item_name, const char* dept, double price)
+CheckItemNode* create_check_item_node(const char* item_id, const char* item_name, const char* dept, double price, MedicareType m_type)
 {
     CheckItemNode* new_node = (CheckItemNode*)malloc(sizeof(CheckItemNode));
     if (new_node == NULL) return NULL;
@@ -634,6 +635,7 @@ CheckItemNode* create_check_item_node(const char* item_id, const char* item_name
     new_node->dept[MAX_NAME_LEN - 1] = '\0';
     
     new_node->price = price;
+    new_node->m_type = m_type;
     new_node->prev = NULL;
     new_node->next = NULL;
     
@@ -707,7 +709,8 @@ CheckRecordNode* create_check_record_node(
     const char* dept,
     const char* check_time,
     const char* result,
-    int is_completed)
+    int is_completed,
+    int is_paid)
 {
     CheckRecordNode* new_node = (CheckRecordNode*)malloc(sizeof(CheckRecordNode));
     if (new_node == NULL) return NULL;
@@ -748,6 +751,7 @@ CheckRecordNode* create_check_record_node(
     new_node->result[MAX_RECORD_LEN - 1] = '\0';
     
     new_node->is_completed = is_completed;
+    new_node->is_paid = is_paid;
     new_node->prev = NULL;
     new_node->next = NULL;
     

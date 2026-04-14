@@ -146,4 +146,11 @@ int handle_emergency_escape(const char* patient_id);
  */
 int settle_blacklisted_debt(const char* patient_id);
 
+/**
+ * @brief 处理患者自助缴费（扣减余额并推进状态）
+ * @param patient_id 患者编号
+ * @return 成功返回1，失败返回0
+ */
+int process_patient_payment(const char* patient_id);
+
 #endif

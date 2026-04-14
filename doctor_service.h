@@ -41,10 +41,7 @@ void doctor_view_processed_patient_detail(const char* doctor_id, const char* pat
 // 6. 查看历史接诊记录
 void doctor_view_consult_history(const char* doctor_id, const char* patient_id);
 
-// 7. 检查完成回诊登记
-int complete_exam_and_return_to_doctor(const char* patient_id);
-
-// 8. 检查科室医生功能
+// 7. 检查科室医生功能
 void show_waiting_checks_by_dept(const char* doctor_id);
 int get_waiting_checks_by_dept(const char* doctor_id, CheckRecordNode** check_list);
 void show_check_record_detail(CheckRecordNode* record);

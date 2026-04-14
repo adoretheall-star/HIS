@@ -192,9 +192,10 @@ AppointmentNode* register_appointment(
             {
                 // 90天惩罚期已过，自动解禁
                 patient->is_blacklisted = 0;
-                patient->missed_times[0] = 0;
-                patient->missed_times[1] = 0;
-                patient->missed_times[2] = 0;
+                patient->missed_time_1 = 0;
+                patient->missed_time_2 = 0;
+                patient->missed_time_3 = 0;
+                patient->missed_count = 0;
                 patient->blacklist_expire = 0;
                 printf("✅ 该患者的90天惩罚期已过，已自动解禁！\n");
             }
@@ -327,6 +328,27 @@ int cancel_appointment(const char* appointment_id)
             get_appointment_status_text(appointment->appointment_status));
         return 0;
     }
+    
+    // 退费逻辑
+    if (g_patient_list != NULL)
+    {
+        PatientNode* patient = find_patient_by_id(g_patient_list, appointment->patient_id);
+        if (patient != NULL)
+        {
+            double refund_amount = 0.0;
+            if (patient->is_emergency == 1)
+            {
+                refund_amount = 50.0;
+            }
+            else
+            {
+                refund_amount = 15.0;
+            }
+            patient->balance += refund_amount;
+            printf("💰 退费成功！已将挂号费 %.2f 元原路退回，当前账户余额：%.2f 元。\n", refund_amount, patient->balance);
+        }
+    }
+    
     appointment->appointment_status = CANCELLED;
     printf("✅ 预约取消成功！预约编号：%s\n", appointment->appointment_id);
     return 1;
@@ -431,13 +453,28 @@ int mark_appointment_missed(const char* appointment_id)
     // 执行惩罚逻辑
     current_time = time(NULL);
     
-    // 将时间戳数组往后移位（丢弃最老的）
-    patient->missed_times[2] = patient->missed_times[1];
-    patient->missed_times[1] = patient->missed_times[0];
-    patient->missed_times[0] = current_time;
+    // 更新爽约次数和时间
+    if (patient->missed_count < 3)
+    {
+        patient->missed_count++;
+    }
+    
+    // 记录爽约时间
+    if (patient->missed_count == 1)
+    {
+        patient->missed_time_1 = current_time;
+    }
+    else if (patient->missed_count == 2)
+    {
+        patient->missed_time_2 = current_time;
+    }
+    else if (patient->missed_count == 3)
+    {
+        patient->missed_time_3 = current_time;
+    }
     
     // 拉黑判定：30天内集齐3次爽约
-    if (patient->missed_times[2] != 0 && (current_time - patient->missed_times[2]) <= 30 * 24 * 3600)
+    if (patient->missed_count >= 3 && patient->missed_time_3 != 0 && (current_time - patient->missed_time_1) <= 30 * 24 * 3600)
     {
         // 执行拉黑
         patient->is_blacklisted = 1;

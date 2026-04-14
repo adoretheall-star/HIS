@@ -94,6 +94,7 @@ typedef struct CheckItemNode
     char item_name[MAX_NAME_LEN];     // 检查项目名称
     char dept[MAX_NAME_LEN];          // 所属检查科室
     double price;                     // 检查费用
+    MedicareType m_type;              // 检查项目的医保类型
     
     struct CheckItemNode* prev;       // 前驱指针
     struct CheckItemNode* next;       // 后继指针
@@ -110,6 +111,7 @@ typedef struct CheckRecordNode
     char check_time[MAX_NAME_LEN];    // 检查时间
     char result[MAX_RECORD_LEN];      // 检查结果
     int is_completed;                 // 是否完成检查 (0:未完成, 1:已完成)
+    int is_paid;                      // 0:未缴费, 1:已缴费
     
     struct CheckRecordNode* prev;     // 前驱指针
     struct CheckRecordNode* next;     // 后继指针
@@ -138,7 +140,10 @@ typedef struct PatientNode
     int script_count;      // 当前开了几种药 (默认 0)
     
    // 信用黑名单相关字段
-    time_t missed_times[3]; // 最近3次爽约时间戳
+    time_t missed_time_1; // 第1次爽约时间
+    time_t missed_time_2; // 第2次爽约时间
+    time_t missed_time_3; // 第3次爽约时间
+    int missed_count;     // 累计爽约次数 (0-3)
     time_t blacklist_expire; // 黑名单到期时间戳
     int is_blacklisted; // 0:正常, 1:爽约黑名单, 2:逃单黑名单
     int is_emergency; // 0:普通, 1:急诊绿色通道患者

@@ -1488,3 +1488,148 @@ int settle_blacklisted_debt(const char* patient_id)
     
     return 1;
 }
+
+// ==========================================
+// 财务结算模块
+// ==========================================
+int process_patient_payment(const char* patient_id)
+{
+    PatientNode* patient = get_patient_by_id_checked(patient_id, "自助缴费");
+    if (patient == NULL) return 0;
+
+    // 1. 状态校验
+    if (patient->status != STATUS_UNPAID)
+    {
+        printf("⚠️ 当前状态为[%s]，无需进行缴费操作！\n", get_patient_status_text(patient->status));
+        return 0;
+    }
+
+    double total_amount = 0.0;
+    double actual_pay = 0.0;
+    double medicare_cover = 0.0;
+    int index = 1;
+
+    printf("\n================ 🏥 账单明细 ================\n");
+
+    // 2. 遍历处方单向链表进行算账
+    PrescriptionNode* p_curr = patient->script_head;
+    while (p_curr != NULL)
+    {
+        // 通过药品ID去全局药品库（双向链表）中查价格
+        MedicineNode* med = find_medicine_by_id(g_medicine_list, p_curr->med_id);
+        if (med != NULL)
+        {
+            double item_total = med->price * p_curr->quantity;
+            double item_actual = item_total;
+
+            // 医保报销逻辑：患者有医保，且药品支持报销
+            if (patient->m_type != MEDICARE_NONE)
+            {
+                if (med->m_type == MEDICARE_CLASS_A)
+                {
+                    item_actual = item_total * 0.2;
+                }
+                else if (med->m_type == MEDICARE_CLASS_B)
+                {
+                    item_actual = item_total * 0.5;
+                }
+            }
+
+            total_amount += item_total;
+            actual_pay += item_actual;
+
+            printf("[%d] 药品: %s | 单价: %.2f | 数量: %d | 小计: %.2f | 医保后: %.2f\n",
+                   index++, med->name, med->price, p_curr->quantity, item_total, item_actual);
+        }
+        p_curr = p_curr->next;
+    }
+
+    // 3. 遍历检查记录进行算账
+    CheckRecordNode* cr_curr = g_check_record_list->next;
+    while (cr_curr != NULL)
+    {
+        if (strcmp(cr_curr->patient_id, patient_id) == 0 && cr_curr->is_paid == 0)
+        {
+            // 通过检查项目ID去全局检查项目库中查价格和医保类型
+            CheckItemNode* check_item = find_check_item_by_id(g_check_item_list, cr_curr->item_id);
+            if (check_item != NULL)
+            {
+                double item_total = check_item->price;
+                double item_actual = item_total;
+
+                // 检查费医保核算逻辑
+                if (patient->m_type != MEDICARE_NONE)
+                {
+                    if (check_item->m_type == MEDICARE_CLASS_A)
+                    {
+                        item_actual = item_total * 0.2;
+                    }
+                    else if (check_item->m_type == MEDICARE_CLASS_B)
+                    {
+                        item_actual = item_total * 0.5;
+                    }
+                }
+
+                total_amount += item_total;
+                actual_pay += item_actual;
+
+                printf("[%d] 检查: %s | 单价: %.2f | 小计: %.2f | 医保后: %.2f\n",
+                       index++, check_item->item_name, check_item->price, item_total, item_actual);
+            }
+        }
+        cr_curr = cr_curr->next;
+    }
+
+    medicare_cover = total_amount - actual_pay;
+
+    printf("------------------------------------------\n");
+    printf("总计金额: %.2f 元\n", total_amount);
+    printf("医保统筹: %.2f 元\n", medicare_cover);
+    printf("个人自付: %.2f 元\n", actual_pay);
+    printf("当前余额: %.2f 元\n", patient->balance);
+    printf("==========================================\n");
+
+    // 4. 扣费风控校验
+    if (patient->balance < actual_pay)
+    {
+        printf("❌ 余额不足！还差 %.2f 元，请先到充值窗口充值。\n", actual_pay - patient->balance);
+        return 0;
+    }
+
+    // 5. 执行扣款
+    patient->balance -= actual_pay;
+    patient->unpaid_time = 0;
+
+    // 6. 标记检查记录为已缴费
+    int has_paid_check = 0;
+    cr_curr = g_check_record_list->next;
+    while (cr_curr != NULL)
+    {
+        if (strcmp(cr_curr->patient_id, patient_id) == 0 && cr_curr->is_paid == 0)
+        {
+            cr_curr->is_paid = 1;
+            has_paid_check = 1;
+        }
+        cr_curr = cr_curr->next;
+    }
+
+    // 7. 智能状态流转（遵循临床检查优先原则）
+    if (has_paid_check > 0)
+    {
+        patient->status = STATUS_EXAMINING;
+        printf("✅ 缴费成功！已扣除 %.2f 元，当前剩余余额 %.2f 元。\n", actual_pay, patient->balance);
+        printf("🔄 [状态更新] 检查优先原则：当前状态流转为 检查中 (STATUS_EXAMINING) -> 📢 导诊：请先保持空腹，优先前往【检查科室】排队做检查！\n");
+        if (patient->script_head != NULL)
+        {
+            printf("📢 提示：您名下还有待取药品，请在检查空档期或结束后前往药房取药。\n");
+        }
+    }
+    else if (patient->script_head != NULL)
+    {
+        patient->status = STATUS_WAIT_MED;
+        printf("✅ 缴费成功！已扣除 %.2f 元，当前剩余余额 %.2f 元。\n", actual_pay, patient->balance);
+        printf("📢 请移步至【药房】排队取药。\n");
+    }
+
+    return 1;
+}
