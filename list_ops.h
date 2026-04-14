@@ -97,4 +97,10 @@ void insert_check_record_tail(CheckRecordNode* head, CheckRecordNode* new_node);
 int get_check_records_by_patient(CheckRecordNode* head, const char* patient_id, CheckRecordNode** result_list);
 int update_check_result(CheckRecordNode* head, const char* record_id, const char* result);
 
+// ==========================================
+// 九、安全预警队列操作
+// ==========================================
+AlertNode* init_alert_list();
+void push_system_alert(const char* msg);
+
 #endif // LIST_OPS_H

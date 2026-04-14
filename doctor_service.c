@@ -365,6 +365,7 @@ int doctor_consult_patient(
             break;
         case 2:
             patient->status = STATUS_UNPAID;
+            patient->unpaid_time = time(NULL); // ⏱️ 补丁：按下72小时作废的秒表！
             break;
         case 3:
             patient->status = STATUS_EXAMINING;

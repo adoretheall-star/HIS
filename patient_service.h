@@ -91,6 +91,15 @@ int query_patient_archive_by_name(const char* name_keyword);
 int update_patient_archive(const char* patient_id, const char* name, int age, const char* symptom, const char* target_dept, const char* id_card, double balance);
 
 // ==========================================
+// 业务辅助功能
+// ==========================================
+/**
+ * @brief 检查并作废过期的待缴费订单
+ * @param patient 患者节点指针
+ */
+void check_and_void_expired_orders(PatientNode* patient);
+
+// ==========================================
 // 患者自助端会调用的查询能力（外部直接访问）
 // ==========================================
 /**
@@ -122,5 +131,19 @@ int query_patient_visit_overview_by_id_card(const char* id_card);
  * @return 成功返回1，失败返回0
  */
 int query_patient_consult_history_verified(const char* patient_id, const char* id_card);
+
+/**
+ * @brief 处理急诊逃单
+ * @param patient_id 患者编号
+ * @return 成功返回1，失败返回0
+ */
+int handle_emergency_escape(const char* patient_id);
+
+/**
+ * @brief 补缴欠费并核销黑名单
+ * @param patient_id 患者编号
+ * @return 成功返回1，失败返回0
+ */
+int settle_blacklisted_debt(const char* patient_id);
 
 #endif

@@ -46,6 +46,7 @@ static void handle_patient_archive_query_by_id();
 static void handle_patient_archive_query_by_id_card();
 static void handle_patient_archive_query_by_name();
 static void handle_patient_archive_update();
+static void display_recent_alerts();
 
 // 判断是否为检查科室
 static int is_check_department(const char* dept)
@@ -539,6 +540,10 @@ static void nurse_menu()
         printf("\n======================================================\n");
         printf("               👩‍⚕️ 护士/前台菜单\n");
         printf("======================================================\n");
+        
+        // 显示最近的安全预警
+        display_recent_alerts();
+        
         printf("  [1] 进入快捷挂号业务菜单\n");
         printf("  [2] 患者档案管理\n");
         printf("  [0] 退出登录\n");
@@ -563,7 +568,43 @@ static void nurse_menu()
     }
 }
 
-
+// 显示最近的安全预警
+static void display_recent_alerts()
+{
+    if (g_alert_list == NULL || g_alert_list->next == NULL)
+    {
+        printf("\n🔒 当前安全环境：优\n");
+        return;
+    }
+    
+    printf("\n🚨 【安全预警中心】最近警报：\n");
+    printf("------------------------------------------------------\n");
+    
+    // 逆序打印最近的 5 条警报
+    AlertNode* curr = g_alert_list->next;
+    int count = 0;
+    
+    // 先找到链表末尾
+    while (curr->next != NULL)
+    {
+        curr = curr->next;
+    }
+    
+    // 从末尾向前遍历，打印最近的 5 条
+    while (curr != g_alert_list && count < 5)
+    {
+        struct tm* local_time = localtime(&curr->time);
+        char time_str[20];
+        strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", local_time);
+        
+        printf("[%s] %s\n", time_str, curr->message);
+        
+        curr = curr->prev;
+        count++;
+    }
+    
+    printf("------------------------------------------------------\n");
+}
 
 static void pharmacist_menu()
 {
@@ -977,6 +1018,25 @@ static void handle_patient_self_registration()
     
     printf("\n身份核验成功！欢迎，%s\n", patient->name);
     
+    // 症状重新分诊
+    char current_symptom[MAX_SYMPTOM_LEN];
+    get_safe_string("请输入您本次就诊的症状描述: ", current_symptom, MAX_SYMPTOM_LEN);
+    // 拷贝覆盖到患者症状
+    strncpy(patient->symptom, current_symptom, MAX_SYMPTOM_LEN - 1);
+    patient->symptom[MAX_SYMPTOM_LEN - 1] = '\0'; // 确保字符串结束
+    // 重新调用智能导诊
+    const char* recommended_dept = recommend_dept_by_symptom(patient->symptom);
+    // 根据返回值重新判定急诊状态
+    if (strcmp(recommended_dept, "急诊科") == 0)
+    {
+        patient->is_emergency = 1;
+        printf("🚨 症状符合急诊特征，已为您开启绿色生命通道！\n");
+    }
+    else
+    {
+        patient->is_emergency = 0;
+    }
+    
     // 现场挂号使用当天日期
     time_t now = time(NULL);
     struct tm *local_time = localtime(&now);
@@ -987,6 +1047,12 @@ static void handle_patient_self_registration()
     
     printf("\n当前日期：%s\n", appointment_date);
     get_safe_string("请输入挂号时段: ", appointment_slot, MAX_NAME_LEN);
+    
+    // 夜间模式防呆提示
+    if (is_night_shift()) {
+        printf("\n🌙 [系统通知] 当前为夜间模式，所有挂号将自动转入急诊科。\n");
+    }
+    
     get_safe_string("请输入挂号科室(可留空): ", appoint_dept, MAX_NAME_LEN);
     
     // 如果输入了科室，显示该科室的医生列表
@@ -1241,6 +1307,10 @@ static void quick_register_menu()
         printf("  [5] 预约签到\n");
         printf("  [6] 患者档案管理\n");
         printf("  [7] 检查完成回诊登记\n");
+        printf("  [8] 登记患者爽约(过号)\n");
+        printf("  [9] 登记急诊逃单黑名单\n");
+        printf("  [10] 查看全院黑名单\n");
+        printf("  [11] 补缴欠费并核销黑名单\n");
         printf("  [0] 返回上一级\n");
         printf("------------------------------------------------------\n");
         switch (get_safe_int("👉 请输入操作编号: "))
@@ -1266,6 +1336,89 @@ static void quick_register_menu()
             case 7:
                 handle_exam_return_registration();
                 break;
+            case 8:
+            {
+                char appointment_id[MAX_ID_LEN];
+                get_safe_string("请输入预约编号: ", appointment_id, MAX_ID_LEN);
+                mark_appointment_missed(appointment_id);
+                system("pause");
+                break;
+            }
+            case 9:
+            {
+                char patient_id[MAX_ID_LEN];
+                get_safe_string("请输入患者编号: ", patient_id, MAX_ID_LEN);
+                handle_emergency_escape(patient_id);
+                system("pause");
+                break;
+            }
+            case 10:
+            {
+                // 查看全院黑名单
+                system("cls");
+                printf("\n======================================================\n");
+                printf("                ⛔ 全院黑名单患者\n");
+                printf("======================================================\n");
+                
+                if (g_patient_list == NULL)
+                {
+                    printf("⚠️ 患者链表尚未初始化！\n");
+                }
+                else
+                {
+                    PatientNode* curr = g_patient_list->next;
+                    int count = 0;
+                    
+                    while (curr != NULL)
+                    {
+                        if (curr->is_blacklisted == 1 || curr->is_blacklisted == 2)
+                        {
+                            count++;
+                            printf("【黑名单患者 %d】\n", count);
+                            printf("--------------------------------------------------\n");
+                            printf("患者编号: %s\n", curr->id);
+                            printf("患者姓名: %s\n", curr->name);
+                            printf("身份证号: %s\n", curr->id_card);
+                            
+                            if (curr->is_blacklisted == 1)
+                            {
+                                printf("黑名单类型: 普通爽约（90天）\n");
+                                printf("到期时间: %s\n", ctime(&curr->blacklist_expire));
+                            }
+                            else if (curr->is_blacklisted == 2)
+                            {
+                                printf("黑名单类型: 急诊逃单（永久）\n");
+                                printf("欠费金额: %.2f 元\n", curr->emergency_debt);
+                            }
+                            
+                            printf("--------------------------------------------------\n\n");
+                        }
+                        curr = curr->next;
+                    }
+                    
+                    if (count == 0)
+                    {
+                        printf("✅ 当前没有黑名单患者\n");
+                    }
+                    else
+                    {
+                        printf("共找到 %d 名黑名单患者\n", count);
+                    }
+                }
+                
+                printf("======================================================\n");
+                system("pause");
+                break;
+            }
+            case 11:
+            {
+                // 补缴欠费并核销黑名单
+                char patient_id[MAX_ID_LEN];
+                get_safe_string("请输入患者编号: ", patient_id, MAX_ID_LEN);
+                settle_blacklisted_debt(patient_id);
+                system("pause");
+                break;
+            }
             case 0:
                 running = 0;
                 break;
@@ -1423,6 +1576,7 @@ int main()
     g_consult_record_list = init_consult_record_list();
     g_check_item_list = init_check_item_list();
     g_check_record_list = init_check_record_list();
+    g_alert_list = init_alert_list();
 
     // ==============================================
     // 检查项目字典初始化
@@ -1622,6 +1776,7 @@ int main()
     printf("\n✅ 数据已安全保存，感谢使用！再见！\n");
     printf("======================================================\n");
 
+    system("pause"); // 等待用户按任意键
     return 0;
 }
 

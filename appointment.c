@@ -156,6 +156,73 @@ AppointmentNode* register_appointment(
         printf("⚠️ 未找到对应患者，预约登记失败！\n");
         return NULL;
     }
+    
+    // 特权穿透判定：直接判断患者是否为急诊
+    if (patient->is_emergency == 1)
+    {
+        // 如果是急诊，跳过所有黑名单拦截
+        if (patient->is_blacklisted != 0)
+        {
+            printf("🚨 [生命通道] 发现黑名单人员突发危重急症，已强制放行并报备相关部门！\n");
+            // 添加急诊特权穿透预警
+            char alert_msg[256];
+            snprintf(alert_msg, sizeof(alert_msg), "🚨 急诊强制放行：患者 %s（黑名单人员）突发危重急症，已强制放行，请相关部门跟进！", patient->name);
+            push_system_alert(alert_msg);
+        }
+    }
+    else
+    {
+        // 非急诊情况，执行黑名单拦截
+        
+        // 逻辑 C：逃单拦截
+        if (patient->is_blacklisted == 2)
+        {
+            printf("⛔ [黑名单拦截] 您的症状经预检分诊判定为非危重急症，拒绝提供常规诊疗服务，请先补缴欠费！\n");
+            // 添加永久黑名单拦截预警
+            char alert_msg[256];
+            snprintf(alert_msg, sizeof(alert_msg), "⛔ 恶意挂号被拦截：患者 %s（永久黑名单）试图挂号，已拦截！", patient->name);
+            push_system_alert(alert_msg);
+            return NULL;
+        }
+        // 逻辑 B：爽约拦截
+        else if (patient->is_blacklisted == 1)
+        {
+            time_t current_time = time(NULL);
+            if (current_time > patient->blacklist_expire)
+            {
+                // 90天惩罚期已过，自动解禁
+                patient->is_blacklisted = 0;
+                patient->missed_times[0] = 0;
+                patient->missed_times[1] = 0;
+                patient->missed_times[2] = 0;
+                patient->blacklist_expire = 0;
+                printf("✅ 该患者的90天惩罚期已过，已自动解禁！\n");
+            }
+            else
+            {
+                // 还在惩罚期内
+                // 检查是否为当天挂号（现场挂号）
+                char today[20];
+                time_t now = time(NULL);
+                struct tm* local_time = localtime(&now);
+                strftime(today, sizeof(today), "%Y-%m-%d", local_time);
+                
+                if (strcmp(appointment_date, today) != 0)
+                {
+                    // 不是当天，即提前预约，拦截
+                    int days_remaining = (patient->blacklist_expire - current_time) / (24 * 3600) + 1;
+                    printf("🔴 [爽约黑名单拦截] 该患者处于爽约惩罚期，限制提前预约！\n");
+                    printf("🔴 请前往医院大厅现场挂号，距离解禁还有 %d 天！\n", days_remaining);
+                    return NULL;
+                }
+                else
+                {
+                    // 是当天，即现场挂号，放行但打印信用警报
+                    printf("⚠️ [信用警报] 您处于爽约惩罚期，请珍惜本次现场就诊机会！\n");
+                }
+            }
+        }
+    }
     if (appointment_date == NULL || strlen(appointment_date) == 0)
     {
         printf("⚠️ 预约日期不能为空！\n");
@@ -316,5 +383,68 @@ int check_in_appointment(const char* appointment_id)
         }
     }
     printf("✅ 预约签到成功！预约编号：%s，患者已转入待诊状态。\n", appointment->appointment_id);
+    return 1;
+}
+
+// 登记预约爽约
+int mark_appointment_missed(const char* appointment_id)
+{
+    AppointmentNode* appointment = NULL;
+    PatientNode* patient = NULL;
+    time_t current_time = 0;
+    
+    // 检查链表是否初始化
+    if (g_appointment_list == NULL || g_patient_list == NULL)
+    {
+        printf("⚠️ 基础链表尚未初始化，无法登记爽约！\n");
+        return 0;
+    }
+    
+    // 查找预约记录
+    appointment = find_appointment_by_id(g_appointment_list, appointment_id);
+    if (appointment == NULL)
+    {
+        printf("⚠️ 未找到对应预约记录！\n");
+        return 0;
+    }
+    
+    // 检查预约状态
+    if (appointment->appointment_status != RESERVED)
+    {
+        printf("⚠️ 当前预约状态为[%s]，不能执行爽约登记！\n",
+            get_appointment_status_text(appointment->appointment_status));
+        return 0;
+    }
+    
+    // 查找对应患者
+    patient = find_patient_by_id(g_patient_list, appointment->patient_id);
+    if (patient == NULL)
+    {
+        printf("⚠️ 对应患者不存在，爽约登记失败！\n");
+        return 0;
+    }
+    
+    // 更新预约状态为已过号
+    appointment->appointment_status = MISSED;
+    printf("✅ 预约爽约登记成功！预约编号：%s\n", appointment->appointment_id);
+    
+    // 执行惩罚逻辑
+    current_time = time(NULL);
+    
+    // 将时间戳数组往后移位（丢弃最老的）
+    patient->missed_times[2] = patient->missed_times[1];
+    patient->missed_times[1] = patient->missed_times[0];
+    patient->missed_times[0] = current_time;
+    
+    // 拉黑判定：30天内集齐3次爽约
+    if (patient->missed_times[2] != 0 && (current_time - patient->missed_times[2]) <= 30 * 24 * 3600)
+    {
+        // 执行拉黑
+        patient->is_blacklisted = 1;
+        patient->blacklist_expire = current_time + 90 * 24 * 3600;
+        printf("⛔ [信用分扣除及拉黑] 该患者在30天内爽约3次，已被限制挂号/预约权限90天！\n");
+        printf("⚠️ 拉黑到期时间：%s\n", ctime(&patient->blacklist_expire));
+    }
+    
     return 1;
 }

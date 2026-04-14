@@ -6,6 +6,8 @@
 #ifndef GLOBAL_H
 #define GLOBAL_H
 
+#include <time.h>
+
 // ==========================================
 // 1. 全局宏定义 
 // ==========================================
@@ -134,6 +136,14 @@ typedef struct PatientNode
     // 患者的处方本
     PrescriptionNode* script_head; // 指向该患者开的第一种药(此处为单向链表)
     int script_count;      // 当前开了几种药 (默认 0)
+    
+   // 信用黑名单相关字段
+    time_t missed_times[3]; // 最近3次爽约时间戳
+    time_t blacklist_expire; // 黑名单到期时间戳
+    int is_blacklisted; // 0:正常, 1:爽约黑名单, 2:逃单黑名单
+    int is_emergency; // 0:普通, 1:急诊绿色通道患者
+    double emergency_debt; // 记录急诊欠费金额
+    time_t unpaid_time; // 进入待缴费状态的时间戳，0表示无
 
     struct PatientNode* prev;//前驱指针
     struct PatientNode* next; //后继指针
@@ -200,6 +210,14 @@ typedef struct AccountNode {
     struct AccountNode* prev;
     struct AccountNode* next;
 } AccountNode;
+// 【实体 10：安全预警队列】
+typedef struct AlertNode {
+    char message[256];             // 预警信息
+    time_t time;                   // 预警时间
+    struct AlertNode* prev;        // 前驱指针
+    struct AlertNode* next;        // 后继指针
+} AlertNode;
+
 // ==========================================
 // 6. 全局头结点声明 (外部文件通过 extern 共享)
 // ==========================================
@@ -212,6 +230,7 @@ extern AccountNode* g_account_list;
 extern ConsultRecordNode* g_consult_record_list;
 extern CheckItemNode* g_check_item_list;     // 检查项目字典
 extern CheckRecordNode* g_check_record_list; // 检查记录
+extern AlertNode* g_alert_list;              // 安全预警队列
 
 // ==========================================
 // 7. 功能：安全删除节点 (Delete)

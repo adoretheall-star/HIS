@@ -20,6 +20,7 @@ AccountNode* g_account_list = NULL;
 ConsultRecordNode* g_consult_record_list = NULL;
 CheckItemNode* g_check_item_list = NULL;     // 检查项目字典
 CheckRecordNode* g_check_record_list = NULL; // 检查记录
+AlertNode* g_alert_list = NULL;              // 安全预警队列
 //一、患者链表操作
 // ---------------------------------------------------------
 // 功能 1：初始化带头结点的双向链表
@@ -83,6 +84,16 @@ PatientNode* create_patient_node(const char* id, const char* name, int age, cons
     // 否则里面是乱码内存，药房一发药就会直接导致系统闪退！
     new_node->script_head = NULL;
     new_node->script_count = 0;
+    
+    // 初始化信用黑名单相关字段
+    new_node->missed_times[0] = 0;
+    new_node->missed_times[1] = 0;
+    new_node->missed_times[2] = 0;
+    new_node->blacklist_expire = 0;
+    new_node->is_blacklisted = 0;
+    new_node->is_emergency = 0;
+    new_node->emergency_debt = 0.0; // 初始化急诊欠费金额为0
+    new_node->unpaid_time = 0;
 
     // 断开一切外界联系，等待被插入大链表
     new_node->prev = NULL;
@@ -792,6 +803,69 @@ int update_check_result(CheckRecordNode* head, const char* record_id, const char
     }
     
     return 0;
+}
+
+// ==========================================
+// 九、安全预警队列操作
+// ==========================================
+
+// 初始化带头结点的预警队列
+AlertNode* init_alert_list()
+{
+    AlertNode* head = (AlertNode*)malloc(sizeof(AlertNode));
+    if (head == NULL)
+    {
+        printf("🔥 致命错误：内存分配失败，系统无法启动！\n");
+        exit(1);
+    }
+    
+    // 给头结点打上标记，防止和真实数据混淆
+    strncpy(head->message, "HEAD", 255);
+    head->message[255] = '\0';
+    head->time = 0;
+    
+    // 防御阵地：头结点的指针必须干干净净
+    head->prev = NULL;
+    head->next = NULL;
+    
+    return head;
+}
+
+// 将新预警插入链表尾部
+void push_system_alert(const char* msg)
+{
+    if (msg == NULL) return;
+    
+    // 如果预警队列未初始化，先初始化
+    if (g_alert_list == NULL)
+    {
+        g_alert_list = init_alert_list();
+    }
+    
+    // 创建新的预警节点
+    AlertNode* new_node = (AlertNode*)malloc(sizeof(AlertNode));
+    if (new_node == NULL)
+    {
+        printf("⚠️ 内存分配失败，预警信息无法添加！\n");
+        return;
+    }
+    
+    // 安全复制预警信息
+    strncpy(new_node->message, msg, 255);
+    new_node->message[255] = '\0';
+    new_node->time = time(NULL);
+    new_node->prev = NULL;
+    new_node->next = NULL;
+    
+    // 尾插法插入预警节点
+    AlertNode* curr = g_alert_list;
+    while (curr->next != NULL)
+    {
+        curr = curr->next;
+    }
+    
+    curr->next = new_node;
+    new_node->prev = curr;
 }
 
 // End of Selection

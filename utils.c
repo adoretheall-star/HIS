@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
+#include <time.h> // 用于时间相关操作
 #include "global.h" // 需要访问全局链表和结构体
 #include "utils.h" // 必须把自己的说明书引进来
 //1.整数拦截器
@@ -140,4 +141,29 @@ struct AppointmentNode* find_latest_appointment_by_patient_id(const char* patien
     }
 
     return latest;
+}
+
+// 判断是否为夜间班次
+int is_night_shift()
+{
+    time_t current_time;
+    struct tm* local_time;
+    int hour;
+    
+    // 获取当前时间
+    current_time = time(NULL);
+    // 转换为本地时间
+    local_time = localtime(&current_time);
+    // 获取当前小时
+    hour = local_time->tm_hour;
+    
+    // 判断是否为夜间（17:00-8:00）
+    if (hour >= 17 || hour < 8)
+    {
+        return 1; // 夜间
+    }
+    else
+    {
+        return 0; // 白天
+    }
 }

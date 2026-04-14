@@ -21,6 +21,10 @@ void query_appointments_by_id_card(const char* id_card);
 int cancel_appointment(const char* appointment_id);
 // 5. 预约签到转挂号
 int check_in_appointment(const char* appointment_id);
-// 6. 显示指定科室的医生列表
+
+// 6. 根据科室显示医生列表
 int display_doctors_by_dept(const char* dept_name);
+
+// 7. 登记预约爽约
+int mark_appointment_missed(const char* appointment_id);
 #endif
