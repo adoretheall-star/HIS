@@ -82,6 +82,8 @@ typedef struct ConsultRecordNode
     int decision;                     // 本次诊疗决策
     MedStatus pre_status;             // 接诊前状态
     MedStatus post_status;            // 接诊后状态
+    int star_rating;                  // 满意度星级 (0表示未评价, 1-5表示星级)
+    char feedback[MAX_RECORD_LEN];    // 文字评价内容
     
     struct ConsultRecordNode* prev;   // 前驱指针
     struct ConsultRecordNode* next;   // 后继指针
@@ -211,6 +213,8 @@ typedef struct AccountNode {
     char real_name[MAX_NAME_LEN];  // 真实姓名
     RoleType role;                 
 // 核心！决定了他登录后能看到哪个菜单
+    int error_count;             // 连续输错密码的次数
+    time_t lock_time;            // 触发锁定的时间戳
 
     struct AccountNode* prev;
     struct AccountNode* next;
@@ -222,6 +226,22 @@ typedef struct AlertNode {
     struct AlertNode* prev;        // 前驱指针
     struct AlertNode* next;        // 后继指针
 } AlertNode;
+
+// 【实体 11：投诉工单双向链表】
+typedef struct ComplaintNode {
+    char complaint_id[MAX_ID_LEN];    // 工单编号，格式 CP-XXX
+    char patient_id[MAX_ID_LEN];      // 投诉人编号
+    int target_type;                  // 投诉类型：1=医生, 2=护士/前台, 3=药师
+    char target_id[MAX_ID_LEN];       // 被投诉人工号
+    char target_name[MAX_NAME_LEN];   // 被投诉人真实姓名
+    char content[MAX_RECORD_LEN];     // 投诉内容
+    int status;                       // 0: 待处理, 1: 已回复
+    char response[MAX_RECORD_LEN];    // 管理员处理意见
+    char submit_time[MAX_NAME_LEN];   // 提交时间，字符串格式
+    
+    struct ComplaintNode* prev;       // 前驱指针
+    struct ComplaintNode* next;       // 后继指针
+} ComplaintNode;
 
 // ==========================================
 // 6. 全局头结点声明 (外部文件通过 extern 共享)
@@ -236,6 +256,7 @@ extern ConsultRecordNode* g_consult_record_list;
 extern CheckItemNode* g_check_item_list;     // 检查项目字典
 extern CheckRecordNode* g_check_record_list; // 检查记录
 extern AlertNode* g_alert_list;              // 安全预警队列
+extern ComplaintNode* g_complaint_list;      // 投诉工单链表
 
 // ==========================================
 // 7. 功能：安全删除节点 (Delete)

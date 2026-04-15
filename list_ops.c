@@ -21,6 +21,7 @@ ConsultRecordNode* g_consult_record_list = NULL;
 CheckItemNode* g_check_item_list = NULL;     // 检查项目字典
 CheckRecordNode* g_check_record_list = NULL; // 检查记录
 AlertNode* g_alert_list = NULL;              // 安全预警队列
+ComplaintNode* g_complaint_list = NULL;      // 投诉工单链表
 //一、患者链表操作
 // ---------------------------------------------------------
 // 功能 1：初始化带头结点的双向链表
@@ -344,6 +345,8 @@ AccountNode* create_account_node(const char* username, const char* pwd, const ch
     strncpy(new_node->real_name, real_name, MAX_NAME_LEN - 1);
     new_node->real_name[MAX_NAME_LEN - 1] = '\0';
     new_node->role = role;
+    new_node->error_count = 0;
+    new_node->lock_time = 0;
     new_node->prev = NULL; new_node->next = NULL;
     return new_node;
 }
@@ -569,6 +572,8 @@ ConsultRecordNode* create_consult_record_node(
     node->decision = decision;
     node->pre_status = pre_status;
     node->post_status = post_status;
+    node->star_rating = 0; // 初始化为未评价
+    node->feedback[0] = '\0'; // 初始化为空字符串
     
     node->prev = NULL;
     node->next = NULL;
@@ -868,6 +873,113 @@ void push_system_alert(const char* msg)
         curr = curr->next;
     }
     
+    curr->next = new_node;
+    new_node->prev = curr;
+}
+
+// ==========================================
+// 十、投诉工单链表操作
+// ==========================================
+
+// 初始化带头结点的投诉工单链表
+ComplaintNode* init_complaint_list()
+{
+    ComplaintNode* head = (ComplaintNode*)malloc(sizeof(ComplaintNode));
+    if (head == NULL)
+    {
+        printf("🔥 致命错误：内存分配失败，系统无法启动！\n");
+        exit(1);
+    }
+    
+    // 给头结点打上标记，防止和真实数据混淆
+    strncpy(head->complaint_id, "HEAD", MAX_ID_LEN - 1);
+    head->complaint_id[MAX_ID_LEN - 1] = '\0';
+    strncpy(head->patient_id, "SYSTEM", MAX_ID_LEN - 1);
+    head->patient_id[MAX_ID_LEN - 1] = '\0';
+    
+    // 防御阵地：头结点的指针必须干干净净
+    head->prev = NULL;
+    head->next = NULL;
+    
+    return head;
+}
+
+// 创建投诉工单节点
+ComplaintNode* create_complaint_node(
+    const char* complaint_id,
+    const char* patient_id,
+    int target_type,
+    const char* target_id,
+    const char* target_name,
+    const char* content,
+    int status,
+    const char* response,
+    const char* submit_time
+)
+{
+    ComplaintNode* node = (ComplaintNode*)malloc(sizeof(ComplaintNode));
+    if (node == NULL) return NULL;
+    
+    // 安全复制字符串，防止缓冲区溢出
+    strncpy(node->complaint_id, complaint_id, MAX_ID_LEN - 1);
+    node->complaint_id[MAX_ID_LEN - 1] = '\0';
+    
+    strncpy(node->patient_id, patient_id, MAX_ID_LEN - 1);
+    node->patient_id[MAX_ID_LEN - 1] = '\0';
+    
+    node->target_type = target_type;
+    
+    strncpy(node->target_id, target_id, MAX_ID_LEN - 1);
+    node->target_id[MAX_ID_LEN - 1] = '\0';
+    
+    strncpy(node->target_name, target_name, MAX_NAME_LEN - 1);
+    node->target_name[MAX_NAME_LEN - 1] = '\0';
+    
+    if (content != NULL)
+    {
+        strncpy(node->content, content, MAX_RECORD_LEN - 1);
+    }
+    else
+    {
+        node->content[0] = '\0';
+    }
+    node->content[MAX_RECORD_LEN - 1] = '\0';
+    
+    node->status = status;
+    
+    if (response != NULL)
+    {
+        strncpy(node->response, response, MAX_RECORD_LEN - 1);
+    }
+    else
+    {
+        node->response[0] = '\0';
+    }
+    node->response[MAX_RECORD_LEN - 1] = '\0';
+    
+    if (submit_time != NULL)
+    {
+        strncpy(node->submit_time, submit_time, MAX_NAME_LEN - 1);
+    }
+    else
+    {
+        node->submit_time[0] = '\0';
+    }
+    node->submit_time[MAX_NAME_LEN - 1] = '\0';
+    
+    node->prev = NULL;
+    node->next = NULL;
+    
+    return node;
+}
+
+// 尾插法插入投诉工单节点
+void insert_complaint_tail(ComplaintNode* head, ComplaintNode* new_node)
+{
+    if (head == NULL || new_node == NULL) return;
+    
+    ComplaintNode* curr = head;
+    while (curr->next != NULL) curr = curr->next;
     curr->next = new_node;
     new_node->prev = curr;
 }

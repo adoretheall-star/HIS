@@ -104,4 +104,21 @@ int update_check_result(CheckRecordNode* head, const char* record_id, const char
 AlertNode* init_alert_list();
 void push_system_alert(const char* msg);
 
+// ==========================================
+// 十、投诉工单链表操作
+// ==========================================
+ComplaintNode* init_complaint_list();
+ComplaintNode* create_complaint_node(
+    const char* complaint_id,
+    const char* patient_id,
+    int target_type,
+    const char* target_id,
+    const char* target_name,
+    const char* content,
+    int status,
+    const char* response,
+    const char* submit_time
+);
+void insert_complaint_tail(ComplaintNode* head, ComplaintNode* new_node);
+
 #endif // LIST_OPS_H

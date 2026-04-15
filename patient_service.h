@@ -78,6 +78,26 @@ int query_patient_archive_by_id_card(const char* id_card);
 int query_patient_archive_by_name(const char* name_keyword);
 
 /**
+ * @brief 提交患者满意度评价
+ * @param patient_id 患者编号
+ * @return 成功返回1，失败返回0
+ */
+int submit_patient_evaluation(const char* patient_id);
+
+/**
+ * @brief 提交新的服务投诉
+ * @param patient_id 患者编号
+ * @return 成功返回1，失败返回0
+ */
+int submit_new_complaint(const char* patient_id);
+
+/**
+ * @brief 查询患者的历史投诉记录
+ * @param patient_id 患者编号
+ */
+void query_patient_complaints(const char* patient_id);
+
+/**
  * @brief 更新患者档案信息（内部业务功能：档案维护）
  * @param patient_id 患者编号（不可修改）
  * @param name 新姓名（留空表示不修改）

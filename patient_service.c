@@ -1633,3 +1633,286 @@ int process_patient_payment(const char* patient_id)
 
     return 1;
 }
+
+// ==========================================
+// 患者满意度评价模块
+// ==========================================
+int submit_patient_evaluation(const char* patient_id)
+{
+    if (patient_id == NULL || strlen(patient_id) == 0)
+    {
+        printf("⚠️ 患者编号不能为空！\n");
+        return 0;
+    }
+
+    if (g_consult_record_list == NULL)
+    {
+        printf("⚠️ 接诊记录链表尚未初始化！\n");
+        return 0;
+    }
+
+    // 查找最后一条已完成的就诊记录
+    ConsultRecordNode* last_completed_record = NULL;
+    ConsultRecordNode* curr = g_consult_record_list->next;
+    while (curr != NULL)
+    {
+        if (strcmp(curr->patient_id, patient_id) == 0 && curr->post_status == STATUS_COMPLETED)
+        {
+            last_completed_record = curr;
+        }
+        curr = curr->next;
+    }
+
+    if (last_completed_record == NULL)
+    {
+        printf("⚠️ 您当前没有已完成的就诊记录，无法进行评价！\n");
+        return 0;
+    }
+
+    // 检查是否已评价
+    if (last_completed_record->star_rating > 0)
+    {
+        printf("⚠️ 您已对本次就诊（记录编号：%s）进行过评价，不能重复评价！\n", last_completed_record->record_id);
+        return 0;
+    }
+
+    // 展示医生信息和就诊时间
+    DoctorNode* doctor = find_doctor_by_id(g_doctor_list, last_completed_record->doctor_id);
+    printf("\n================ 满意度评价 ================\n");
+    printf("就诊记录编号：%s\n", last_completed_record->record_id);
+    printf("就诊医生：%s（编号：%s）\n", doctor ? doctor->name : "未知", last_completed_record->doctor_id);
+    printf("就诊时间：%s\n", last_completed_record->consult_time[0] != '\0' ? last_completed_record->consult_time : "未知");
+    printf("========================================\n");
+
+    // 输入星级评价（1-5）
+    int star_rating;
+    do
+    {
+        star_rating = get_safe_int("请输入满意度星级 (1-5): ");
+        if (star_rating < 1 || star_rating > 5)
+        {
+            printf("⚠️ 星级评价必须在 1-5 之间，请重新输入！\n");
+        }
+    } while (star_rating < 1 || star_rating > 5);
+
+    // 输入文字评价
+    char feedback[MAX_RECORD_LEN];
+    get_safe_string("请输入文字评价（选填）: ", feedback, MAX_RECORD_LEN);
+
+    // 保存评价数据
+    last_completed_record->star_rating = star_rating;
+    if (strlen(feedback) > 0)
+    {
+        strncpy(last_completed_record->feedback, feedback, MAX_RECORD_LEN - 1);
+        last_completed_record->feedback[MAX_RECORD_LEN - 1] = '\0';
+    }
+
+    printf("\n✅ 评价成功！感谢您的反馈！\n");
+    return 1;
+}
+
+// ==========================================
+// 患者投诉管理模块
+// ==========================================
+int submit_new_complaint(const char* patient_id)
+{
+    if (patient_id == NULL || strlen(patient_id) == 0)
+    {
+        printf("⚠️ 患者编号不能为空！\n");
+        return 0;
+    }
+
+    if (g_account_list == NULL)
+    {
+        printf("⚠️ 账号链表尚未初始化！\n");
+        return 0;
+    }
+
+    // 让患者选择投诉类型
+    int target_type;
+    do
+    {
+        printf("\n请选择投诉类型：\n");
+        printf("  [1] 对医生\n");
+        printf("  [2] 对护士/前台\n");
+        printf("  [3] 对药师\n");
+        target_type = get_safe_int("👉 请输入选择: ");
+        if (target_type < 1 || target_type > 3)
+        {
+            printf("⚠️ 无效的选择，请重新输入！\n");
+        }
+    } while (target_type < 1 || target_type > 3);
+
+    // 遍历全局账号链表，打印对应角色的员工
+    printf("\n================ 可投诉人员列表 ================\n");
+    AccountNode* curr = g_account_list->next;
+    int count = 0;
+    while (curr != NULL)
+    {
+        if ((target_type == 1 && curr->role == ROLE_DOCTOR) ||
+            (target_type == 2 && curr->role == ROLE_NURSE) ||
+            (target_type == 3 && curr->role == ROLE_PHARMACIST))
+        {
+            count++;
+            printf("[%d] 账号：%s | 姓名：%s\n", count, curr->username, curr->real_name);
+        }
+        curr = curr->next;
+    }
+
+    if (count == 0)
+    {
+        printf("⚠️ 当前没有可投诉的相关人员！\n");
+        return 0;
+    }
+
+    // 用户输入被投诉人账号
+    char target_id[MAX_ID_LEN];
+    int valid_target = 0;
+    char target_name[MAX_NAME_LEN];
+    
+    do
+    {
+        get_safe_string("请输入被投诉人的账号: ", target_id, MAX_ID_LEN);
+        
+        // 校验被投诉人是否存在
+        curr = g_account_list->next;
+        while (curr != NULL)
+        {
+            if (strcmp(curr->username, target_id) == 0 &&
+                ((target_type == 1 && curr->role == ROLE_DOCTOR) ||
+                 (target_type == 2 && curr->role == ROLE_NURSE) ||
+                 (target_type == 3 && curr->role == ROLE_PHARMACIST)))
+            {
+                valid_target = 1;
+                strcpy(target_name, curr->real_name);
+                break;
+            }
+            curr = curr->next;
+        }
+        
+        if (!valid_target)
+        {
+            printf("⚠️ 输入的账号不存在或不属于所选投诉类型，请重新输入！\n");
+        }
+    } while (!valid_target);
+
+    // 录入文字投诉内容
+    char content[MAX_RECORD_LEN];
+    get_safe_string("请输入投诉内容: ", content, MAX_RECORD_LEN);
+
+    // 自动生成工单编号
+    char complaint_id[MAX_ID_LEN];
+    int complaint_count = 0;
+    ComplaintNode* complaint_curr = g_complaint_list->next;
+    while (complaint_curr != NULL)
+    {
+        complaint_count++;
+        complaint_curr = complaint_curr->next;
+    }
+    sprintf(complaint_id, "CP-%03d", complaint_count + 1);
+
+    // 生成当前系统时间
+    char submit_time[MAX_NAME_LEN];
+    time_t now = time(NULL);
+    struct tm* t = localtime(&now);
+    strftime(submit_time, MAX_NAME_LEN, "%Y-%m-%d %H:%M:%S", t);
+
+    // 创建投诉工单节点并插入链表
+    ComplaintNode* new_complaint = create_complaint_node(
+        complaint_id,
+        patient_id,
+        target_type,
+        target_id,
+        target_name,
+        content,
+        0, // 初始状态为待处理
+        NULL,
+        submit_time
+    );
+
+    if (new_complaint == NULL)
+    {
+        printf("⚠️ 内存分配失败，投诉工单创建失败！\n");
+        return 0;
+    }
+
+    insert_complaint_tail(g_complaint_list, new_complaint);
+
+    printf("\n✅ 投诉工单提交成功！\n");
+    printf("工单编号：%s\n", complaint_id);
+    printf("提交时间：%s\n", submit_time);
+    printf("我们会尽快处理您的投诉，感谢您的反馈！\n");
+
+    return 1;
+}
+
+void query_patient_complaints(const char* patient_id)
+{
+    if (patient_id == NULL || strlen(patient_id) == 0)
+    {
+        printf("⚠️ 患者编号不能为空！\n");
+        return;
+    }
+
+    if (g_complaint_list == NULL)
+    {
+        printf("⚠️ 投诉工单链表尚未初始化！\n");
+        return;
+    }
+
+    // 收集该患者的所有投诉记录
+    ComplaintNode* complaints[100];
+    int complaint_count = 0;
+    ComplaintNode* curr = g_complaint_list->next;
+    while (curr != NULL)
+    {
+        if (strcmp(curr->patient_id, patient_id) == 0)
+        {
+            complaints[complaint_count++] = curr;
+        }
+        curr = curr->next;
+    }
+
+    if (complaint_count == 0)
+    {
+        printf("\n⚠️ 您当前没有发起过任何投诉！\n");
+        return;
+    }
+
+    // 逆序打印（最新在前）
+    printf("\n================ 投诉记录查询 ================\n");
+    for (int i = complaint_count - 1; i >= 0; i--)
+    {
+        ComplaintNode* complaint = complaints[i];
+        printf("\n【投诉工单 %d】\n", complaint_count - i);
+        printf("工单编号：%s\n", complaint->complaint_id);
+        printf("提交时间：%s\n", complaint->submit_time);
+        
+        // 打印投诉类型
+        printf("投诉类型：");
+        switch (complaint->target_type)
+        {
+            case 1: printf("对医生\n"); break;
+            case 2: printf("对护士/前台\n"); break;
+            case 3: printf("对药师\n"); break;
+            default: printf("未知\n"); break;
+        }
+        
+        printf("被投诉人：%s（账号：%s）\n", complaint->target_name, complaint->target_id);
+        printf("投诉内容：%s\n", complaint->content);
+        
+        // 打印处理状态
+        printf("处理状态：");
+        if (complaint->status == 0)
+        {
+            printf("处理中，请耐心等待\n");
+        }
+        else
+        {
+            printf("已回复\n");
+            printf("处理意见：%s\n", complaint->response);
+        }
+        printf("----------------------------------------\n");
+    }
+    printf("========================================\n");
+}

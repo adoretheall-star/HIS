@@ -691,16 +691,63 @@ static void internal_login_menu()
     printf("               🔑 内部人员登录\n");
     printf("======================================================\n");
 
+    // 1. 先输入账号并验证存在性
     get_safe_string("请输入账号: ", username, MAX_ID_LEN);
-    get_safe_string("请输入密码: ", password, MAX_ID_LEN);
-
     account = find_account_by_username(g_account_list, username);
-    if (account == NULL || strcmp(account->password, password) != 0)
+    
+    if (account == NULL)
     {
-        printf("\n⚠️ 登录失败，账号或密码错误！\n");
+        printf("\n⚠️ 登录失败，账号不存在！\n");
         system("pause");
         return;
     }
+
+    // 2. 检查账号是否被锁定
+    if (account->error_count >= 3)
+    {
+        time_t current_time = time(NULL);
+        int lock_duration = current_time - account->lock_time;
+        
+        if (lock_duration < 60)
+        {
+            printf("\n⛔ 账号已被锁定！请 %d 秒后再试。\n", 60 - lock_duration);
+            system("pause");
+            return;
+        }
+        else
+        {
+            // 锁定时间已过，解除锁定
+            account->error_count = 0;
+            account->lock_time = 0;
+            printf("\n🔓 账号锁定已解除，欢迎再次尝试登录！\n");
+        }
+    }
+
+    // 3. 账号状态正常，输入密码
+    get_safe_string("请输入密码: ", password, MAX_ID_LEN);
+
+    // 4. 比对密码
+    if (strcmp(account->password, password) != 0)
+    {
+        account->error_count++;
+        
+        if (account->error_count >= 3)
+        {
+            account->lock_time = time(NULL);
+            printf("\n⛔ 密码错误！账号已被锁定 60 秒。\n");
+        }
+        else
+        {
+            printf("\n⚠️ 密码错误！您还有 %d 次机会。\n", 3 - account->error_count);
+        }
+        
+        system("pause");
+        return;
+    }
+
+    // 5. 密码正确，重置错误计数和锁定时间
+    account->error_count = 0;
+    account->lock_time = 0;
 
     printf("\n✅ 登录成功，欢迎你：%s\n", account->real_name);
     system("pause");
@@ -1557,6 +1604,9 @@ static void patient_self_service_menu()
         printf("  [8] 查询自己的历史就诊记录\n");
         printf("  [9] 查询检查报告\n");
         printf("  [10] 自助账单缴费\n");
+        printf("  [11] 发起服务投诉\n");
+        printf("  [12] 查看投诉进度\n");
+        printf("  [13] 就诊满意度评价\n");
         printf("  [0] 返回上一级\n");
         printf("------------------------------------------------------\n");
         switch (get_safe_int("👉 请输入操作编号: "))
@@ -1654,6 +1704,57 @@ static void patient_self_service_menu()
                 process_patient_payment(patient_id);
                 system("pause");
                 break;
+            case 11:
+                get_safe_string("请输入您的患者编号: ", patient_id, MAX_ID_LEN);
+                get_safe_string("请输入您的身份证号（身份核验）: ", id_card, MAX_ID_LEN);
+                
+                // 身份核验
+                PatientNode* complaint_patient = find_patient_by_id_card(id_card);
+                if (complaint_patient == NULL || strcmp(complaint_patient->id, patient_id) != 0)
+                {
+                    printf("\n❌ 身份核验失败！患者编号与身份证号不匹配\n");
+                    system("pause");
+                    break;
+                }
+                
+                printf("\n身份核验成功！欢迎，%s\n", complaint_patient->name);
+                submit_new_complaint(patient_id);
+                system("pause");
+                break;
+            case 12:
+                get_safe_string("请输入您的患者编号: ", patient_id, MAX_ID_LEN);
+                get_safe_string("请输入您的身份证号（身份核验）: ", id_card, MAX_ID_LEN);
+                
+                // 身份核验
+                PatientNode* query_patient = find_patient_by_id_card(id_card);
+                if (query_patient == NULL || strcmp(query_patient->id, patient_id) != 0)
+                {
+                    printf("\n❌ 身份核验失败！患者编号与身份证号不匹配\n");
+                    system("pause");
+                    break;
+                }
+                
+                printf("\n身份核验成功！欢迎，%s\n", query_patient->name);
+                query_patient_complaints(patient_id);
+                system("pause");
+                break;
+            case 13:
+                get_safe_string("请输入您的患者编号: ", patient_id, MAX_ID_LEN);
+                get_safe_string("请输入您的身份证号（身份核验）: ", id_card, MAX_ID_LEN);
+                
+                // 身份核验
+                PatientNode* eval_patient = find_patient_by_id_card(id_card);
+                if (eval_patient == NULL || strcmp(eval_patient->id, patient_id) != 0)
+                {
+                    printf("\n❌ 身份核验失败！患者编号与身份证号不匹配\n");
+                    system("pause");
+                    break;
+                }
+                
+                printf("\n身份核验成功！欢迎，%s\n", eval_patient->name);
+                submit_patient_evaluation(patient_id);
+                system("pause");
+                break;
             case 0:
                 running = 0;
                 break;
@@ -1702,6 +1803,7 @@ int main()
     g_check_item_list = init_check_item_list();
     g_check_record_list = init_check_record_list();
     g_alert_list = init_alert_list();
+    g_complaint_list = init_complaint_list();
 
     // ==============================================
     // 检查项目字典初始化
