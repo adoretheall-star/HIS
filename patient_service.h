@@ -6,6 +6,7 @@
 #ifndef PATIENT_SERVICE_H
 #define PATIENT_SERVICE_H
 #include "global.h"
+<<<<<<< HEAD
 
 // ==========================================
 // 1. 患者建档功能
@@ -35,6 +36,11 @@ PatientNode* register_patient(
  * @param id_card 患者身份证号
  * @return 找到返回患者节点指针，未找到返回NULL
  */
+=======
+// 患者建档
+PatientNode* register_patient(const char* name, int age, const char* id_card, const char* symptom);
+// 2. 按身份证号查找患者
+>>>>>>> medicine
 PatientNode* find_patient_by_id_card(const char* id_card);
 
 /**
