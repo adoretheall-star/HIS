@@ -11,12 +11,14 @@
 
 // 🚀 极其重要：在这里为 global.h 中声明的全局头指针真正分配内存空间！
 // 如果不写这几行，整个系统就会报“未解析的外部符号”错误。
+// 全局头结点定义 - 所有链表的“头哨兵”
 PatientNode* g_patient_list = NULL;
 AppointmentNode* g_appointment_list = NULL;
-DoctorNode* g_doctor_list  = NULL;
+DoctorNode* g_doctor_list = NULL;
 MedicineNode* g_medicine_list = NULL;
-WardNode* g_ward_list    = NULL;
+WardNode* g_ward_list = NULL;
 AccountNode* g_account_list = NULL;
+LogNode* g_log_list = NULL;
 //一、患者链表操作
 // ---------------------------------------------------------
 // 功能 1：初始化带头结点的双向链表
@@ -67,6 +69,9 @@ PatientNode* create_patient_node(const char* id, const char* name, int age, cons
     // 初始化业务状态
     new_node->balance = 0.0;
     new_node->status = STATUS_PENDING; // 默认待诊状态
+    
+    // 初始化症状描述为空字符串
+    new_node->symptom[0] = '\0';
     
     // 🚀 终极防御：必须把该患者的处方小链表头指针置空！
     // 否则里面是乱码内存，药房一发药就会直接导致系统闪退！
@@ -193,6 +198,7 @@ DoctorNode* create_doctor_node(const char* id, const char* name, const char* dep
     strncpy(new_node->department, dept, MAX_NAME_LEN - 1);
     new_node->department[MAX_NAME_LEN - 1] = '\0';
     new_node->queue_length = 0; // 初始排队人数为0
+    new_node->is_on_duty = 1; // 初始值班中
     new_node->prev = NULL; 
     new_node->next = NULL;
     return new_node;
@@ -359,6 +365,7 @@ AccountNode* create_account_node(const char* username, const char* pwd, const ch
     strncpy(new_node->real_name, real_name, MAX_NAME_LEN - 1);
     new_node->real_name[MAX_NAME_LEN - 1] = '\0';
     new_node->role = role;
+    new_node->is_on_duty = 1; // 初始值班中
     new_node->prev = NULL; new_node->next = NULL;
     return new_node;
 }

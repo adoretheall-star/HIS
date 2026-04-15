@@ -4,6 +4,7 @@
 #include <string.h>
 #include <time.h>
 #include <ctype.h>
+#include "utils.h"
 #include "global.h"
 #include "list_ops.h"
 #include "medicine_service.h"
@@ -39,25 +40,7 @@ static void generate_medicine_id(char* new_id)
     snprintf(new_id, MAX_ID_LEN, "M-%03d", max_no + 1);
 }
 
-static int is_blank_string(const char* str)
-{
-    int i;
 
-    if (str == NULL)
-    {
-        return 1;
-    }
-
-    for (i = 0; str[i] != '\0'; i++)
-    {
-        if (!isspace((unsigned char)str[i]))
-        {
-            return 0;
-        }
-    }
-
-    return 1;
-}
 
 static int contains_keyword(const char* source, const char* keyword)
 {
@@ -69,6 +52,73 @@ static int contains_keyword(const char* source, const char* keyword)
     return strstr(source, keyword) != NULL;
 }
 
+static int contains_keyword_case_insensitive(const char* source, const char* keyword)
+{
+    size_t source_len;
+    size_t keyword_len;
+    size_t i;
+    size_t j;
+
+    if (is_blank_string(source) || is_blank_string(keyword))
+    {
+        return 0;
+    }
+
+    source_len = strlen(source);
+    keyword_len = strlen(keyword);
+
+    if (keyword_len > source_len)
+    {
+        return 0;
+    }
+
+    for (i = 0; i <= source_len - keyword_len; i++)
+    {
+        for (j = 0; j < keyword_len; j++)
+        {
+            if (tolower((unsigned char)source[i + j]) != tolower((unsigned char)keyword[j]))
+            {
+                break;
+            }
+        }
+        if (j == keyword_len)
+        {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+static int contains_keyword_by_order(const char* source, const char* keyword)
+{
+    const char* s;
+    const char* k;
+
+    if (is_blank_string(source) || is_blank_string(keyword))
+    {
+        return 0;
+    }
+
+    s = source;
+    k = keyword;
+
+    while (*k)
+    {
+        if (!*s)
+        {
+            return 0;
+        }
+        if (tolower((unsigned char)*s) == tolower((unsigned char)*k))
+        {
+            k++;
+        }
+        s++;
+    }
+
+    return 1;
+}
+
 static int is_medicare_type_valid(MedicareType type)
 {
     return type == MEDICARE_NONE ||
@@ -76,100 +126,7 @@ static int is_medicare_type_valid(MedicareType type)
            type == MEDICARE_CLASS_B;
 }
 
-static int is_leap_year(int year)
-{
-    return (year % 400 == 0) || ((year % 4 == 0) && (year % 100 != 0));
-}
 
-static int get_days_in_month(int year, int month)
-{
-    static const int days_in_month[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
-
-    if (month < 1 || month > 12)
-    {
-        return 0;
-    }
-
-    if (month == 2 && is_leap_year(year))
-    {
-        return 29;
-    }
-
-    return days_in_month[month - 1];
-}
-
-static int is_basic_date_format_valid(const char* date_str)
-{
-    int i;
-
-    if (is_blank_string(date_str))
-    {
-        return 0;
-    }
-
-    if (strlen(date_str) != 10)
-    {
-        return 0;
-    }
-
-    for (i = 0; i < 10; i++)
-    {
-        if (i == 4 || i == 7)
-        {
-            if (date_str[i] != '-')
-            {
-                return 0;
-            }
-        }
-        else if (!isdigit((unsigned char)date_str[i]))
-        {
-            return 0;
-        }
-    }
-
-    return 1;
-}
-
-static int is_date_value_valid(const char* date_str)
-{
-    int year;
-    int month;
-    int day;
-    int max_day;
-
-    if (!is_basic_date_format_valid(date_str))
-    {
-        return 0;
-    }
-
-    if (sscanf(date_str, "%d-%d-%d", &year, &month, &day) != 3)
-    {
-        return 0;
-    }
-
-    if (year <= 0)
-    {
-        return 0;
-    }
-
-    if (month < 1 || month > 12)
-    {
-        return 0;
-    }
-
-    max_day = get_days_in_month(year, month);
-    if (day < 1 || day > max_day)
-    {
-        return 0;
-    }
-
-    return 1;
-}
-
-static int is_valid_date_string(const char* date_str)
-{
-    return is_basic_date_format_valid(date_str) && is_date_value_valid(date_str);
-}
 
 static int parse_date_string(const char* date_str, struct tm* out_tm)
 {
@@ -238,22 +195,7 @@ static const char* get_medicare_type_text(MedicareType type)
     }
 }
 
-static void safe_copy_string(char* dest, int max_len, const char* src)
-{
-    if (dest == NULL || max_len <= 0)
-    {
-        return;
-    }
 
-    if (src == NULL)
-    {
-        dest[0] = '\0';
-        return;
-    }
-
-    strncpy(dest, src, max_len - 1);
-    dest[max_len - 1] = '\0';
-}
 
 /* 
   * 重复判定规则： 
@@ -355,13 +297,20 @@ void search_medicine_by_keyword(const char* keyword)
         return;
     }
 
+    printf("\n================ 药品查询结果 ================\n");
+
     curr = g_medicine_list->next;
     while (curr != NULL)
     {
         if (strcmp(curr->id, keyword) == 0 || 
             contains_keyword(curr->name, keyword) || 
             contains_keyword(curr->generic_name, keyword) || 
-            contains_keyword(curr->alias, keyword)) 
+            contains_keyword(curr->alias, keyword) ||
+            contains_keyword_case_insensitive(curr->id, keyword) ||
+            contains_keyword_case_insensitive(curr->alias, keyword) ||
+            contains_keyword_case_insensitive(curr->name, keyword) ||
+            contains_keyword_case_insensitive(curr->generic_name, keyword) ||
+            contains_keyword_by_order(curr->alias, keyword)) 
         {
             print_medicine_info(curr);
             found = 1;
@@ -605,9 +554,14 @@ int update_medicine_stock(const char* med_id, int new_stock)
 }
 
 /* 
-  * 本函数用于全量修改药品基础信息，不支持只改其中一部分字段。 
-  * 调用时必须同时提供商品名、别名、通用名、单价和效期； 
-  * 其中别名可以传入空字符串，表示清空别名。 
+  * 本函数用于部分修改药品基础信息。 
+  * 各字段修改规则如下： 
+  *   - new_name (商品名): 空白字符串表示不修改，非空白字符串则更新。 
+  *   - new_alias (别名): NULL 表示不修改，空字符串 "" 表示清空别名，普通字符串则更新。 
+  *   - new_generic_name (通用名): 空白字符串表示不修改，非空白字符串则更新。 
+  *   - new_price (单价): 小于等于 0 表示不修改，大于 0 则更新。 
+  *   - new_expiry_date (效期): 空白字符串表示不修改，非空白字符串必须通过 is_valid_date_string() 校验，合法才更新。 
+  * 至少有一项真正发生修改才返回成功，否则提示“未修改任何信息”。 
   */ 
 int update_medicine_basic_info(
     const char* med_id,
@@ -619,15 +573,204 @@ int update_medicine_basic_info(
 )
 {
     MedicineNode* target = NULL;
+    MedicineNode* curr_check = NULL;
+    int modified = 0;
+
+    // --- 1. 预先计算“最终准备写入的新值” ---
+    char final_name[MAX_MED_NAME_LEN];
+    char final_alias[MAX_ALIAS_LEN];
+    char final_generic_name[MAX_GENERIC_NAME_LEN];
+    char final_expiry_date[MAX_DATE_LEN];
+    double final_price;
+
+    // 用于保存旧值以便打印对比
     char old_name[MAX_MED_NAME_LEN];
     char old_alias[MAX_ALIAS_LEN];
     char old_generic_name[MAX_GENERIC_NAME_LEN];
     char old_expiry_date[MAX_DATE_LEN];
     double old_price;
 
+    // --- 2. 执行所有校验（阶段一：基本条件校验） ---
+    // 2.1. g_medicine_list 未初始化 -> 返回 0 并提示
     if (g_medicine_list == NULL)
     {
         printf("提示：药品链表尚未初始化，无法修改基础信息。\n");
+        return 0;
+    }
+
+    // 2.2. med_id 为空白字符串 -> 返回 0 并提示
+    if (is_blank_string(med_id))
+    {
+        printf("提示：药品编号不能为空。\n");
+        return 0;
+    }
+
+    // 2.3. 用 find_medicine_by_id 查找药品，找不到则返回 0 并提示
+    target = find_medicine_by_id(g_medicine_list, med_id);
+    if (target == NULL)
+    {
+        printf("提示：未找到对应药品，基础信息修改失败。\n");
+        return 0;
+    }
+
+    // 保存修改前的原始值 (用于后续对比和回滚，虽然这里是先校验后写入，但依然需要旧值进行比较)
+    safe_copy_string(old_name, MAX_MED_NAME_LEN, target->name);
+    safe_copy_string(old_alias, MAX_ALIAS_LEN, target->alias);
+    safe_copy_string(old_generic_name, MAX_GENERIC_NAME_LEN, target->generic_name);
+    safe_copy_string(old_expiry_date, MAX_DATE_LEN, target->expiry_date);
+    old_price = target->price;
+
+    // 根据输入参数和旧值，计算“最终准备写入的新值”
+    // 商品名：new_name 非空白时用新值，否则沿用旧值
+    if (new_name != NULL && !is_blank_string(new_name))
+    {
+        safe_copy_string(final_name, MAX_MED_NAME_LEN, new_name);
+    }
+    else
+    {
+        safe_copy_string(final_name, MAX_MED_NAME_LEN, target->name);
+    }
+
+    // 通用名：new_generic_name 非空白时用新值，否则沿用旧值
+    if (new_generic_name != NULL && !is_blank_string(new_generic_name))
+    {
+        safe_copy_string(final_generic_name, MAX_GENERIC_NAME_LEN, new_generic_name);
+    }
+    else
+    {
+        safe_copy_string(final_generic_name, MAX_GENERIC_NAME_LEN, target->generic_name);
+    }
+
+    // 别名：new_alias == NULL 表示沿用旧值；new_alias == "" 表示清空；其他字符串表示更新
+    if (new_alias == NULL) // NULL 表示不修改，沿用旧值
+    {
+        safe_copy_string(final_alias, MAX_ALIAS_LEN, target->alias);
+    }
+    else // 非 NULL，表示要修改别名
+    {
+        safe_copy_string(final_alias, MAX_ALIAS_LEN, new_alias);
+    }
+
+    // 单价：new_price > 0 时用新值，否则沿用旧值
+    if (new_price > 0)
+    {
+        final_price = new_price;
+    }
+    else
+    {
+        final_price = target->price;
+    }
+
+    // 效期：new_expiry_date 非空白时用新值，否则沿用旧值
+    if (new_expiry_date != NULL && !is_blank_string(new_expiry_date))
+    {
+        safe_copy_string(final_expiry_date, MAX_DATE_LEN, new_expiry_date);
+    }
+    else
+    {
+        safe_copy_string(final_expiry_date, MAX_DATE_LEN, target->expiry_date);
+    }
+
+    // --- 3. 执行所有校验（阶段二：业务逻辑校验） ---
+
+    // 3.1. 如果 new_expiry_date 非空白，则必须通过 is_valid_date_string()
+    if (!is_blank_string(new_expiry_date) && !is_valid_date_string(final_expiry_date))
+    {
+        printf("提示：药品效期格式非法，请使用 YYYY-MM-DD。\n");
+        return 0; // 效期非法，修改失败
+    }
+
+    // 3.2. 修改后的 商品名 + 通用名 组合不能与其他药品重复（排除当前药品自己）
+    curr_check = g_medicine_list->next;
+    while (curr_check != NULL)
+    {
+        // 跳过当前正在修改的药品
+        if (strcmp(curr_check->id, med_id) == 0)
+        {
+            curr_check = curr_check->next;
+            continue;
+        }
+
+        // 检查商品名和通用名组合是否重复
+        if (strcmp(curr_check->name, final_name) == 0 &&
+            strcmp(curr_check->generic_name, final_generic_name) == 0)
+        {
+            printf("提示：商品名和通用名组合重复，修改失败。\n");
+            return 0; // 发现重复，修改失败
+        }
+        curr_check = curr_check->next;
+    }
+
+    // --- 4. 检查是否有实际修改，并统一写回 target 各字段 ---
+    modified = 0; // 标志位，表示是否有字段被修改
+
+    // 比较 final_name 和 target->name
+    if (strcmp(target->name, final_name) != 0)
+    {
+        safe_copy_string(target->name, MAX_MED_NAME_LEN, final_name);
+        modified = 1;
+    }
+
+    // 比较 final_alias 和 target->alias
+    if (strcmp(target->alias, final_alias) != 0)
+    {
+        safe_copy_string(target->alias, MAX_ALIAS_LEN, final_alias);
+        modified = 1;
+    }
+
+    // 比较 final_generic_name 和 target->generic_name
+    if (strcmp(target->generic_name, final_generic_name) != 0)
+    {
+        safe_copy_string(target->generic_name, MAX_GENERIC_NAME_LEN, final_generic_name);
+        modified = 1;
+    }
+
+    // 比较 final_price 和 target->price
+    if (target->price != final_price)
+    {
+        target->price = final_price;
+        modified = 1;
+    }
+
+    // 比较 final_expiry_date 和 target->expiry_date
+    if (strcmp(target->expiry_date, final_expiry_date) != 0)
+    {
+        safe_copy_string(target->expiry_date, MAX_DATE_LEN, final_expiry_date);
+        modified = 1;
+    }
+
+    // 如果没有任何字段被修改，提示“未修改任何信息”，返回 0
+    if (!modified)
+    {
+        printf("提示：未修改任何信息。\n");
+        return 0;
+    }
+
+    // --- 5. 更新成功后打印修改前后的对比 ---
+    printf("药品基础信息更新成功：\n");
+    printf("药品编号：%s\n", target->id);
+    printf("商品名：%s -> %s\n", old_name, target->name);
+    printf("通用名：%s -> %s\n", old_generic_name, target->generic_name);
+    printf("别名：%s -> %s\n",
+        old_alias[0] == '\0' ? "无" : old_alias,
+        target->alias[0] == '\0' ? "无" : target->alias);
+    printf("单价：%.2f -> %.2f\n", old_price, target->price);
+    printf("效期：%s -> %s\n", old_expiry_date, target->expiry_date);
+
+    return 1;
+}
+
+// -----------------------------------------------------------------------------
+// 下架药品（新增）
+// -----------------------------------------------------------------------------
+
+int remove_medicine(const char* med_id)
+{
+    MedicineNode* target = NULL;
+
+    if (g_medicine_list == NULL)
+    {
+        printf("提示：药品链表尚未初始化，无法下架药品。\n");
         return 0;
     }
 
@@ -640,67 +783,18 @@ int update_medicine_basic_info(
     target = find_medicine_by_id(g_medicine_list, med_id);
     if (target == NULL)
     {
-        printf("提示：未找到对应药品，基础信息修改失败。\n");
+        printf("提示：未找到对应药品，下架失败。\n");
         return 0;
     }
 
-    if (is_blank_string(new_name))
+    if (delete_medicine_by_id(g_medicine_list, med_id))
     {
-        printf("提示：药品商品名不能为空。\n");
-        return 0;
+        printf("提示：药品下架成功。\n");
+        return 1;
     }
-
-    if (new_alias == NULL)
+    else
     {
-        printf("提示：药品别名不能为空指针，如需清空别名请传空字符串。\n");
+        printf("提示：药品下架失败。\n");
         return 0;
     }
-
-    if (is_blank_string(new_generic_name))
-    {
-        printf("提示：药品通用名不能为空。\n");
-        return 0;
-    }
-
-    if (new_price <= 0)
-    {
-        printf("提示：药品单价必须大于 0。\n");
-        return 0;
-    }
-
-    if (is_blank_string(new_expiry_date))
-    {
-        printf("提示：药品效期不能为空。\n");
-        return 0;
-    }
-
-    if (!is_valid_date_string(new_expiry_date))
-    {
-        printf("提示：药品效期格式非法，请使用 YYYY-MM-DD。\n");
-        return 0;
-    }
-
-    safe_copy_string(old_name, MAX_MED_NAME_LEN, target->name);
-    safe_copy_string(old_alias, MAX_ALIAS_LEN, target->alias);
-    safe_copy_string(old_generic_name, MAX_GENERIC_NAME_LEN, target->generic_name);
-    safe_copy_string(old_expiry_date, MAX_DATE_LEN, target->expiry_date);
-    old_price = target->price;
-
-    safe_copy_string(target->name, MAX_MED_NAME_LEN, new_name);
-    safe_copy_string(target->alias, MAX_ALIAS_LEN, new_alias);
-    safe_copy_string(target->generic_name, MAX_GENERIC_NAME_LEN, new_generic_name);
-    target->price = new_price;
-    safe_copy_string(target->expiry_date, MAX_DATE_LEN, new_expiry_date);
-
-    printf("药品基础信息更新成功：\n");
-    printf("药品编号：%s\n", target->id);
-    printf("商品名：%s -> %s\n", old_name, target->name);
-    printf("通用名：%s -> %s\n", old_generic_name, target->generic_name);
-    printf("别名：%s -> %s\n", 
-        old_alias[0] == '\0' ? "无" : old_alias, 
-        target->alias[0] == '\0' ? "无" : target->alias);
-    printf("单价：%.2f -> %.2f\n", old_price, target->price);
-    printf("效期：%s -> %s\n", old_expiry_date, target->expiry_date);
-
-    return 1;
 }

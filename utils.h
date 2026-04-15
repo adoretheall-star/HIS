@@ -24,4 +24,13 @@ void mask_id_card(const char* src, char* dest);
 // 以后如果有通用功能，比如隐藏密码输入、暂停程序，也全声明在这里
 // void clear_screen(); 
 
+// 6. 检查字符串是否为空白 (只包含空格、制表符、换行符等)
+int is_blank_string(const char* str);
+
+// 7. 检查日期字符串是否合法 (YYYY-MM-DD)
+int is_valid_date_string(const char* date_str);
+
+// 8. 安全的字符串复制函数
+void safe_copy_string(char* dest, int dest_size, const char* src);
+
 #endif

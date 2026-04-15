@@ -64,7 +64,7 @@ PatientNode* find_patient_by_id_card(const char* id_card)
     return NULL;
 }
 // 患者建档
-PatientNode* register_patient(const char* name, int age, const char* id_card)
+PatientNode* register_patient(const char* name, int age, const char* id_card, const char* symptom)
 {
     char new_id[MAX_ID_LEN];
     char masked_id[19];
@@ -101,8 +101,14 @@ PatientNode* register_patient(const char* name, int age, const char* id_card)
         printf("⚠️ 患者节点创建失败！\n");
         return NULL;
     }
-    strncpy(new_patient->id_card, id_card, MAX_ID_LEN - 1);
-    new_patient->id_card[MAX_ID_LEN - 1] = '\0';
+    
+    // 设置症状描述
+    if (symptom != NULL && strlen(symptom) > 0)
+    {
+        strncpy(new_patient->symptom, symptom, MAX_SYMPTOM_LEN - 1);
+        new_patient->symptom[MAX_SYMPTOM_LEN - 1] = '\0';
+    }
+    
     insert_patient_tail(g_patient_list, new_patient);
     mask_id_card(new_patient->id_card, masked_id);
     printf("✅ 患者建档成功！患者编号：%s，身份证号：%s\n", new_patient->id, masked_id);

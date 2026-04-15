@@ -39,4 +39,7 @@ int update_medicine_basic_info(
     const char* new_expiry_date
 );
 
+// 下架药品
+int remove_medicine(const char* med_id);
+
 #endif // MEDICINE_SERVICE_H

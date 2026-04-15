@@ -5,26 +5,8 @@
 #include "list_ops.h"
 #include "medicine_service.h"
 #include "pharmacy_service.h"
+#include "utils.h"
 
-static int is_blank_string_local(const char* str)
-{
-    int i;
-
-    if (str == NULL)
-    {
-        return 1;
-    }
-
-    for (i = 0; str[i] != '\0'; i++)
-    {
-        if (str[i] != ' ' && str[i] != '\t' && str[i] != '\n' && str[i] != '\r')
-        {
-            return 0;
-        }
-    }
-
-    return 1;
-}
 
 static void print_waiting_patient_info(const PatientNode* patient)
 {
@@ -58,7 +40,7 @@ void show_paid_patients_waiting_for_dispense()
     curr = g_patient_list->next;
     while (curr != NULL)
     {
-        if (curr->status == STATUS_PAID)
+        if (curr->status == STATUS_PAID && curr->script_head != NULL && curr->script_count > 0)
         {
             print_waiting_patient_info(curr);
             found = 1;
@@ -76,6 +58,7 @@ int dispense_medicine_for_patient(const char* patient_id)
 {
     PatientNode* patient = NULL;
     PrescriptionNode* curr_script = NULL;
+    const int LOW_STOCK_THRESHOLD = 5;
 
     if (g_patient_list == NULL || g_medicine_list == NULL)
     {
@@ -83,7 +66,7 @@ int dispense_medicine_for_patient(const char* patient_id)
         return 0;
     }
 
-    if (is_blank_string_local(patient_id))
+    if (is_blank_string(patient_id))
     {
         printf("提示：患者编号不能为空。\n");
         return 0;
@@ -155,6 +138,17 @@ int dispense_medicine_for_patient(const char* patient_id)
         printf("商品名：%s\n", med->name);
         printf("发药数量：%d\n", curr_script->quantity);
         printf("发药后库存：%d\n", med->stock);
+        
+        // 低库存预警
+        if (med->stock == 0)
+        {
+            printf("⚠️ 预警：药品 [%s] [%s] 当前库存为 0，已缺货，请及时补货。\n", med->id, med->name);
+        }
+        else if (med->stock < LOW_STOCK_THRESHOLD)
+        {
+            printf("⚠️ 预警：药品 [%s] [%s] 当前库存为 %d，已进入低库存状态，请及时补货。\n", med->id, med->name, med->stock);
+        }
+        
         printf("------------------------------------------------------\n");
 
         curr_script = curr_script->next;

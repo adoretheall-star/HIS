@@ -113,6 +113,7 @@ typedef struct DoctorNode
     char name[MAX_NAME_LEN];  //医生姓名      
     char department[MAX_NAME_LEN]; //所属科室  
     int queue_length;      //当前医生门诊排队患者人数
+    int is_on_duty;        // 1 值班中，0 未值班
 
     struct DoctorNode* prev;//前驱指针
     struct DoctorNode* next; //后继指针
@@ -151,10 +152,20 @@ typedef struct AccountNode {
     char real_name[MAX_NAME_LEN];  // 真实姓名
     RoleType role;                 
 // 核心！决定了他登录后能看到哪个菜单
+    int is_on_duty;                // 1 值班中，0 未值班
 
     struct AccountNode* prev;
     struct AccountNode* next;
 } AccountNode;
+// 【实体 7：日志记录单向链表】
+typedef struct LogNode {
+    char timestamp[20];         // 操作时间
+    char operation[50];        // 操作类型
+    char target[50];           // 目标对象
+    char description[200];      // 简短说明
+    struct LogNode* next;       // 指向下一条日志
+} LogNode;
+
 // ==========================================
 // 6. 全局头结点声明 (外部文件通过 extern 共享)
 // ==========================================
@@ -164,6 +175,7 @@ extern DoctorNode* g_doctor_list;
 extern MedicineNode* g_medicine_list;
 extern WardNode* g_ward_list; 
 extern AccountNode* g_account_list;
+extern LogNode* g_log_list;
 // ==========================================
 // 7. 功能：安全删除节点 (Delete)
 // ==========================================
