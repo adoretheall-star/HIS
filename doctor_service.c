@@ -102,6 +102,44 @@ static ConsultRecordNode* find_latest_consult_record_for_patient(const char* pat
     return latest;
 }
 
+static void generate_consult_record_id(char* record_id, size_t size)
+{
+    time_t now;
+    struct tm* local_time;
+    char time_part[20];
+    int max_suffix = 0;
+    ConsultRecordNode* curr = NULL;
+
+    if (record_id == NULL || size == 0)
+    {
+        return;
+    }
+
+    time(&now);
+    local_time = localtime(&now);
+    strftime(time_part, sizeof(time_part), "%Y%m%d%H%M%S", local_time);
+
+    if (g_consult_record_list != NULL)
+    {
+        curr = g_consult_record_list->next;
+        while (curr != NULL)
+        {
+            char existing_time_part[20];
+            int suffix = 0;
+
+            if (sscanf(curr->record_id, "CR-%19[^-]-%d", existing_time_part, &suffix) == 2 &&
+                strcmp(existing_time_part, time_part) == 0 &&
+                suffix > max_suffix)
+            {
+                max_suffix = suffix;
+            }
+            curr = curr->next;
+        }
+    }
+
+    snprintf(record_id, size, "CR-%s-%02d", time_part, max_suffix + 1);
+}
+
 // 就诊状态转文字
 static const char* get_med_status_text(MedStatus status)
 {
@@ -114,6 +152,7 @@ static const char* get_med_status_text(MedStatus status)
         case STATUS_WAIT_MED: return "已缴费待取药";
         case STATUS_HOSPITALIZED: return "住院中";
         case STATUS_COMPLETED: return "就诊结束";
+        case STATUS_NO_SHOW: return "过号作废";
         default: return "未知状态";
     }
 }
@@ -416,6 +455,7 @@ int doctor_consult_patient(
     // 方案A：先将患者分配给当前医生，确保队列人数正确减少
     strncpy(patient->doctor_id, doctor->id, MAX_ID_LEN - 1);
     patient->doctor_id[MAX_ID_LEN - 1] = '\0';
+    patient->call_count = 0;
     
     if (doctor->queue_length > 0)
     {
@@ -464,13 +504,14 @@ int doctor_consult_patient(
         }
     }
 
-    // 生成接诊记录编号（课设简化版：使用当前时间戳的简单模拟）
-    static int record_counter = 1;
     char record_id[MAX_ID_LEN] = {0};
-    sprintf(record_id, "CR-%04d", record_counter++);
+    generate_consult_record_id(record_id, sizeof(record_id));
     
-    // 生成接诊时间（课设简化版：使用字符串占位）
-    char consult_time[MAX_NAME_LEN] = "2026-04-06 10:00:00";
+    // 生成真实接诊时间
+    char consult_time[MAX_NAME_LEN] = {0};
+    time_t consult_now = time(NULL);
+    struct tm* consult_tm = localtime(&consult_now);
+    strftime(consult_time, sizeof(consult_time), "%Y-%m-%d %H:%M:%S", consult_tm);
     
     // 创建并写入历史接诊记录
     ConsultRecordNode* record = create_consult_record_node(

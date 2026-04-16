@@ -14,7 +14,11 @@
 #define MAX_ID_LEN 32
 #define MAX_NAME_LEN 50
 #define MAX_SYMPTOM_LEN 100
+#define MAX_MED_NAME_LEN 100
 #define MAX_RECORD_LEN 200
+#define MAX_ALIAS_LEN 50
+#define MAX_GENERIC_NAME_LEN 50
+#define MAX_DATE_LEN 20
 
 // ==========================================
 // 2. 全局枚举定义 
@@ -36,7 +40,8 @@ typedef enum //就医状态
     STATUS_UNPAID = 4,       // 已看诊待缴费
     STATUS_WAIT_MED = 5,     // 已缴费待取药
     STATUS_HOSPITALIZED = 6, // 住院中
-    STATUS_COMPLETED = 7     // 就诊结束
+    STATUS_COMPLETED = 7,    // 就诊结束
+    STATUS_NO_SHOW = 8       // 过号作废/本次挂号失效
 } MedStatus;
 
 typedef enum //医保类型
@@ -168,6 +173,9 @@ typedef struct AppointmentNode
     char appoint_doctor[MAX_NAME_LEN];    //预约医生
     char appoint_dept[MAX_NAME_LEN];      //预约科室
     AppointmentStatus appointment_status; //预约状态
+    double reg_fee;                       // 本次挂号费
+    int fee_paid;                         // 0:未收费, 1:已收费
+    int is_walk_in;                       // 0:预约号, 1:现场号
 
     struct AppointmentNode* prev;//前驱指针
     struct AppointmentNode* next; //后继指针
@@ -180,6 +188,7 @@ typedef struct DoctorNode
     char name[MAX_NAME_LEN];  //医生姓名      
     char department[MAX_NAME_LEN]; //所属科室  
     int queue_length;      //当前医生门诊排队患者人数
+    int is_on_duty;        // 1 值班中，0 未值班
 
     struct DoctorNode* prev;//前驱指针
     struct DoctorNode* next; //后继指针
@@ -188,11 +197,14 @@ typedef struct DoctorNode
 // 【实体 4：药品库房双向链表】
 typedef struct MedicineNode 
 {
-    char id[MAX_ID_LEN];       //药品编号     
-    char name[MAX_NAME_LEN];   //药品名称      
-    double price;          //单价
-    int stock;             //当前实际库存
-    MedicareType m_type;   //药品所属的医保类型（决定打几折）
+    char id[MAX_ID_LEN];                     //药品编号
+    char name[MAX_MED_NAME_LEN];             //药品商品名
+    char alias[MAX_ALIAS_LEN];               //药品别名
+    char generic_name[MAX_GENERIC_NAME_LEN]; //药品通用名
+    double price;                            //单价
+    int stock;                               //当前实际库存
+    MedicareType m_type;                     //药品所属的医保类型（决定打几折）
+    char expiry_date[MAX_DATE_LEN];          //效期 YYYY-MM-DD
 
     struct MedicineNode* prev;//前驱指针
     struct MedicineNode* next; //后继指针
@@ -217,6 +229,7 @@ typedef struct AccountNode {
 // 核心！决定了他登录后能看到哪个菜单
     int error_count;             // 连续输错密码的次数
     time_t lock_time;            // 触发锁定的时间戳
+    int is_on_duty;                // 1 值班中，0 未值班
 
     struct AccountNode* prev;
     struct AccountNode* next;
@@ -241,9 +254,18 @@ typedef struct ComplaintNode {
     char response[MAX_RECORD_LEN];    // 管理员处理意见
     char submit_time[MAX_NAME_LEN];   // 提交时间，字符串格式
     
-    struct ComplaintNode* prev;       // 前驱指针
     struct ComplaintNode* next;       // 后继指针
+    struct ComplaintNode* prev;       // 前驱指针
+
 } ComplaintNode;
+// 【实体 7：日志记录单向链表】
+typedef struct LogNode {
+    char timestamp[20];         // 操作时间
+    char operation[50];        // 操作类型
+    char target[50];           // 目标对象
+    char description[200];      // 简短说明
+    struct LogNode* next;       // 指向下一条日志
+} LogNode;
 
 // ==========================================
 // 6. 全局头结点声明 (外部文件通过 extern 共享)
@@ -258,8 +280,9 @@ extern ConsultRecordNode* g_consult_record_list;
 extern CheckItemNode* g_check_item_list;     // 检查项目字典
 extern CheckRecordNode* g_check_record_list; // 检查记录
 extern AlertNode* g_alert_list;              // 安全预警队列
-extern ComplaintNode* g_complaint_list;      // 投诉工单链表
 
+extern ComplaintNode* g_complaint_list;      // 投诉工单链表
+extern LogNode* g_log_list;
 // ==========================================
 // 7. 功能：安全删除节点 (Delete)
 // ==========================================

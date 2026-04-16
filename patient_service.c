@@ -490,6 +490,8 @@ const char* get_patient_status_text(MedStatus status)
             return "住院中";
         case STATUS_COMPLETED:
             return "就诊结束";
+        case STATUS_NO_SHOW:
+            return "过号作废";
         default:
             return "未知状态";
     }
@@ -573,7 +575,6 @@ PatientNode* register_patient(
     }
     
     // 时空折叠：夜间模式接管
-    int is_emergency_case = 0;
     const char* recommended_dept;
     char actual_dept[MAX_NAME_LEN] = "";
     
@@ -583,7 +584,6 @@ PatientNode* register_patient(
     // 生命特权判定（仅看症状）
     if (strcmp(recommended_dept, "急诊科") == 0)
     {
-        is_emergency_case = 1;
         printf("🚨 症状符合急诊特征，已标记为危重患者！\n");
     }
     
@@ -1212,11 +1212,35 @@ void check_and_void_expired_orders(PatientNode* patient)
             // 清空处方相关字段
             patient->script_head = NULL;
             patient->script_count = 0;
+
+            // 同步清理该患者名下所有未支付检查单，避免旧单串入后续新账单
+            if (g_check_record_list != NULL)
+            {
+                CheckRecordNode* check_curr = g_check_record_list->next;
+                while (check_curr != NULL)
+                {
+                    CheckRecordNode* next_node = check_curr->next;
+                    if (strcmp(check_curr->patient_id, patient->id) == 0 && check_curr->is_paid == 0)
+                    {
+                        if (check_curr->prev != NULL)
+                        {
+                            check_curr->prev->next = check_curr->next;
+                        }
+                        if (check_curr->next != NULL)
+                        {
+                            check_curr->next->prev = check_curr->prev;
+                        }
+                        free(check_curr);
+                    }
+                    check_curr = next_node;
+                }
+            }
+
             patient->unpaid_time = 0;
             patient->status = STATUS_COMPLETED;
             
             // 打印提示信息
-            printf("⚠️ 检测到订单超时 72 小时，未缴费处方已自动作废\n");
+            printf("⚠️ 检测到订单超时 72 小时，未缴费处方与检查单已自动作废\n");
         }
     }
 }

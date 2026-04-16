@@ -62,7 +62,6 @@ dkms.conf
 *.slnx
 *.sqlite
 *.db
-*.exe
 Debug/
 Release/
 x64/

@@ -167,3 +167,133 @@ int is_night_shift()
         return 0; // 白天
     }
 }
+
+// 6. 检查字符串是否为空白 (只包含空格、制表符、换行符等)
+int is_blank_string(const char* str)
+{
+    int i;
+
+    if (str == NULL)
+    {
+        return 1;
+    }
+
+    for (i = 0; str[i] != '\0'; i++)
+    {
+        if (!isspace((unsigned char)str[i]))
+        {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+// Helper functions for date validation, static to utils.c
+static int is_leap_year(int year)
+{
+    return (year % 400 == 0) || ((year % 4 == 0) && (year % 100 != 0));
+}
+
+static int get_days_in_month(int year, int month)
+{
+    static const int days_in_month[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+
+    if (month < 1 || month > 12)
+    {
+        return 0;
+    }
+
+    if (month == 2 && is_leap_year(year))
+    {
+        return 29;
+    }
+
+    return days_in_month[month - 1];
+}
+
+static int is_basic_date_format_valid(const char* date_str)
+{
+    int i;
+
+    if (is_blank_string(date_str))
+    {
+        return 0;
+    }
+
+    if (strlen(date_str) != 10)
+    {
+        return 0;
+    }
+
+    for (i = 0; i < 10; i++)
+    {
+        if (i == 4 || i == 7)
+        {
+            if (date_str[i] != '-')
+            {
+                return 0;
+            }
+        }
+        else if (!isdigit((unsigned char)date_str[i]))
+        {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+static int is_date_value_valid(const char* date_str)
+{
+    int year;
+    int month;
+    int day;
+    int max_day;
+
+    if (!is_basic_date_format_valid(date_str))
+    {
+        return 0;
+    }
+
+    if (sscanf(date_str, "%d-%d-%d", &year, &month, &day) != 3)
+    {
+        return 0;
+    }
+
+    if (year <= 0)
+    {
+        return 0;
+    }
+
+    if (month < 1 || month > 12)
+    {
+        return 0;
+    }
+
+    max_day = get_days_in_month(year, month);
+    if (day < 1 || day > max_day)
+    {
+        return 0;
+    }
+
+    return 1;
+}
+
+// 7. 检查日期字符串是否合法 (YYYY-MM-DD)
+int is_valid_date_string(const char* date_str)
+{
+    return is_basic_date_format_valid(date_str) && is_date_value_valid(date_str);
+}
+
+// 8. 安全的字符串复制函数
+void safe_copy_string(char* dest, int dest_size, const char* src)
+{
+    if (dest == NULL || src == NULL || dest_size <= 0)
+    {
+        return;
+    }
+    
+    strncpy(dest, src, dest_size - 1);
+    dest[dest_size - 1] = '\0';
+}
