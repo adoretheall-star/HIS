@@ -194,26 +194,40 @@ static int is_patient_match_doctor(const PatientNode* patient, const DoctorNode*
 int get_waiting_patients_by_doctor(const char* doctor_id, PatientNode** patient_list)
 {
     int count = 0;
-    PatientNode* curr = NULL;
     DoctorNode* doctor = get_doctor_by_id_checked(doctor_id);
+    if (!doctor || !patient_list || !g_patient_list) return 0;
+    int is_emergency_dept = (strcmp(doctor->department, "急诊科") == 0);
 
-    if (doctor == NULL || patient_list == NULL) return 0;
-
-    if (g_patient_list == NULL)
-    {
-        return 0;
-    }
-
-    curr = g_patient_list->next;
-    while (curr != NULL)
-    {
-        if ((curr->status == STATUS_PENDING || curr->status == STATUS_RECHECK_PENDING) && is_patient_match_doctor(curr, doctor))
-        {
+    // 1. 全量抓取符合条件的患者
+    PatientNode* curr = g_patient_list->next;
+    while (curr != NULL) {
+        if ((curr->status == STATUS_PENDING || curr->status == STATUS_RECHECK_PENDING) &&
+            is_patient_match_doctor(curr, doctor)) {
             patient_list[count++] = curr;
         }
         curr = curr->next;
     }
 
+    // 2. 冒泡排序引擎
+    for (int i = 0; i < count - 1; i++) {
+        for (int j = 0; j < count - 1 - i; j++) {
+            int swap = 0;
+            if (is_emergency_dept) {
+                // 急诊科：急诊优先；同级别则比时间
+                if (patient_list[j]->is_emergency < patient_list[j+1]->is_emergency) swap = 1;
+                else if (patient_list[j]->is_emergency == patient_list[j+1]->is_emergency && 
+                         patient_list[j]->queue_time > patient_list[j+1]->queue_time) swap = 1;
+            } else {
+                // 普通门诊：绝对按签到时间排队
+                if (patient_list[j]->queue_time > patient_list[j+1]->queue_time) swap = 1;
+            }
+            if (swap) {
+                PatientNode* temp = patient_list[j];
+                patient_list[j] = patient_list[j+1];
+                patient_list[j+1] = temp;
+            }
+        }
+    }
     return count;
 }
 
@@ -1140,6 +1154,7 @@ int doctor_update_check_result(const char* doctor_id, const char* record_id, con
             if (patient != NULL)
             {
                 patient->status = STATUS_RECHECK_PENDING;
+                patient->queue_time = time(NULL) - 7200; // 拿CT/验血报告回来的复诊患者，虚拟时间前移2小时，优先看诊
             }
 
             printf("✅ 检查结果录入成功！\n");

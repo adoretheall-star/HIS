@@ -10,18 +10,7 @@
 #include "list_ops.h"
 #include "appointment.h"
 #include "patient_service.h"
-// 预约状态转文字
-static const char* get_appointment_status_text(AppointmentStatus status)
-{
-    switch (status)
-    {
-        case RESERVED: return "已预约";
-        case CHECKED_IN: return "已签到";
-        case CANCELLED: return "已取消";
-        case MISSED: return "已过号";
-        default: return "未知状态";
-    }
-}
+#include "utils.h"
 // 生成下一个预约编号
 static void generate_appointment_id(char* new_id)
 {
@@ -257,7 +246,6 @@ AppointmentNode* register_appointment(
         return NULL;
     }
     insert_appointment_tail(g_appointment_list, new_appointment);
-    printf("✅ 预约登记成功！预约编号：%s，患者编号：%s\n", new_appointment->appointment_id, patient->id);
     return new_appointment;
 }
 // 按患者编号查询预约
@@ -384,11 +372,32 @@ int check_in_appointment(const char* appointment_id)
     }
     appointment->appointment_status = CHECKED_IN;
     patient->status = STATUS_PENDING;
+    
+    // 计算排队时间戳
+    time_t now = time(NULL);
+    struct tm* tm_now = localtime(&now);
+    
+    // 迟到判定
+    int is_late = 0;
+    if ((strcmp(appointment->appointment_slot, "上午") == 0 && tm_now->tm_hour >= 12) || 
+        (strcmp(appointment->appointment_slot, "下午") == 0 && is_night_shift())) {
+        is_late = 1;
+    }
+    
+    // 时间戳赋值
+    if (is_late) {
+        patient->queue_time = now; // 迟到：失去特权，正常排队
+        printf("⚠️ 您已迟到，将按正常排队顺序就诊。\n");
+    } else {
+        patient->queue_time = now - 1800; // 准时/提前：虚拟早到30分钟，实现优先
+    }
     if (strlen(appointment->appoint_dept) > 0)
     {
         strncpy(patient->target_dept, appointment->appoint_dept, MAX_NAME_LEN - 1);
         patient->target_dept[MAX_NAME_LEN - 1] = '\0';
     }
+    
+    // 专家号逻辑：指定了医生
     if (strlen(appointment->appoint_doctor) > 0 && g_doctor_list != NULL)
     {
         doctor = find_doctor_by_id(g_doctor_list, appointment->appoint_doctor);
@@ -402,9 +411,39 @@ int check_in_appointment(const char* appointment_id)
                 strncpy(patient->target_dept, doctor->department, MAX_NAME_LEN - 1);
                 patient->target_dept[MAX_NAME_LEN - 1] = '\0';
             }
+            printf("🎯 [专家号] 已为您定向安排专家：%s\n", doctor->name);
         }
     }
-    printf("✅ 预约签到成功！预约编号：%s，患者已转入待诊状态。\n", appointment->appointment_id);
+    // 普通号逻辑：未指定医生但指定了科室，实现负载均衡
+    else if (strlen(appointment->appoint_dept) > 0 && g_doctor_list != NULL)
+    {
+        DoctorNode* min_doctor = NULL;
+        int min_queue = 9999; // 初始化为一个很大的数
+        
+        DoctorNode* curr = g_doctor_list->next;
+        while (curr != NULL)
+        {
+            if (strcmp(curr->department, appointment->appoint_dept) == 0)
+            {
+                if (curr->queue_length < min_queue)
+                {
+                    min_queue = curr->queue_length;
+                    min_doctor = curr;
+                }
+            }
+            curr = curr->next;
+        }
+        
+        if (min_doctor != NULL)
+        {
+            min_doctor->queue_length++;
+            strncpy(patient->doctor_id, min_doctor->id, MAX_ID_LEN - 1);
+            patient->doctor_id[MAX_ID_LEN - 1] = '\0';
+            printf("⚖️ [普通号] 已为您自动分配排队最少的医生：%s\n", min_doctor->name);
+        }
+    }
+    
+
     return 1;
 }
 

@@ -149,6 +149,8 @@ typedef struct PatientNode
     time_t blacklist_expire; // 黑名单到期时间戳
     int is_blacklisted; // 0:正常, 1:爽约黑名单, 2:逃单黑名单
     int is_emergency; // 0:普通, 1:急诊绿色通道患者
+    time_t queue_time; // 排队签到时间戳
+    int call_count; // 叫号未到次数统计
     double emergency_debt; // 记录急诊欠费金额
     time_t unpaid_time; // 进入待缴费状态的时间戳，0表示无
 

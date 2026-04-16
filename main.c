@@ -134,18 +134,10 @@ static void handle_doctor_consultation()
         return;
     }
     
-    // 选择患者
-    printf("\n请选择要接诊的患者序号 (1-%d): ", count);
-    choice = get_safe_int("👉 ");
-    
-    if (choice < 1 || choice > count)
-    {
-        printf("\n⚠️ 无效的选择！\n");
-        system("pause");
-        return;
-    }
-    
-    PatientNode* patient = patient_list[choice - 1];
+    // 强制按序叫号：医生没有挑单权限，只能接诊队列第一人
+    choice = 1;
+    PatientNode* patient = patient_list[0];
+    printf("\n📢 当前系统自动呼叫排队首位患者...\n");
     
     // 显示患者信息确认
     printf("\n========================================\n");
@@ -211,6 +203,7 @@ static void handle_doctor_consultation()
     printf("  [2] 开药\n");
     printf("  [3] 开检查\n");
     printf("  [4] 办理住院\n");
+    printf("  [5] 叫号未到 (过号顺延3位)\n");
     
     // 对于复诊患者，增加小提示
     if (patient->status == STATUS_RECHECK_PENDING)
@@ -224,6 +217,35 @@ static void handle_doctor_consultation()
     }
 
     decision = get_safe_int("👉 请输入操作编号: ");
+    
+    // ==================================================
+    // 拦截选项 5：叫号未到 (过号顺延与事不过三熔断机制)
+    // ==================================================
+    if (decision == 5) {
+        patient->call_count++; // 记录一次未到
+
+        if (patient->call_count >= 3) {
+            // 💥 触发熔断：连续 3 次未到，踢出待诊队列
+            // 将状态改为非排队状态（注：根据你 global.h 的定义，这里可置为 0 或 STATUS_COMPLETED 等不在 PENDING 范围的值）
+            patient->status = 0; // 取消其待诊状态
+            printf("\n⛔ [熔断机制] 该患者已连续 3 次叫号未到，系统已将其从当前排队序列中移除！\n");
+            printf("如需看诊，请患者重新前往服务台挂号。\n");
+        } else {
+            // 🔄 顺延 3 位的原逻辑
+            int current_index = choice - 1;
+            int target_index = current_index + 3; // 往下数 3 个人
+
+            if (target_index < count) {
+                patient->queue_time = patient_list[target_index]->queue_time + 1;
+            } else {
+                patient->queue_time = time(NULL);
+            }
+            printf("\n🔄 [过号顺延] 第 %d 次叫号未到，已顺延至 3 位之后。(满 3 次将作废)\n", patient->call_count);
+        }
+        
+        system("pause");
+        return; // 处理完毕，直接退出当前接诊流程
+    }
     
     // 如果选择开检查，显示检查项目列表供选择
     if (decision == 3)
@@ -869,13 +891,17 @@ static void handle_internal_appointment_register()
     }
     
     get_safe_string("请输入预约医生编号(可留空): ", appoint_doctor, MAX_NAME_LEN);
-    register_appointment(
+    AppointmentNode* new_appt = register_appointment(
         patient_id,
         appointment_date,
         appointment_slot,
         appoint_doctor,
         appoint_dept
     );
+    if (new_appt != NULL)
+    {
+        printf("\n✅ 预约登记成功！预约编号：%s\n", new_appt->appointment_id);
+    }
     system("pause");
 }
 static void handle_internal_appointment_query()
@@ -1017,9 +1043,20 @@ static void handle_patient_self_appointment_register()
     get_safe_string("请输入预约医生编号(可留空): ", appoint_doctor, MAX_NAME_LEN);
     
     // ==========================================
-    // 财务风控与绿色通道逻辑
+    // 动态挂号计费引擎
     // ==========================================
-    double reg_fee = (patient->is_emergency == 1) ? 50.0 : 15.0;
+    double reg_fee = 15.0; // 默认普通号
+
+    // 1. 判断是否为急诊
+    if (patient->is_emergency == 1)
+    {
+        reg_fee = 50.0;
+    }
+    // 2. 判断是否为专家号 (指定了医生编号)
+    else if (strlen(appoint_doctor) > 0)
+    {
+        reg_fee = 30.0;
+    }
 
     if (patient->is_emergency == 1)
     {
@@ -1037,20 +1074,20 @@ static void handle_patient_self_appointment_register()
     }
     else
     {
-        // 🏥 普通门诊：严格执行预付费拦截机制
+        // 🏥 普通门诊/专家号：严格执行预付费拦截机制
         if (patient->balance < reg_fee)
         {
-            printf("\n❌ 余额不足！普通门诊需预先扣除挂号费 %.2f 元。\n", reg_fee);
+            printf("\n❌ 余额不足！需预先扣除挂号费 %.2f 元。\n", reg_fee);
             printf("您当前余额为 %.2f 元，请先到窗口充值后再试！\n", patient->balance);
             system("pause");
             return; // 资金不足，无情拦截！
         }
         patient->balance -= reg_fee;
-        printf("\n💰 已成功扣除挂号费：%.2f 元，当前账户余额：%.2f 元。\n", reg_fee, patient->balance);
+        printf("\n✅ 扣费成功！本次挂号费：%.2f 元，账户余额：%.2f 元。\n", reg_fee, patient->balance);
     }
     // ==========================================
     
-    register_appointment(
+    AppointmentNode* new_appt = register_appointment(
         patient_id,
         appointment_date,
         appointment_slot,
@@ -1058,7 +1095,10 @@ static void handle_patient_self_appointment_register()
         appoint_dept
     );
     
-    printf("\n✅ 自助预约登记成功！\n");
+    if (new_appt != NULL)
+    {
+        printf("\n✅ 自助预约登记成功！预约编号：%s\n", new_appt->appointment_id);
+    }
     system("pause");
 }
 
@@ -1188,9 +1228,20 @@ static void handle_patient_self_registration()
     get_safe_string("请输入挂号医生编号(可留空): ", appoint_doctor, MAX_NAME_LEN);
     
     // ==========================================
-    // 财务风控与绿色通道逻辑
+    // 动态挂号计费引擎
     // ==========================================
-    double reg_fee = (patient->is_emergency == 1) ? 50.0 : 15.0;
+    double reg_fee = 15.0; // 默认普通号
+
+    // 1. 判断是否为急诊
+    if (patient->is_emergency == 1)
+    {
+        reg_fee = 50.0;
+    }
+    // 2. 判断是否为专家号 (指定了医生编号)
+    else if (strlen(appoint_doctor) > 0)
+    {
+        reg_fee = 30.0;
+    }
 
     if (patient->is_emergency == 1)
     {
@@ -1208,20 +1259,21 @@ static void handle_patient_self_registration()
     }
     else
     {
-        // 🏥 普通门诊：严格执行预付费拦截机制
+        // 🏥 普通门诊/专家号：严格执行预付费拦截机制
         if (patient->balance < reg_fee)
         {
-            printf("\n❌ 余额不足！普通门诊需预先扣除挂号费 %.2f 元。\n", reg_fee);
+            printf("\n❌ 余额不足！需预先扣除挂号费 %.2f 元。\n", reg_fee);
             printf("您当前余额为 %.2f 元，请先到窗口充值后再试！\n", patient->balance);
             system("pause");
             return; // 资金不足，无情拦截！
         }
         patient->balance -= reg_fee;
-        printf("\n💰 已成功扣除挂号费：%.2f 元，当前账户余额：%.2f 元。\n", reg_fee, patient->balance);
+        printf("\n✅ 扣费成功！本次挂号费：%.2f 元，账户余额：%.2f 元。\n", reg_fee, patient->balance);
     }
     // ==========================================
     
-    register_appointment(
+    // 接收生成的预约节点
+    AppointmentNode* new_appt = register_appointment(
         patient_id,
         appointment_date,
         appointment_slot,
@@ -1229,8 +1281,27 @@ static void handle_patient_self_registration()
         appoint_dept
     );
     
-    printf("\n✅ 自助挂号成功！\n");
-    system("pause");
+    // 如果挂号成功，立即触发联动签到，将患者推入医生队列
+    if (new_appt != NULL )
+    {
+        printf("\n🔄 [系统联动] 现场挂号自动签到与分诊中...\n" );
+        // 调用签到函数，触发负载均衡或专家号定向分配逻辑
+        check_in_appointment(new_appt->appointment_id);
+        
+        // 现场挂号强制使用当前物理时间戳，不享受预约的1800秒虚拟提前优惠
+        PatientNode* p = find_patient_by_id(g_patient_list, patient_id);
+        if (p != NULL) { 
+            p->queue_time = time(NULL); 
+        }
+        
+        printf("\n✅ 现场挂号与分诊全部完成！请关注叫号屏幕，前往对应科室候诊。\n" );
+    }
+    else
+    {
+        printf("\n❌ 挂号失败，无法进行后续分诊。\n" );
+    }
+    
+    system("pause" );
 }
 
 static void handle_patient_self_appointment_cancel()

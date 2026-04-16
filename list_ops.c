@@ -94,6 +94,8 @@ PatientNode* create_patient_node(const char* id, const char* name, int age, cons
     new_node->blacklist_expire = 0;
     new_node->is_blacklisted = 0;
     new_node->is_emergency = 0;
+    new_node->queue_time = 0; // 初始化排队时间戳为0
+    new_node->call_count = 0; // 初始化叫号未到次数为0
     new_node->emergency_debt = 0.0; // 初始化急诊欠费金额为0
     new_node->unpaid_time = 0;
 
