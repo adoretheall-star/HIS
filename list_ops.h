@@ -50,7 +50,7 @@ MedicineNode* find_medicine_by_id(MedicineNode* head, const char* target_id);
 // ==========================================
 //四、病房链表操作
 WardNode* init_ward_list();
-WardNode* create_ward_node(const char* bed_id);
+WardNode* create_ward_node(const char* room_id, const char* bed_id, WardType ward_type);
 void insert_ward_tail(WardNode* head, WardNode* new_node);
 WardNode* find_ward_by_id(WardNode* head, const char* target_bed_id);
 // ==========================================
@@ -60,4 +60,21 @@ AccountNode* init_account_list();
 AccountNode* create_account_node(const char* username, const char* pwd, const char* real_name, RoleType role);
 void insert_account_tail(AccountNode* head, AccountNode* new_node);
 AccountNode* find_account_by_username(AccountNode* head, const char* target_username);
+
+// ==========================================
+//六、住院记录链表操作
+// ==========================================
+InpatientRecord* create_inpatient_record_head();
+InpatientRecord* create_inpatient_record_node(
+    const char* inpatient_id,
+    const char* patient_id,
+    const char* bed_id,
+    WardType ward_type,
+    WardType recommended_ward_type,
+    int estimated_days,
+    int days_stayed,
+    double deposit_balance,
+    int is_active
+);
+void insert_inpatient_record_tail(InpatientRecord* head, InpatientRecord* new_node);
 #endif // LIST_OPS_H

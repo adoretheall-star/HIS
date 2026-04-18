@@ -228,7 +228,27 @@ void safe_copy_string(char* dest, int dest_size, const char* src)
     {
         return;
     }
-    
+
     strncpy(dest, src, dest_size - 1);
     dest[dest_size - 1] = '\0';
+}
+
+// 9. 获取单个字符（用于 Y/N 确认等场景）
+char get_single_char(const char* prompt)
+{
+    char input[10];
+    printf("%s", prompt);
+    if (fgets(input, sizeof(input), stdin) != NULL)
+    {
+        // 去掉换行符
+        input[strcspn(input, "\n")] = '\0';
+        // 如果输入为空，返回空格
+        if (strlen(input) == 0)
+        {
+            return ' ';
+        }
+        // 返回第一个字符
+        return input[0];
+    }
+    return ' ';
 }

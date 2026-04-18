@@ -19,6 +19,7 @@ MedicineNode* g_medicine_list = NULL;
 WardNode* g_ward_list = NULL;
 AccountNode* g_account_list = NULL;
 LogNode* g_log_list = NULL;
+InpatientRecord* g_inpatient_list = NULL;
 //一、患者链表操作
 // ---------------------------------------------------------
 // 功能 1：初始化带头结点的双向链表
@@ -321,12 +322,15 @@ WardNode* init_ward_list()
     return head;
 }
 
-WardNode* create_ward_node(const char* bed_id) 
+WardNode* create_ward_node(const char* room_id, const char* bed_id, WardType ward_type) 
 {
     WardNode* new_node = (WardNode*)malloc(sizeof(WardNode));
     if (!new_node) return NULL;
+    strncpy(new_node->room_id, room_id, MAX_ID_LEN - 1);
+    new_node->room_id[MAX_ID_LEN - 1] = '\0';
     strncpy(new_node->bed_id, bed_id, MAX_ID_LEN - 1);
     new_node->bed_id[MAX_ID_LEN - 1] = '\0';
+    new_node->ward_type = ward_type; // 初始化病房类型
     new_node->is_occupied = 0; // 默认空闲
     new_node->patient_id[0] = '\0'; // 暂无病人
     new_node->prev = NULL; new_node->next = NULL;
@@ -500,5 +504,96 @@ void add_prescription_to_patient(PatientNode* patient, const char* med_id, int q
     // 3. 统计数量加一
     patient->script_count++;
 }
+
+// ==========================================
+// 八、住院记录链表操作
+// ==========================================
+
+// ---------------------------------------------------------
+// 功能 1：初始化带头结点的住院记录双向链表
+// ---------------------------------------------------------
+InpatientRecord* create_inpatient_record_head() 
+{
+    InpatientRecord* head = (InpatientRecord*)malloc(sizeof(InpatientRecord));
+    if (head == NULL) 
+    {
+        printf("🔥 致命错误：内存分配失败，系统无法启动！\n");
+        exit(1); // 内存都没了，直接让程序自杀（1表示程序异常退出）
+    }
+    
+    // 给头结点打上标记，防止和真实数据混淆
+    strncpy(head->inpatient_id, "HEAD", MAX_ID_LEN - 1);
+    head->inpatient_id[MAX_ID_LEN - 1] = '\0';
+
+    strncpy(head->patient_id, "SYSTEM_HEAD", MAX_ID_LEN - 1);
+    head->patient_id[MAX_ID_LEN - 1] = '\0';
+    
+    // 防御阵地：头结点的指针必须干干净净
+    head->prev = NULL;
+    head->next = NULL;
+    
+    return head;
+}
+
+// ---------------------------------------------------------
+// 功能 2：在内存中捏造一个“干净”的住院记录节点
+// ---------------------------------------------------------
+InpatientRecord* create_inpatient_record_node(
+    const char* inpatient_id,
+    const char* patient_id,
+    const char* bed_id,
+    WardType ward_type,
+    WardType recommended_ward_type,
+    int estimated_days,
+    int days_stayed,
+    double deposit_balance,
+    int is_active
+) {
+    InpatientRecord* new_node = (InpatientRecord*)malloc(sizeof(InpatientRecord));
+    if (new_node == NULL) return NULL;
+
+    // 录入基础信息
+    strncpy(new_node->inpatient_id, inpatient_id, MAX_ID_LEN - 1);
+    new_node->inpatient_id[MAX_ID_LEN - 1] = '\0';
+
+    strncpy(new_node->patient_id, patient_id, MAX_ID_LEN - 1);
+    new_node->patient_id[MAX_ID_LEN - 1] = '\0';
+
+    strncpy(new_node->bed_id, bed_id, MAX_ID_LEN - 1);
+    new_node->bed_id[MAX_ID_LEN - 1] = '\0';
+
+    new_node->ward_type = ward_type;
+    new_node->recommended_ward_type = recommended_ward_type;
+    new_node->estimated_days = estimated_days;
+    new_node->days_stayed = days_stayed;
+    new_node->deposit_balance = deposit_balance;
+    new_node->is_active = is_active;
+
+    // 断开一切外界联系，等待被插入大链表
+    new_node->prev = NULL;
+    new_node->next = NULL;
+
+    return new_node;
+}
+
+// ---------------------------------------------------------
+// 功能 3：尾插法 (将新住院记录排到链表最后)
+// ---------------------------------------------------------
+void insert_inpatient_record_tail(InpatientRecord* head, InpatientRecord* new_node)
+{
+    InpatientRecord* tail = head;
+    
+    // 定位到链表的尾巴
+    while (tail->next != NULL)
+    {
+        tail = tail->next;
+    }
+    
+    // 执行插入
+    tail->next = new_node;
+    new_node->prev = tail;
+    new_node->next = NULL;
+}
+
 // End of Selection
 

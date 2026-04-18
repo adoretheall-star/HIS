@@ -12,14 +12,11 @@
 #define MAX_ID_LEN 32
 #define MAX_NAME_LEN 50
 #define MAX_SYMPTOM_LEN 100
-<<<<<<< HEAD
 #define MAX_RECORD_LEN 200
-=======
 #define MAX_MED_NAME_LEN 100
 #define MAX_ALIAS_LEN 50
 #define MAX_GENERIC_NAME_LEN 50
 #define MAX_DATE_LEN 20
->>>>>>> medicine
 
 // ==========================================
 // 2. 全局枚举定义 
@@ -37,7 +34,9 @@ typedef enum //就医状态流转
 {
     STATUS_PENDING = 1,      // 待诊
     STATUS_EXAMINING = 2,    // 检查中
+    STATUS_DIAGNOSED = 3,    // 已看诊待缴费（同 STATUS_UNPAID）
     STATUS_UNPAID = 3,       // 已看诊待缴费
+    STATUS_PAID = 4,         // 已缴费待取药（同 STATUS_WAIT_MED）
     STATUS_WAIT_MED = 4,     // 已缴费待取药
     STATUS_HOSPITALIZED = 5, // 住院中
     STATUS_COMPLETED = 6     // 就诊结束
@@ -57,6 +56,12 @@ typedef enum //预约状态
     CANCELLED = 3,  // 已取消
     MISSED = 4      // 已过号
 } AppointmentStatus;
+
+typedef enum //病房类型
+{
+    WARD_TYPE_GENERAL = 1, // 普通病房
+    WARD_TYPE_ICU = 2      // ICU
+} WardType;
 
 // ==========================================
 // 3. 附属结构体定义
@@ -146,13 +151,32 @@ typedef struct MedicineNode
 // 【实体 5：病房与床位双向链表】
 typedef struct WardNode 
 {
+    char room_id[MAX_ID_LEN];      // 病房编号 / 房间号
     char bed_id[MAX_ID_LEN];       // 床位编号 (如: W-101)
+    WardType ward_type;            // 病房类型 (普通病房/ICU)
     int is_occupied;               // 0: 空闲, 1: 占用
     char patient_id[MAX_ID_LEN];   // 住在上面的患者编号 (空闲时清空)
     
     struct WardNode* prev;//前驱指针
     struct WardNode* next; //后继指针
 } WardNode;
+
+// 【实体 8：住院记录双向链表】
+typedef struct InpatientRecord 
+{
+    char inpatient_id[MAX_ID_LEN];     // 住院流水号
+    char patient_id[MAX_ID_LEN];       // 患者编号
+    char bed_id[MAX_ID_LEN];           // 床位编号
+    WardType ward_type;                // 病房类型
+    WardType recommended_ward_type;    // 推荐病房类型
+    int estimated_days;                // 预计住院天数
+    int days_stayed;                   // 已住院天数
+    double deposit_balance;            // 押金余额
+    int is_active;                     // 1: 活跃, 0: 已出院
+    
+    struct InpatientRecord* prev;//前驱指针
+    struct InpatientRecord* next; //后继指针
+} InpatientRecord;
 // 【实体 6：系统账号与权限控制双向链表 (解决所有员工的登录问题)】
 typedef struct AccountNode {
     char username[MAX_ID_LEN];     // 登录账号 (工号)
@@ -184,6 +208,7 @@ extern MedicineNode* g_medicine_list;
 extern WardNode* g_ward_list; 
 extern AccountNode* g_account_list;
 extern LogNode* g_log_list;
+extern InpatientRecord* g_inpatient_list;
 // ==========================================
 // 7. 功能：安全删除节点 (Delete)
 // ==========================================

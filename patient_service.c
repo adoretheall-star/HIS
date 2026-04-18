@@ -85,7 +85,6 @@ PatientNode* find_patient_by_id_card(const char* id_card)
     }
     return NULL;
 }
-<<<<<<< HEAD
 
 /**
  * @brief 安全地复制文本字段
@@ -338,10 +337,6 @@ PatientNode* register_patient(
     const char* symptom,
     const char* target_dept
 )
-=======
-// 患者建档
-PatientNode* register_patient(const char* name, int age, const char* id_card, const char* symptom)
->>>>>>> medicine
 {
     char new_id[MAX_ID_LEN];
     PatientNode* new_patient = NULL;
@@ -399,7 +394,6 @@ PatientNode* register_patient(const char* name, int age, const char* id_card, co
         printf("⚠️ 患者节点创建失败！\n");
         return NULL;
     }
-<<<<<<< HEAD
 
     // 复制患者信息到节点中
     copy_text_field(new_patient->id_card, MAX_ID_LEN, id_card);
@@ -407,16 +401,6 @@ PatientNode* register_patient(const char* name, int age, const char* id_card, co
     copy_text_field(new_patient->target_dept, MAX_NAME_LEN, target_dept);
 
     // 将患者节点插入到链表尾部
-=======
-    
-    // 设置症状描述
-    if (symptom != NULL && strlen(symptom) > 0)
-    {
-        strncpy(new_patient->symptom, symptom, MAX_SYMPTOM_LEN - 1);
-        new_patient->symptom[MAX_SYMPTOM_LEN - 1] = '\0';
-    }
-    
->>>>>>> medicine
     insert_patient_tail(g_patient_list, new_patient);
 
     return new_patient;
