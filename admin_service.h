@@ -56,6 +56,5 @@ void handle_medicine_stock_update(void);
 void handle_expiring_medicine_check(void);
 void handle_medicine_dispense(void);
 void handle_medicine_remove(void);
-void show_paid_patients_waiting_for_dispense(void);
 
 #endif // ADMIN_SERVICE_H

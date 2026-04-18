@@ -525,6 +525,39 @@ void add_prescription_to_patient(PatientNode* patient, const char* med_id, int q
 }
 
 // ==========================================
+// 8. 删除患者处方中的最后一种药品
+// ==========================================
+void remove_last_prescription_from_patient(PatientNode* patient) 
+{
+    if (patient == NULL || patient->script_head == NULL) return;
+
+    if (patient->script_head->next == NULL)
+    {
+        // 只有一种药品，直接删除
+        free(patient->script_head);
+        patient->script_head = NULL;
+    }
+    else
+    {
+        // 找到倒数第二个节点
+        PrescriptionNode* curr = patient->script_head;
+        while (curr->next->next != NULL)
+        {
+            curr = curr->next;
+        }
+        // 删除最后一个节点
+        free(curr->next);
+        curr->next = NULL;
+    }
+    
+    // 统计数量减一
+    if (patient->script_count > 0)
+    {
+        patient->script_count--;
+    }
+}
+
+// ==========================================
 // ==========================================
 //六、接诊记录链表操作
 // ---------------------------------------------------------

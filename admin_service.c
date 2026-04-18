@@ -9,20 +9,6 @@
 #include "pharmacy_service.h"
 #include "utils.h"
 
-// 全局变量声明
-extern PatientNode* g_patient_list;
-extern AppointmentNode* g_appointment_list;
-extern DoctorNode* g_doctor_list;
-extern MedicineNode* g_medicine_list;
-extern WardNode* g_ward_list; 
-extern AccountNode* g_account_list;
-extern LogNode* g_log_list;
-
-// 日志函数前置声明
-void init_log_list(void);
-void add_log(const char* operation, const char* target, const char* description);
-void show_logs(void);
-
 // 查看所有员工账号
 void show_all_accounts(void)
 {
@@ -334,6 +320,7 @@ void show_all_doctors_with_duty_status(void)
 int update_doctor_duty_status(const char* doctor_id, int new_status)
 {
     DoctorNode* doctor = NULL;
+    AccountNode* account_curr = NULL;
     char description[200];
 
     if (g_doctor_list == NULL)
@@ -365,6 +352,23 @@ int update_doctor_duty_status(const char* doctor_id, int new_status)
     printf("提示：医生值班状态更新成功。\n");
     printf("医生：%s (%s)\n", doctor->name, doctor->id);
     printf("新值班状态：%s\n", new_status ? "值班中" : "未值班");
+
+    // 同步更新对应账号的值班状态
+    if (g_account_list != NULL && g_account_list->next != NULL)
+    {
+        account_curr = g_account_list->next;
+        while (account_curr != NULL)
+        {
+            if (strcmp(account_curr->username, doctor_id) == 0 && account_curr->role == ROLE_DOCTOR)
+            {
+                account_curr->is_on_duty = new_status;
+                printf("提示：已同步更新账号 %s 的值班状态。\n", doctor_id);
+                break;
+            }
+            account_curr = account_curr->next;
+        }
+    }
+
     // 记录日志
     sprintf(description, "医生：%s，新状态：%s", doctor->name, new_status ? "值班中" : "未值班");
     add_log("医生值班状态修改", doctor->id, description);

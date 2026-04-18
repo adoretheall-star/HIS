@@ -27,6 +27,7 @@ int queue_walk_in_registration(const char* appointment_id);
 
 // 7. 根据科室显示医生列表
 int display_doctors_by_dept(const char* dept_name);
+const char* get_appointment_display_status(const AppointmentNode* appointment);
 
 // 8. 登记预约爽约
 int mark_appointment_missed(const char* appointment_id);

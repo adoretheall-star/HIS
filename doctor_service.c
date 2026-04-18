@@ -1,15 +1,22 @@
-// ==========================================
+﻿// ==========================================
 // 文件名: doctor_service.c
 // 作用: 医生接诊相关业务层实现
 // ==========================================
 #define _CRT_SECURE_NO_WARNINGS
+
+// 解决pragma pack编译问题
+#pragma pack(push, 8)
+
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
 #include "global.h"
 #include "list_ops.h"
+#include "appointment.h"
 #include "doctor_service.h"
 #include "utils.h"
+
+#pragma pack(pop)
 
 
 
@@ -482,26 +489,28 @@ int doctor_consult_patient(
         }
         
         // 如果找到患者的预约记录，更新其状态
-        if (latest_appointment != NULL)
-        {
-            // 根据诊疗决策更新预约状态
-            switch (decision)
+            if (latest_appointment != NULL)
             {
-                case 1: // 结束就诊
-                    latest_appointment->appointment_status = CHECKED_IN; // 保持已签到状态
-                    break;
-                case 2: // 开药
-                    latest_appointment->appointment_status = CHECKED_IN;
-                    break;
-                case 3: // 开检查
-                    latest_appointment->appointment_status = CHECKED_IN;
-                    break;
-                case 4: // 办理住院
-                    latest_appointment->appointment_status = CHECKED_IN;
-                    break;
+                // 根据诊疗决策更新预约状态
+                switch (decision)
+                {
+                    case 1: // 结束就诊
+                        latest_appointment->appointment_status = CHECKED_IN; // 保持已签到状态
+                        break;
+                    case 2: // 开药
+                        latest_appointment->appointment_status = CHECKED_IN;
+                        break;
+                    case 3: // 开检查
+                        latest_appointment->appointment_status = CHECKED_IN;
+                        break;
+                    case 4: // 办理住院
+                        latest_appointment->appointment_status = CHECKED_IN;
+                        break;
+                }
             }
-            printf("\n预约记录已更新：%s\n", get_appointment_status_text(latest_appointment->appointment_status));
-        }
+            
+            // 显示接诊成功提示
+            printf("\n✅ 接诊成功！\n");
     }
 
     char record_id[MAX_ID_LEN] = {0};
@@ -747,7 +756,7 @@ void doctor_view_processed_patient_detail(const char* doctor_id, const char* pat
             printf("预约科室/医生：暂无\n");
         }
         
-        printf("预约状态：%s\n", get_appointment_status_text(latest_appointment->appointment_status));
+        printf("预约状态：%s\n", get_appointment_display_status(latest_appointment));
     }
     else
     {
@@ -1033,7 +1042,7 @@ void doctor_view_patient_overview(const char* doctor_id, const char* patient_id)
             printf("预约科室/医生：暂无\n");
         }
         
-        printf("预约状态：%s\n", get_appointment_status_text(latest_appointment->appointment_status));
+        printf("预约状态：%s\n", get_appointment_display_status(latest_appointment));
     }
     else
     {
@@ -1213,3 +1222,6 @@ int doctor_update_check_result(const char* doctor_id, const char* record_id, con
     printf("⚠️ 未找到指定的检查记录！\n");
     return 0;
 }
+
+
+

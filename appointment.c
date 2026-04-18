@@ -36,7 +36,7 @@ static void generate_appointment_id(char* new_id)
     snprintf(new_id, MAX_ID_LEN, "A-%03d", max_no + 1);
 }
 
-static const char* get_appointment_display_status(const AppointmentNode* appointment)
+const char* get_appointment_display_status(const AppointmentNode* appointment)
 {
     if (appointment == NULL)
     {
@@ -86,9 +86,15 @@ static int validate_appointment_target(const char* appoint_doctor, const char* a
     if (has_doctor)
     {
         doctor = find_doctor_by_id(g_doctor_list, appoint_doctor);
-        if (doctor == NULL)
+        if (doctor == NULL || doctor->is_on_duty != 1)
         {
             printf("⚠️ 指定医生不存在，预约登记失败！\n");
+            return 0;
+        }
+
+        if (doctor->is_on_duty != 1)
+        {
+            printf("鈿狅笍 鎸囧畾鍖荤敓褰撳墠鏈€肩彮锛岄绾︾櫥璁板け璐ワ紒\n");
             return 0;
         }
 
@@ -104,7 +110,7 @@ static int validate_appointment_target(const char* appoint_doctor, const char* a
     curr = g_doctor_list->next;
     while (curr != NULL)
     {
-        if (strcmp(curr->department, appoint_dept) == 0)
+        if (curr->is_on_duty == 1 && strcmp(curr->department, appoint_dept) == 0)
         {
             return 1;
         }
@@ -172,7 +178,7 @@ int display_doctors_by_dept(const char* dept_name)
     while (curr != NULL)
     {
         // 匹配科室
-        if (strcmp(curr->department, dept_name) == 0)
+        if (curr->is_on_duty == 1 && strcmp(curr->department, dept_name) == 0)
         {
             count++;
             printf("  %s\t%s\t\t%d\n", 
@@ -489,7 +495,9 @@ static DoctorNode* select_doctor_for_appointment(const AppointmentNode* appointm
 
         while (curr != NULL)
         {
-            if (strcmp(curr->department, appointment->appoint_dept) == 0 && curr->queue_length < min_queue)
+            if (curr->is_on_duty == 1 &&
+                strcmp(curr->department, appointment->appoint_dept) == 0 &&
+                curr->queue_length < min_queue)
             {
                 min_queue = curr->queue_length;
                 assigned_doctor = curr;

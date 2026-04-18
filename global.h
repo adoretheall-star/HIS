@@ -298,4 +298,7 @@ int delete_account_by_username(AccountNode* head, const char* target_username);
 // ==========================================
 // 给指定的患者挂载一条开药记录
 void add_prescription_to_patient(PatientNode* patient, const char* med_id, int quantity);
+
+// 删除患者处方中的最后一种药品
+void remove_last_prescription_from_patient(PatientNode* patient);
 #endif 

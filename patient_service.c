@@ -1,4 +1,4 @@
-// ==========================================
+﻿// ==========================================
 // 文件名: patient_service.c
 // 作用: 患者相关业务服务层 / 患者数据服务层实现
 // 描述: 实现患者信息管理的核心业务逻辑，被护士端和患者端共同复用
@@ -11,6 +11,7 @@
 #include <ctype.h>
 #include "global.h"
 #include "list_ops.h"
+#include "appointment.h"
 #include "utils.h"
 #include "patient_service.h"
 
@@ -353,11 +354,6 @@ static PatientNode* get_patient_by_id_checked(const char* patient_id, const char
     return patient;
 }
 
-/**
- * @brief 根据症状智能推荐科室（智能导诊功能）
- * @param symptom 患者症状描述
- * @return 推荐的科室名称字符串
- */
 /**
  * @brief 根据症状描述推荐科室（基于权重积分与一票否决算法）
  * @param symptom 患者症状描述
@@ -1059,7 +1055,7 @@ void display_patient_visit_overview(const PatientNode* patient)
             printf("  预约科室：%s\n", latest_appointment->appoint_dept);
         else
             printf("  预约科室：暂无\n");
-        printf("  预约状态：%s\n", get_appointment_status_text(latest_appointment->appointment_status));
+        printf("  预约状态：%s\n", get_appointment_display_status(latest_appointment));
     }
     else
     {
@@ -1940,3 +1936,6 @@ void query_patient_complaints(const char* patient_id)
     }
     printf("========================================\n");
 }
+
+
+
