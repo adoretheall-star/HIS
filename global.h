@@ -59,6 +59,12 @@ typedef enum //预约状态
     MISSED = 4      // 已过号
 } AppointmentStatus;
 
+typedef enum //病房类型
+{
+    WARD_TYPE_GENERAL = 1, // 普通病房
+    WARD_TYPE_ICU = 2      // ICU
+} WardType;
+
 // ==========================================
 // 3. 附属结构体定义
 // ==========================================
@@ -213,13 +219,32 @@ typedef struct MedicineNode
 // 【实体 5：病房与床位双向链表】
 typedef struct WardNode 
 {
+    char room_id[MAX_ID_LEN];      // 病房编号 / 房间号
     char bed_id[MAX_ID_LEN];       // 床位编号 (如: W-101)
+    WardType ward_type;            // 病房类型 (普通病房/ICU)
     int is_occupied;               // 0: 空闲, 1: 占用
     char patient_id[MAX_ID_LEN];   // 住在上面的患者编号 (空闲时清空)
     
     struct WardNode* prev;//前驱指针
     struct WardNode* next; //后继指针
 } WardNode;
+
+// 【实体 8：住院记录双向链表】
+typedef struct InpatientRecord 
+{
+    char inpatient_id[MAX_ID_LEN];     // 住院流水号
+    char patient_id[MAX_ID_LEN];       // 患者编号
+    char bed_id[MAX_ID_LEN];           // 床位编号
+    WardType ward_type;                // 病房类型
+    WardType recommended_ward_type;    // 推荐病房类型
+    int estimated_days;                // 预计住院天数
+    int days_stayed;                   // 已住院天数
+    double deposit_balance;            // 押金余额
+    int is_active;                     // 1: 活跃, 0: 已出院
+    
+    struct InpatientRecord* prev;//前驱指针
+    struct InpatientRecord* next; //后继指针
+} InpatientRecord;
 // 【实体 6：系统账号与权限控制双向链表 (解决所有员工的登录问题)】
 typedef struct AccountNode {
     char username[MAX_ID_LEN];     // 登录账号 (工号)
@@ -283,6 +308,7 @@ extern AlertNode* g_alert_list;              // 安全预警队列
 
 extern ComplaintNode* g_complaint_list;      // 投诉工单链表
 extern LogNode* g_log_list;
+extern InpatientRecord* g_inpatient_list;
 // ==========================================
 // 7. 功能：安全删除节点 (Delete)
 // ==========================================
@@ -301,4 +327,36 @@ void add_prescription_to_patient(PatientNode* patient, const char* med_id, int q
 
 // 删除患者处方中的最后一种药品
 void remove_last_prescription_from_patient(PatientNode* patient);
+
+// ==========================================
+// 9. 辅助链表结构
+// ==========================================
+// 患者指针链表节点
+typedef struct PatientPtrNode {
+    PatientNode* patient;
+    struct PatientPtrNode* next;
+} PatientPtrNode;
+// 检查记录指针链表节点
+typedef struct CheckRecordPtrNode {
+    CheckRecordNode* record;
+    struct CheckRecordPtrNode* next;
+} CheckRecordPtrNode;
+// 投诉指针链表节点
+typedef struct ComplaintPtrNode {
+    ComplaintNode* complaint;
+    struct ComplaintPtrNode* next;
+} ComplaintPtrNode;
+
+// 科室统计链表节点
+typedef struct DeptStatNode {
+    char department[MAX_NAME_LEN];
+    int doctor_count;
+    int queue_length;
+    struct DeptStatNode* next;
+} DeptStatNode;
+// 检查项指针链表节点（用于按科室查找检查项目）
+typedef struct CheckItemPtrNode {
+    CheckItemNode* item;
+    struct CheckItemPtrNode* next;
+} CheckItemPtrNode;
 #endif 

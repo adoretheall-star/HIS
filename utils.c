@@ -65,7 +65,7 @@ void get_safe_string(const char* prompt, char* buffer, int max_len)
             buffer[strcspn(buffer, "\n")] = '\0';
             
             // 防溢出保护：如果用户输入的长度超过了 max_len，吃掉缓冲区里多余的字符
-            if (strlen(buffer) == max_len - 1) {
+            if ((int)strlen(buffer) == max_len - 1) {
                 int c;
                 while ((c = getchar()) != '\n' && c != EOF);
             }
@@ -305,7 +305,27 @@ void safe_copy_string(char* dest, int dest_size, const char* src)
     {
         return;
     }
-    
+
     strncpy(dest, src, dest_size - 1);
     dest[dest_size - 1] = '\0';
+}
+
+// 9. 获取单个字符（用于 Y/N 确认等场景）
+char get_single_char(const char* prompt)
+{
+    char input[10];
+    printf("%s", prompt);
+    if (fgets(input, sizeof(input), stdin) != NULL)
+    {
+        // 去掉换行符
+        input[strcspn(input, "\n")] = '\0';
+        // 如果输入为空，返回空格
+        if (strlen(input) == 0)
+        {
+            return ' ';
+        }
+        // 返回第一个字符
+        return input[0];
+    }
+    return ' ';
 }

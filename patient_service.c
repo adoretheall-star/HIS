@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // 文件名: patient_service.c
 // 作用: 患者相关业务服务层 / 患者数据服务层实现
 // 描述: 实现患者信息管理的核心业务逻辑，被护士端和患者端共同复用
@@ -1881,14 +1881,35 @@ void query_patient_complaints(const char* patient_id)
     }
 
     // 收集该患者的所有投诉记录
-    ComplaintNode* complaints[100];
+    ComplaintPtrNode* complaint_list = NULL;
+    ComplaintPtrNode* tail = NULL;
     int complaint_count = 0;
     ComplaintNode* curr = g_complaint_list->next;
     while (curr != NULL)
     {
         if (strcmp(curr->patient_id, patient_id) == 0)
         {
-            complaints[complaint_count++] = curr;
+            // 创建新的投诉指针节点
+            ComplaintPtrNode* new_node = (ComplaintPtrNode*)malloc(sizeof(ComplaintPtrNode));
+            if (new_node == NULL)
+            {
+                continue;
+            }
+            new_node->complaint = curr;
+            new_node->next = NULL;
+
+            // 添加到链表
+            if (complaint_list == NULL)
+            {
+                complaint_list = new_node;
+                tail = new_node;
+            }
+            else
+            {
+                tail->next = new_node;
+                tail = new_node;
+            }
+            complaint_count++;
         }
         curr = curr->next;
     }
@@ -1901,10 +1922,29 @@ void query_patient_complaints(const char* patient_id)
 
     // 逆序打印（最新在前）
     printf("\n================ 投诉记录查询 ================\n");
-    for (int i = complaint_count - 1; i >= 0; i--)
+    
+    // 计算链表长度并逆序打印
+    ComplaintPtrNode* prev = NULL;
+    ComplaintPtrNode* curr_ptr = complaint_list;
+    ComplaintPtrNode* next = NULL;
+    
+    // 反转链表
+    while (curr_ptr != NULL)
     {
-        ComplaintNode* complaint = complaints[i];
-        printf("\n【投诉工单 %d】\n", complaint_count - i);
+        next = curr_ptr->next;
+        curr_ptr->next = prev;
+        prev = curr_ptr;
+        curr_ptr = next;
+    }
+    complaint_list = prev;
+    
+    // 打印反转后的链表
+    curr_ptr = complaint_list;
+    int index = 1;
+    while (curr_ptr != NULL)
+    {
+        ComplaintNode* complaint = curr_ptr->complaint;
+        printf("\n【投诉工单 %d】\n", index++);
         printf("工单编号：%s\n", complaint->complaint_id);
         printf("提交时间：%s\n", complaint->submit_time);
         
@@ -1933,8 +1973,18 @@ void query_patient_complaints(const char* patient_id)
             printf("处理意见：%s\n", complaint->response);
         }
         printf("----------------------------------------\n");
+        curr_ptr = curr_ptr->next;
     }
     printf("========================================\n");
+    
+    // 释放链表
+    curr_ptr = complaint_list;
+    while (curr_ptr != NULL)
+    {
+        ComplaintPtrNode* temp = curr_ptr;
+        curr_ptr = curr_ptr->next;
+        free(temp);
+    }
 }
 
 

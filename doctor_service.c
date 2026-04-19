@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <stdlib.h>
 #include "global.h"
 #include "list_ops.h"
 #include "appointment.h"
@@ -237,11 +238,13 @@ static int is_patient_match_doctor(const PatientNode* patient, const DoctorNode*
 
 // 查看指定医生的待诊患者
 // 获取指定医生的待诊患者列表（返回患者数量）
-int get_waiting_patients_by_doctor(const char* doctor_id, PatientNode** patient_list)
+// 获取指定医生的待诊患者链表
+PatientPtrNode* get_waiting_patients_by_doctor(const char* doctor_id)
 {
-    int count = 0;
+    PatientPtrNode* head = NULL;
+    PatientPtrNode* tail = NULL;
     DoctorNode* doctor = get_doctor_by_id_checked(doctor_id);
-    if (!doctor || !patient_list || !g_patient_list) return 0;
+    if (!doctor || !g_patient_list) return NULL;
     int is_emergency_dept = (strcmp(doctor->department, "急诊科") == 0);
 
     // 1. 全量抓取符合条件的患者
@@ -249,45 +252,88 @@ int get_waiting_patients_by_doctor(const char* doctor_id, PatientNode** patient_
     while (curr != NULL) {
         if ((curr->status == STATUS_PENDING || curr->status == STATUS_RECHECK_PENDING) &&
             is_patient_match_doctor(curr, doctor)) {
-            patient_list[count++] = curr;
+            // 创建新的患者指针节点
+            PatientPtrNode* new_node = (PatientPtrNode*)malloc(sizeof(PatientPtrNode));
+            if (new_node == NULL) {
+                continue;
+            }
+            new_node->patient = curr;
+            new_node->next = NULL;
+
+            // 添加到链表
+            if (head == NULL) {
+                head = new_node;
+                tail = new_node;
+            } else {
+                tail->next = new_node;
+                tail = new_node;
+            }
         }
         curr = curr->next;
     }
 
-    // 2. 冒泡排序引擎
-    for (int i = 0; i < count - 1; i++) {
-        for (int j = 0; j < count - 1 - i; j++) {
-            int swap = 0;
-            if (is_emergency_dept) {
-                // 急诊科：急诊优先；同级别则比时间
-                if (patient_list[j]->is_emergency < patient_list[j+1]->is_emergency) swap = 1;
-                else if (patient_list[j]->is_emergency == patient_list[j+1]->is_emergency && 
-                         patient_list[j]->queue_time > patient_list[j+1]->queue_time) swap = 1;
-            } else {
-                // 普通门诊：绝对按签到时间排队
-                if (patient_list[j]->queue_time > patient_list[j+1]->queue_time) swap = 1;
+    // 2. 链表冒泡排序
+    if (head != NULL) {
+        int swapped;
+        do {
+            swapped = 0;
+            PatientPtrNode* prev = NULL;
+            PatientPtrNode* curr = head;
+            PatientPtrNode* next = curr->next;
+
+            while (next != NULL) {
+                int swap = 0;
+                if (is_emergency_dept) {
+                    // 急诊科：急诊优先；同级别则比时间
+                    if (curr->patient->is_emergency < next->patient->is_emergency) swap = 1;
+                    else if (curr->patient->is_emergency == next->patient->is_emergency && 
+                             curr->patient->queue_time > next->patient->queue_time) swap = 1;
+                } else {
+                    // 普通门诊：绝对按签到时间排队
+                    if (curr->patient->queue_time > next->patient->queue_time) swap = 1;
+                }
+
+                if (swap) {
+                    // 交换节点
+                    if (prev == NULL) {
+                        head = next;
+                    } else {
+                        prev->next = next;
+                    }
+                    curr->next = next->next;
+                    next->next = curr;
+                    
+                    // 调整指针
+                    prev = next;
+                    next = curr->next;
+                    swapped = 1;
+                } else {
+                    prev = curr;
+                    curr = next;
+                    next = next->next;
+                }
             }
-            if (swap) {
-                PatientNode* temp = patient_list[j];
-                patient_list[j] = patient_list[j+1];
-                patient_list[j+1] = temp;
-            }
-        }
+        } while (swapped);
     }
-    return count;
+
+    return head;
 }
 
 // 获取指定医生的已处理患者列表（返回患者数量）
-int get_processed_patients_by_doctor(const char* doctor_id, PatientNode** patient_list)
+PatientPtrNode* get_processed_patients_by_doctor(const char* doctor_id)
 {
-    int count = 0;
+    PatientPtrNode* head = NULL;
+    PatientPtrNode* tail = NULL;
     PatientNode* curr = NULL;
 
-    if (doctor_id == NULL || patient_list == NULL) return 0;
+    if (doctor_id == NULL)
+    {
+        return NULL;
+    }
 
     if (g_patient_list == NULL)
     {
-        return 0;
+        return NULL;
     }
 
     curr = g_patient_list->next;
@@ -303,19 +349,122 @@ int get_processed_patients_by_doctor(const char* doctor_id, PatientNode** patien
                 curr->status == STATUS_HOSPITALIZED ||
                 curr->status == STATUS_COMPLETED)
             {
-                patient_list[count++] = curr;
+                // 创建新的患者指针节点
+                PatientPtrNode* new_node = (PatientPtrNode*)malloc(sizeof(PatientPtrNode));
+                if (new_node == NULL)
+                {
+                    continue;
+                }
+                new_node->patient = curr;
+                new_node->next = NULL;
+
+                // 添加到链表
+                if (head == NULL)
+                {
+                    head = new_node;
+                    tail = new_node;
+                }
+                else
+                {
+                    tail->next = new_node;
+                    tail = new_node;
+                }
             }
         }
         curr = curr->next;
     }
 
+    return head;
+}
+
+// 释放患者指针链表
+void free_patient_ptr_list(PatientPtrNode* head)
+{
+    PatientPtrNode* curr = head;
+    while (curr != NULL)
+    {
+        PatientPtrNode* temp = curr;
+        curr = curr->next;
+        free(temp);
+    }
+}
+
+// 获取患者指针链表的长度
+int get_patient_ptr_list_count(PatientPtrNode* head)
+{
+    int count = 0;
+    PatientPtrNode* curr = head;
+    while (curr != NULL)
+    {
+        count++;
+        curr = curr->next;
+    }
     return count;
+}
+
+// 获取患者指针链表中第index个节点（从1开始）
+PatientNode* get_nth_patient_from_ptr_list(PatientPtrNode* head, int index)
+{
+    if (index < 1) return NULL;
+    
+    int current = 1;
+    PatientPtrNode* curr = head;
+    while (curr != NULL && current < index)
+    {
+        curr = curr->next;
+        current++;
+    }
+    
+    return curr ? curr->patient : NULL;
+}
+
+// 在患者指针链表中查找指定患者的位置（从1开始）
+int find_patient_position_in_ptr_list(PatientPtrNode* head, PatientNode* patient)
+{
+    int position = 1;
+    PatientPtrNode* curr = head;
+    while (curr != NULL)
+    {
+        if (curr->patient == patient)
+        {
+            return position;
+        }
+        curr = curr->next;
+        position++;
+    }
+    return -1; // 未找到
+}
+
+// 获取患者指针链表中指定位置之后的第n个节点
+PatientNode* get_patient_after_position_in_ptr_list(PatientPtrNode* head, int position, int n)
+{
+    int current = 1;
+    PatientPtrNode* curr = head;
+    
+    // 先找到指定位置的节点
+    while (curr != NULL && current < position)
+    {
+        curr = curr->next;
+        current++;
+    }
+    
+    // 再往后移动n个位置
+    if (curr != NULL)
+    {
+        for (int i = 0; i < n && curr->next != NULL; i++)
+        {
+            curr = curr->next;
+        }
+        return curr->patient;
+    }
+    
+    return NULL;
 }
 
 void show_waiting_patients_by_doctor(const char* doctor_id)
 {
     int found = 0;
-    PatientNode* curr = NULL;
+    PatientPtrNode* waiting_list = NULL;
     DoctorNode* doctor = get_doctor_by_id_checked(doctor_id);
     int index = 1;
 
@@ -331,25 +480,32 @@ void show_waiting_patients_by_doctor(const char* doctor_id)
     printf("医生编号: %s  医生姓名: %s  科室: %s\n",
         doctor->id, doctor->name, doctor->department);
 
-    curr = g_patient_list->next;
+    // 使用 get_waiting_patients_by_doctor 获取排序后的待诊患者链表
+    waiting_list = get_waiting_patients_by_doctor(doctor_id);
+    
+    PatientPtrNode* curr = waiting_list;
     while (curr != NULL)
     {
-        if ((curr->status == STATUS_PENDING || curr->status == STATUS_RECHECK_PENDING) && is_patient_match_doctor(curr, doctor))
+        PatientNode* patient = curr->patient;
+        if ((patient->status == STATUS_PENDING || patient->status == STATUS_RECHECK_PENDING) && is_patient_match_doctor(patient, doctor))
         {
-            const char* brief_text = strlen(curr->symptom) > 0 ? curr->symptom : curr->target_dept;
-            const char* visit_type = curr->status == STATUS_PENDING ? "[初诊]" : "[复诊]";
+            const char* brief_text = strlen(patient->symptom) > 0 ? patient->symptom : patient->target_dept;
+            const char* visit_type = patient->status == STATUS_PENDING ? "[初诊]" : "[复诊]";
             printf("[%d] %s 患者编号: %s | 姓名: %s | 年龄: %d | 症状/科室: %s | 状态: %s\n",
                 index++,
                 visit_type,
-                curr->id,
-                curr->name,
-                curr->age,
+                patient->id,
+                patient->name,
+                patient->age,
                 strlen(brief_text) > 0 ? brief_text : "暂无",
-                get_med_status_text(curr->status));
+                get_med_status_text(patient->status));
             found = 1;
         }
         curr = curr->next;
     }
+
+    // 释放临时链表
+    free_patient_ptr_list(waiting_list);
 
     if (!found)
     {
@@ -421,7 +577,14 @@ int doctor_consult_patient(
     switch (decision)
     {
         case 1:
-            patient->status = STATUS_COMPLETED;
+            if (patient->script_head != NULL)
+            {
+                patient->status = STATUS_WAIT_MED;
+            }
+            else
+            {
+                patient->status = STATUS_COMPLETED;
+            }
             break;
         case 2:
             patient->status = STATUS_UNPAID;
@@ -549,8 +712,8 @@ int doctor_consult_patient(
 void doctor_view_processed_patients(const char* doctor_id)
 {
     DoctorNode* doctor = NULL;
-    PatientNode* patient_list[100];
-    int count = 0;
+    PatientPtrNode* patient_list = NULL;
+    PatientPtrNode* curr = NULL;
     int index = 1;
     
     // 检查患者链表是否初始化
@@ -577,24 +740,25 @@ void doctor_view_processed_patients(const char* doctor_id)
     printf("----------------------------------------------\n");
     
     // 获取已处理患者列表
-    count = get_processed_patients_by_doctor(doctor_id, patient_list);
+    patient_list = get_processed_patients_by_doctor(doctor_id);
     
-    if (count == 0)
+    if (patient_list == NULL)
     {
         printf("暂无已处理患者记录\n");
         return;
     }
     
     // 显示已接诊患者列表
-    for (int i = 0; i < count; i++)
+    curr = patient_list;
+    while (curr != NULL)
     {
-        printf("\n[%d] 患者编号：%s\n", index++, patient_list[i]->id);
-        printf("姓名：%s\n", patient_list[i]->name);
-        printf("年龄：%d\n", patient_list[i]->age);
-        printf("当前状态：%s\n", get_med_status_text(patient_list[i]->status));
+        printf("\n[%d] 患者编号：%s\n", index++, curr->patient->id);
+        printf("姓名：%s\n", curr->patient->name);
+        printf("年龄：%d\n", curr->patient->age);
+        printf("当前状态：%s\n", get_med_status_text(curr->patient->status));
     
         // 获取最新接诊记录
-        ConsultRecordNode* latest_record = find_latest_consult_record_for_patient(patient_list[i]->id, doctor_id);
+        ConsultRecordNode* latest_record = find_latest_consult_record_for_patient(curr->patient->id, doctor_id);
         
         // 本次处理类型 / 诊疗决策文字
         if (latest_record != NULL)
@@ -603,18 +767,32 @@ void doctor_view_processed_patients(const char* doctor_id)
             printf("本次处理类型：暂无\n");
         
         // 最近一次诊断结论
-        if (patient_list[i]->diagnosis_text[0] != '\0')
-            printf("最近诊断结论：%s\n", patient_list[i]->diagnosis_text);
+        if (latest_record != NULL && latest_record->diagnosis_text[0] != '\0')
+            printf("最近诊断结论：%s\n", latest_record->diagnosis_text);
+        else if (curr->patient->diagnosis_text[0] != '\0')
+            printf("最近诊断结论：%s\n", curr->patient->diagnosis_text);
         else
             printf("最近诊断结论：暂无\n");
         
         // 最近一次处理意见
-        if (patient_list[i]->treatment_advice[0] != '\0')
-            printf("最近处理意见：%s\n", patient_list[i]->treatment_advice);
+        if (latest_record != NULL && latest_record->treatment_advice[0] != '\0')
+            printf("最近处理意见：%s\n", latest_record->treatment_advice);
+        else if (curr->patient->treatment_advice[0] != '\0')
+            printf("最近处理意见：%s\n", curr->patient->treatment_advice);
         else
             printf("最近处理意见：暂无\n");
         
         printf("----------------------------------------------\n");
+        curr = curr->next;
+    }
+    
+    // 释放链表
+    curr = patient_list;
+    while (curr != NULL)
+    {
+        PatientPtrNode* temp = curr;
+        curr = curr->next;
+        free(temp);
     }
 }
 
@@ -704,14 +882,21 @@ void doctor_view_processed_patient_detail(const char* doctor_id, const char* pat
     // 当前状态
     printf("当前状态：%s\n", get_med_status_text(patient->status));
     
-    // 当前就诊类型
-    if (patient->status == STATUS_RECHECK_PENDING)
-        printf("当前就诊类型：复诊\n");
-    else if (patient->status == STATUS_PENDING)
-        printf("当前就诊类型：初诊\n");
-    
     // 获取最新接诊记录
     ConsultRecordNode* latest_record = find_latest_consult_record_for_patient(patient_id, doctor_id);
+    
+    // 当前就诊类型
+    if (latest_record != NULL)
+    {
+        if (latest_record->pre_status == STATUS_RECHECK_PENDING)
+            printf("当前就诊类型：复诊\n");
+        else if (latest_record->pre_status == STATUS_PENDING)
+            printf("当前就诊类型：初诊\n");
+    }
+    else
+    {
+        printf("当前就诊类型：未知\n");
+    }
     
     // 本次处理类型 / 诊疗决策文字
     if (latest_record != NULL)
@@ -720,13 +905,17 @@ void doctor_view_processed_patient_detail(const char* doctor_id, const char* pat
         printf("本次处理类型：暂无\n");
     
     // 最近一次诊断结论
-    if (patient->diagnosis_text[0] != '\0')
+    if (latest_record != NULL && latest_record->diagnosis_text[0] != '\0')
+        printf("最近诊断结论：%s\n", latest_record->diagnosis_text);
+    else if (patient->diagnosis_text[0] != '\0')
         printf("最近诊断结论：%s\n", patient->diagnosis_text);
     else
         printf("最近诊断结论：暂无\n");
     
     // 最近一次处理意见
-    if (patient->treatment_advice[0] != '\0')
+    if (latest_record != NULL && latest_record->treatment_advice[0] != '\0')
+        printf("最近处理意见：%s\n", latest_record->treatment_advice);
+    else if (patient->treatment_advice[0] != '\0')
         printf("最近处理意见：%s\n", patient->treatment_advice);
     else
         printf("最近处理意见：暂无\n");

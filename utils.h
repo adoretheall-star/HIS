@@ -42,4 +42,7 @@ int is_valid_date_string(const char* date_str);
 // 8. 安全的字符串复制函数
 void safe_copy_string(char* dest, int dest_size, const char* src);
 
+// 9. 获取单个字符（用于 Y/N 确认等场景）
+char get_single_char(const char* prompt);
+
 #endif

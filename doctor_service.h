@@ -14,11 +14,26 @@ const char* get_patient_name_by_id(const char* patient_id);
 // 1. 查看指定医生的待诊患者
 void show_waiting_patients_by_doctor(const char* doctor_id);
 
-// 获取指定医生的待诊患者列表（返回患者数量）
-int get_waiting_patients_by_doctor(const char* doctor_id, PatientNode** patient_list);
+// 获取指定医生的待诊患者列表（返回链表）
+PatientPtrNode* get_waiting_patients_by_doctor(const char* doctor_id);
 
-// 获取指定医生的已处理患者列表（返回患者数量）
-int get_processed_patients_by_doctor(const char* doctor_id, PatientNode** patient_list);
+// 获取医生的已处理患者列表（用于显示）
+PatientPtrNode* get_processed_patients_by_doctor(const char* doctor_id);
+
+// 辅助函数：释放患者指针链表
+void free_patient_ptr_list(PatientPtrNode* head);
+
+// 辅助函数：获取患者指针链表长度
+int get_patient_ptr_list_count(PatientPtrNode* head);
+
+// 辅助函数：从患者指针链表中获取第 N 个患者
+PatientNode* get_nth_patient_from_ptr_list(PatientPtrNode* head, int index);
+
+// 辅助函数：在患者指针链表中查找患者位置
+int find_patient_position_in_ptr_list(PatientPtrNode* head, PatientNode* patient);
+
+// 辅助函数：从患者指针链表中获取指定位置后第 N 个患者
+PatientNode* get_patient_after_position_in_ptr_list(PatientPtrNode* head, int position, int offset);
 
 // 2. 医生查看患者接诊前概览
 void doctor_view_patient_overview(const char* doctor_id, const char* patient_id);

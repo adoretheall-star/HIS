@@ -50,7 +50,7 @@ MedicineNode* find_medicine_by_id(MedicineNode* head, const char* target_id);
 // ==========================================
 //四、病房链表操作
 WardNode* init_ward_list();
-WardNode* create_ward_node(const char* bed_id);
+WardNode* create_ward_node(const char* room_id, const char* bed_id, WardType ward_type);
 void insert_ward_tail(WardNode* head, WardNode* new_node);
 WardNode* find_ward_by_id(WardNode* head, const char* target_bed_id);
 // ==========================================
@@ -86,7 +86,6 @@ CheckItemNode* init_check_item_list();
 CheckItemNode* create_check_item_node(const char* item_id, const char* item_name, const char* dept, double price, MedicareType m_type);
 void insert_check_item_tail(CheckItemNode* head, CheckItemNode* new_node);
 CheckItemNode* find_check_item_by_id(CheckItemNode* head, const char* target_item_id);
-int find_check_items_by_dept(CheckItemNode* head, const char* dept, CheckItemNode** result_list);
 
 // ==========================================
 // 八、检查记录链表操作
@@ -104,8 +103,10 @@ CheckRecordNode* create_check_record_node(
     int is_paid
 );
 void insert_check_record_tail(CheckRecordNode* head, CheckRecordNode* new_node);
-int get_check_records_by_patient(CheckRecordNode* head, const char* patient_id, CheckRecordNode** result_list);
-int update_check_result(CheckRecordNode* head, const char* record_id, const char* result);
+CheckRecordPtrNode* get_check_records_by_patient(CheckRecordNode* head, const char* patient_id);
+void free_check_record_ptr_list(CheckRecordPtrNode* head);
+CheckItemPtrNode* find_check_items_by_dept(CheckItemNode* head, const char* dept);
+void free_check_item_ptr_list(CheckItemPtrNode* head);
 
 // ==========================================
 // 九、安全预警队列操作
@@ -129,5 +130,27 @@ ComplaintNode* create_complaint_node(
     const char* submit_time
 );
 void insert_complaint_tail(ComplaintNode* head, ComplaintNode* new_node);
+
+
+// ==========================================
+//六、住院记录链表操作
+// ==========================================
+InpatientRecord* create_inpatient_record_head();
+InpatientRecord* create_inpatient_record_node(
+    const char* inpatient_id,
+    const char* patient_id,
+    const char* bed_id,
+    WardType ward_type,
+    WardType recommended_ward_type,
+    int estimated_days,
+    int days_stayed,
+    double deposit_balance,
+    int is_active
+);
+void insert_inpatient_record_tail(InpatientRecord* head, InpatientRecord* new_node);
+// ==========================================
+// 链表销毁函数
+// ==========================================
+void destroy_all_lists();
 
 #endif // LIST_OPS_H

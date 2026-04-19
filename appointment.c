@@ -86,7 +86,7 @@ static int validate_appointment_target(const char* appoint_doctor, const char* a
     if (has_doctor)
     {
         doctor = find_doctor_by_id(g_doctor_list, appoint_doctor);
-        if (doctor == NULL || doctor->is_on_duty != 1)
+        if (doctor == NULL)
         {
             printf("⚠️ 指定医生不存在，预约登记失败！\n");
             return 0;
@@ -94,7 +94,7 @@ static int validate_appointment_target(const char* appoint_doctor, const char* a
 
         if (doctor->is_on_duty != 1)
         {
-            printf("鈿狅笍 鎸囧畾鍖荤敓褰撳墠鏈€肩彮锛岄绾︾櫥璁板け璐ワ紒\n");
+            printf("⚠️ 指定医生当前未值班，预约登记失败！\n");
             return 0;
         }
 
@@ -476,7 +476,7 @@ static DoctorNode* select_doctor_for_appointment(const AppointmentNode* appointm
     if (strlen(appointment->appoint_doctor) > 0)
     {
         doctor = find_doctor_by_id(g_doctor_list, appointment->appoint_doctor);
-        if (doctor == NULL)
+        if (doctor == NULL || doctor->is_on_duty != 1)
         {
             return NULL;
         }

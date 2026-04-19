@@ -665,25 +665,13 @@ void show_load_monitoring(void)
     int recheck_count = 0;
     int completed_count = 0;
     int no_show_count = 0;
-    int dept_count = 0;
-    int i;
-    int found;
 
     DoctorNode* doctor_curr = NULL;
     PatientNode* patient_curr = NULL;
     
-    // 用于存储科室信息的临时数组
-    char departments[50][MAX_NAME_LEN];
-    int dept_doctor_counts[50];
-    int dept_queue_lengths[50];
-
-    // 初始化科室数组
-    for (i = 0; i < 50; i++)
-    {
-        departments[i][0] = '\0';
-        dept_doctor_counts[i] = 0;
-        dept_queue_lengths[i] = 0;
-    }
+    // 用于存储科室信息的临时链表
+    DeptStatNode* dept_list = NULL;
+    DeptStatNode* dept_tail = NULL;
 
     // 统计医生总数和各医生排队人数
     if (g_doctor_list != NULL && g_doctor_list->next != NULL)
@@ -694,23 +682,42 @@ void show_load_monitoring(void)
             doctor_count++;
             
             // 统计科室信息
-            found = 0;
-            for (i = 0; i < dept_count; i++)
+            DeptStatNode* existing_dept = dept_list;
+            int found = 0;
+            while (existing_dept != NULL)
             {
-                if (strcmp(departments[i], doctor_curr->department) == 0)
+                if (strcmp(existing_dept->department, doctor_curr->department) == 0)
                 {
-                    dept_doctor_counts[i]++;
-                    dept_queue_lengths[i] += doctor_curr->queue_length;
+                    existing_dept->doctor_count++;
+                    existing_dept->queue_length += doctor_curr->queue_length;
                     found = 1;
                     break;
                 }
+                existing_dept = existing_dept->next;
             }
-            if (!found && dept_count < 50)
+            if (!found)
             {
-                strcpy(departments[dept_count], doctor_curr->department);
-                dept_doctor_counts[dept_count] = 1;
-                dept_queue_lengths[dept_count] = doctor_curr->queue_length;
-                dept_count++;
+                // 创建新的科室统计节点
+                DeptStatNode* new_dept = (DeptStatNode*)malloc(sizeof(DeptStatNode));
+                if (new_dept != NULL)
+                {
+                    strcpy(new_dept->department, doctor_curr->department);
+                    new_dept->doctor_count = 1;
+                    new_dept->queue_length = doctor_curr->queue_length;
+                    new_dept->next = NULL;
+
+                    // 添加到链表
+                    if (dept_list == NULL)
+                    {
+                        dept_list = new_dept;
+                        dept_tail = new_dept;
+                    }
+                    else
+                    {
+                        dept_tail->next = new_dept;
+                        dept_tail = new_dept;
+                    }
+                }
             }
             
             doctor_curr = doctor_curr->next;
@@ -787,14 +794,16 @@ void show_load_monitoring(void)
     printf("------------------------------------------------------\n");
     printf("科室名称            医生人数    科室总排队人数\n");
     printf("------------------------------------------------------\n");
-    if (dept_count > 0)
+    if (dept_list != NULL)
     {
-        for (i = 0; i < dept_count; i++)
+        DeptStatNode* curr_dept = dept_list;
+        while (curr_dept != NULL)
         {
             printf("%-18s %-10d %-16d\n", 
-                departments[i], 
-                dept_doctor_counts[i], 
-                dept_queue_lengths[i]);
+                curr_dept->department, 
+                curr_dept->doctor_count, 
+                curr_dept->queue_length);
+            curr_dept = curr_dept->next;
         }
     }
     else
@@ -806,6 +815,15 @@ void show_load_monitoring(void)
     printf("======================================================\n");
     printf("提示：此面板数据实时更新，可作为系统运行监控参考。\n");
     printf("======================================================\n");
+    
+    // 释放科室链表
+    DeptStatNode* curr_dept = dept_list;
+    while (curr_dept != NULL)
+    {
+        DeptStatNode* temp = curr_dept;
+        curr_dept = curr_dept->next;
+        free(temp);
+    }
 }
 
 // 显示公共状态统计摘要
