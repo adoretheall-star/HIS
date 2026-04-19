@@ -40,7 +40,7 @@ static DoctorNode* g_current_doctor = NULL;
 
 // 这里未来会引入你们自己写的头文件
 // #include "global.h"     // 全局常量与结构体定义
-// #include "data_io.h"    // 负责读写 txt 文件的模块
+#include "data_io.h"    // 负责读写 txt 文件的模块
 // #include "auth.h"       // 负责登录与权限的模块
 // #include "utils.h"      // 存放 get_safe_int 终端输入拦截器等工具函数
 // 辅助函数声明
@@ -3295,136 +3295,151 @@ int main()
     g_complaint_list = init_complaint_list();
     g_inpatient_list = create_inpatient_record_head();
 
-    // ==============================================
-    // 检查项目字典初始化
-    // ==============================================
-    // 放射科检查项目
-    insert_check_item_tail(g_check_item_list, create_check_item_node("C-001", "X光检查", "放射科", 150.0, MEDICARE_CLASS_A));
-    insert_check_item_tail(g_check_item_list, create_check_item_node("C-002", "CT扫描", "放射科", 800.0, MEDICARE_CLASS_B));
-    insert_check_item_tail(g_check_item_list, create_check_item_node("C-003", "增强CT", "放射科", 1200.0, MEDICARE_CLASS_B));
-    
-    // 影像科检查项目
-    insert_check_item_tail(g_check_item_list, create_check_item_node("C-004", "MRI磁共振", "影像科", 1200.0, MEDICARE_CLASS_B));
-    insert_check_item_tail(g_check_item_list, create_check_item_node("C-005", "PET-CT", "影像科", 8000.0, MEDICARE_NONE));
-    
-    // 超声科检查项目
-    insert_check_item_tail(g_check_item_list, create_check_item_node("C-006", "腹部B超", "超声科", 200.0, MEDICARE_CLASS_B));
-    insert_check_item_tail(g_check_item_list, create_check_item_node("C-007", "心脏彩超", "超声科", 350.0, MEDICARE_CLASS_B));
-    insert_check_item_tail(g_check_item_list, create_check_item_node("C-008", "妇科B超", "超声科", 180.0, MEDICARE_CLASS_B));
-    insert_check_item_tail(g_check_item_list, create_check_item_node("C-009", "甲状腺B超", "超声科", 150.0, MEDICARE_CLASS_B));
-    
-    // 检验科检查项目
-    insert_check_item_tail(g_check_item_list, create_check_item_node("C-010", "血常规", "检验科", 50.0, MEDICARE_CLASS_A));
-    insert_check_item_tail(g_check_item_list, create_check_item_node("C-011", "生化全项", "检验科", 300.0, MEDICARE_CLASS_A));
-    insert_check_item_tail(g_check_item_list, create_check_item_node("C-012", "肝功能", "检验科", 120.0, MEDICARE_CLASS_A));
-    insert_check_item_tail(g_check_item_list, create_check_item_node("C-013", "肾功能", "检验科", 100.0, MEDICARE_CLASS_A));
-    insert_check_item_tail(g_check_item_list, create_check_item_node("C-014", "血糖检测", "检验科", 30.0, MEDICARE_CLASS_A));
-    insert_check_item_tail(g_check_item_list, create_check_item_node("C-015", "血脂四项", "检验科", 80.0, MEDICARE_CLASS_A));
-    insert_check_item_tail(g_check_item_list, create_check_item_node("C-016", "凝血功能", "检验科", 150.0, MEDICARE_CLASS_A));
-    insert_check_item_tail(g_check_item_list, create_check_item_node("C-017", "尿常规", "检验科", 30.0, MEDICARE_CLASS_A));
-    
-    // 心电图室检查项目
-    insert_check_item_tail(g_check_item_list, create_check_item_node("C-018", "心电图", "心电图室", 80.0, MEDICARE_CLASS_A));
-    insert_check_item_tail(g_check_item_list, create_check_item_node("C-019", "动态心电图", "心电图室", 300.0, MEDICARE_CLASS_A));
+    // 加载存档数据
+    load_all_data();
 
-    // 2. 注入一组极端测试数据
-    insert_patient_tail(g_patient_list, create_patient_node(
+    // ==============================================
+    // 仅当没有读取到管理员账号时，才注入系统初始数据
+    // ==============================================
+    if (g_account_list->next == NULL)
+    {
+        printf("⚠️ 首次运行系统，正在注入基础测试数据...\n");
+        
+        // ==============================================
+        // 检查项目字典初始化
+        // ==============================================
+        // 放射科检查项目
+        insert_check_item_tail(g_check_item_list, create_check_item_node("C-001", "X光检查", "放射科", 150.0, MEDICARE_CLASS_A));
+        insert_check_item_tail(g_check_item_list, create_check_item_node("C-002", "CT扫描", "放射科", 800.0, MEDICARE_CLASS_B));
+        insert_check_item_tail(g_check_item_list, create_check_item_node("C-003", "增强CT", "放射科", 1200.0, MEDICARE_CLASS_B));
+        
+        // 影像科检查项目
+        insert_check_item_tail(g_check_item_list, create_check_item_node("C-004", "MRI磁共振", "影像科", 1200.0, MEDICARE_CLASS_B));
+        insert_check_item_tail(g_check_item_list, create_check_item_node("C-005", "PET-CT", "影像科", 8000.0, MEDICARE_NONE));
+        
+        // 超声科检查项目
+        insert_check_item_tail(g_check_item_list, create_check_item_node("C-006", "腹部B超", "超声科", 200.0, MEDICARE_CLASS_B));
+        insert_check_item_tail(g_check_item_list, create_check_item_node("C-007", "心脏彩超", "超声科", 350.0, MEDICARE_CLASS_B));
+        insert_check_item_tail(g_check_item_list, create_check_item_node("C-008", "妇科B超", "超声科", 180.0, MEDICARE_CLASS_B));
+        insert_check_item_tail(g_check_item_list, create_check_item_node("C-009", "甲状腺B超", "超声科", 150.0, MEDICARE_CLASS_B));
+        
+        // 检验科检查项目
+        insert_check_item_tail(g_check_item_list, create_check_item_node("C-010", "血常规", "检验科", 50.0, MEDICARE_CLASS_A));
+        insert_check_item_tail(g_check_item_list, create_check_item_node("C-011", "生化全项", "检验科", 300.0, MEDICARE_CLASS_A));
+        insert_check_item_tail(g_check_item_list, create_check_item_node("C-012", "肝功能", "检验科", 120.0, MEDICARE_CLASS_A));
+        insert_check_item_tail(g_check_item_list, create_check_item_node("C-013", "肾功能", "检验科", 100.0, MEDICARE_CLASS_A));
+        insert_check_item_tail(g_check_item_list, create_check_item_node("C-014", "血糖检测", "检验科", 30.0, MEDICARE_CLASS_A));
+        insert_check_item_tail(g_check_item_list, create_check_item_node("C-015", "血脂四项", "检验科", 80.0, MEDICARE_CLASS_A));
+        insert_check_item_tail(g_check_item_list, create_check_item_node("C-016", "凝血功能", "检验科", 150.0, MEDICARE_CLASS_A));
+        insert_check_item_tail(g_check_item_list, create_check_item_node("C-017", "尿常规", "检验科", 30.0, MEDICARE_CLASS_A));
+        
+        // 心电图室检查项目
+        insert_check_item_tail(g_check_item_list, create_check_item_node("C-018", "心电图", "心电图室", 80.0, MEDICARE_CLASS_A));
+        insert_check_item_tail(g_check_item_list, create_check_item_node("C-019", "动态心电图", "心电图室", 300.0, MEDICARE_CLASS_A));
+
+        // 2. 注入一组极端测试数据
+        insert_patient_tail(g_patient_list, create_patient_node(
 "P-001", "张三", 19, "110101199001011234"
 ));
-    // 各科室医生数据
-    insert_doctor_tail(g_doctor_list, create_doctor_node("D-001", "李建国", "内科"));
-    insert_doctor_tail(g_doctor_list, create_doctor_node("D-002", "王大明", "外科"));
-    insert_doctor_tail(g_doctor_list, create_doctor_node("D-003", "张小红", "妇产科"));
-    insert_doctor_tail(g_doctor_list, create_doctor_node("D-004", "刘小华", "儿科"));
-    insert_doctor_tail(g_doctor_list, create_doctor_node("D-005", "陈伟强", "骨科"));
-    insert_doctor_tail(g_doctor_list, create_doctor_node("D-006", "赵丽华", "心血管内科"));
-    insert_doctor_tail(g_doctor_list, create_doctor_node("D-007", "孙卫东", "呼吸内科"));
-    insert_doctor_tail(g_doctor_list, create_doctor_node("D-008", "周秀芳", "消化内科"));
-    insert_doctor_tail(g_doctor_list, create_doctor_node("D-009", "吴明德", "神经内科"));
-    insert_doctor_tail(g_doctor_list, create_doctor_node("D-010", "郑美玲", "内分泌科"));
-    insert_doctor_tail(g_doctor_list, create_doctor_node("D-011", "黄志强", "肾内科"));
-    insert_doctor_tail(g_doctor_list, create_doctor_node("D-012", "林建华", "泌尿外科"));
-    insert_doctor_tail(g_doctor_list, create_doctor_node("D-013", "何晓燕", "肿瘤科"));
-    insert_doctor_tail(g_doctor_list, create_doctor_node("D-014", "罗伟民", "急诊科"));
-    insert_doctor_tail(g_doctor_list, create_doctor_node("D-015", "梁丽萍", "眼科"));
-    insert_doctor_tail(g_doctor_list, create_doctor_node("D-016", "谢国华", "耳鼻喉科"));
-    insert_doctor_tail(g_doctor_list, create_doctor_node("D-017", "马文婷", "口腔科"));
-    insert_doctor_tail(g_doctor_list, create_doctor_node("D-018", "唐俊杰", "皮肤科"));
-    insert_doctor_tail(g_doctor_list, create_doctor_node("D-019", "许文静", "风湿免疫科"));
-    insert_doctor_tail(g_doctor_list, create_doctor_node("D-020", "杨浩然", "感染科"));
-    insert_doctor_tail(g_doctor_list, create_doctor_node("D-021", "胡晓峰", "精神科"));
-    insert_doctor_tail(g_doctor_list, create_doctor_node("D-022", "朱秀兰", "康复医学科"));
-    insert_doctor_tail(g_doctor_list, create_doctor_node("D-023", "韩伟东", "普通外科"));
-    insert_doctor_tail(g_doctor_list, create_doctor_node("D-024", "曹丽华", "肝胆外科"));
-    insert_doctor_tail(g_doctor_list, create_doctor_node("D-025", "蒋志明", "心胸外科"));
-    insert_doctor_tail(g_doctor_list, create_doctor_node("D-026", "丁晓明", "神经外科"));
-    insert_doctor_tail(g_doctor_list, create_doctor_node("D-027", "冯彩霞", "全科"));
-    
-    // ==============================================
-    // 辅助检查科室（不直接接诊患者，提供检查服务）
-    // ==============================================
-    insert_doctor_tail(g_doctor_list, create_doctor_node("D-101", "放射科", "放射科"));
-    insert_doctor_tail(g_doctor_list, create_doctor_node("D-102", "影像科", "影像科"));
-    insert_doctor_tail(g_doctor_list, create_doctor_node("D-103", "检验科", "检验科"));
-    insert_doctor_tail(g_doctor_list, create_doctor_node("D-104", "超声科", "超声科"));
-    insert_doctor_tail(g_doctor_list, create_doctor_node("D-105", "心电图室", "心电图室"));
-    
-    insert_medicine_tail(g_medicine_list, create_medicine_node(
+        // 各科室医生数据
+        insert_doctor_tail(g_doctor_list, create_doctor_node("D-001", "李建国", "内科"));
+        insert_doctor_tail(g_doctor_list, create_doctor_node("D-002", "王大明", "外科"));
+        insert_doctor_tail(g_doctor_list, create_doctor_node("D-003", "张小红", "妇产科"));
+        insert_doctor_tail(g_doctor_list, create_doctor_node("D-004", "刘小华", "儿科"));
+        insert_doctor_tail(g_doctor_list, create_doctor_node("D-005", "陈伟强", "骨科"));
+        insert_doctor_tail(g_doctor_list, create_doctor_node("D-006", "赵丽华", "心血管内科"));
+        insert_doctor_tail(g_doctor_list, create_doctor_node("D-007", "孙卫东", "呼吸内科"));
+        insert_doctor_tail(g_doctor_list, create_doctor_node("D-008", "周秀芳", "消化内科"));
+        insert_doctor_tail(g_doctor_list, create_doctor_node("D-009", "吴明德", "神经内科"));
+        insert_doctor_tail(g_doctor_list, create_doctor_node("D-010", "郑美玲", "内分泌科"));
+        insert_doctor_tail(g_doctor_list, create_doctor_node("D-011", "黄志强", "肾内科"));
+        insert_doctor_tail(g_doctor_list, create_doctor_node("D-012", "林建华", "泌尿外科"));
+        insert_doctor_tail(g_doctor_list, create_doctor_node("D-013", "何晓燕", "肿瘤科"));
+        insert_doctor_tail(g_doctor_list, create_doctor_node("D-014", "罗伟民", "急诊科"));
+        insert_doctor_tail(g_doctor_list, create_doctor_node("D-015", "梁丽萍", "眼科"));
+        insert_doctor_tail(g_doctor_list, create_doctor_node("D-016", "谢国华", "耳鼻喉科"));
+        insert_doctor_tail(g_doctor_list, create_doctor_node("D-017", "马文婷", "口腔科"));
+        insert_doctor_tail(g_doctor_list, create_doctor_node("D-018", "唐俊杰", "皮肤科"));
+        insert_doctor_tail(g_doctor_list, create_doctor_node("D-019", "许文静", "风湿免疫科"));
+        insert_doctor_tail(g_doctor_list, create_doctor_node("D-020", "杨浩然", "感染科"));
+        insert_doctor_tail(g_doctor_list, create_doctor_node("D-021", "胡晓峰", "精神科"));
+        insert_doctor_tail(g_doctor_list, create_doctor_node("D-022", "朱秀兰", "康复医学科"));
+        insert_doctor_tail(g_doctor_list, create_doctor_node("D-023", "韩伟东", "普通外科"));
+        insert_doctor_tail(g_doctor_list, create_doctor_node("D-024", "曹丽华", "肝胆外科"));
+        insert_doctor_tail(g_doctor_list, create_doctor_node("D-025", "蒋志明", "心胸外科"));
+        insert_doctor_tail(g_doctor_list, create_doctor_node("D-026", "丁晓明", "神经外科"));
+        insert_doctor_tail(g_doctor_list, create_doctor_node("D-027", "冯彩霞", "全科"));
+        
+        // ==============================================
+        // 辅助检查科室（不直接接诊患者，提供检查服务）
+        // ==============================================
+        insert_doctor_tail(g_doctor_list, create_doctor_node("D-101", "放射科", "放射科"));
+        insert_doctor_tail(g_doctor_list, create_doctor_node("D-102", "影像科", "影像科"));
+        insert_doctor_tail(g_doctor_list, create_doctor_node("D-103", "检验科", "检验科"));
+        insert_doctor_tail(g_doctor_list, create_doctor_node("D-104", "超声科", "超声科"));
+        insert_doctor_tail(g_doctor_list, create_doctor_node("D-105", "心电图室", "心电图室"));
+        
+        insert_medicine_tail(g_medicine_list, create_medicine_node(
 "M-001", "阿莫西林", "阿莫", "阿莫西林胶囊", 15.5, 100, MEDICARE_CLASS_A, "2027-04-01"));
-    insert_appointment_tail(g_appointment_list, create_appointment_node(
+        insert_appointment_tail(g_appointment_list, create_appointment_node(
 "A-001", "P-001", "2026-04-01", "上午", "D-001", "外科", RESERVED
 ));
-    insert_ward_tail(g_ward_list, create_ward_node(
+        insert_ward_tail(g_ward_list, create_ward_node(
 "W-101", "B-101", WARD_TYPE_GENERAL
 ));
-    insert_account_tail(g_account_list, create_account_node(
+        insert_account_tail(g_account_list, create_account_node(
 "admin", "123456", "超级管理员"
 , ROLE_ADMIN));
-    insert_account_tail(g_account_list, create_account_node(
+        insert_account_tail(g_account_list, create_account_node(
 "nurse", "123456", "护士"
 , ROLE_NURSE));
-    // 各科室医生账户（密码均为123456）
-    insert_account_tail(g_account_list, create_account_node("D-001", "123456", "李建国-内科", ROLE_DOCTOR));
-    insert_account_tail(g_account_list, create_account_node("D-002", "123456", "王大明-外科", ROLE_DOCTOR));
-    insert_account_tail(g_account_list, create_account_node("D-003", "123456", "张小红-妇产科", ROLE_DOCTOR));
-    insert_account_tail(g_account_list, create_account_node("D-004", "123456", "刘小华-儿科", ROLE_DOCTOR));
-    insert_account_tail(g_account_list, create_account_node("D-005", "123456", "陈伟强-骨科", ROLE_DOCTOR));
-    insert_account_tail(g_account_list, create_account_node("D-006", "123456", "赵丽华-心血管内科", ROLE_DOCTOR));
-    insert_account_tail(g_account_list, create_account_node("D-007", "123456", "孙卫东-呼吸内科", ROLE_DOCTOR));
-    insert_account_tail(g_account_list, create_account_node("D-008", "123456", "周秀芳-消化内科", ROLE_DOCTOR));
-    insert_account_tail(g_account_list, create_account_node("D-009", "123456", "吴明德-神经内科", ROLE_DOCTOR));
-    insert_account_tail(g_account_list, create_account_node("D-010", "123456", "郑美玲-内分泌科", ROLE_DOCTOR));
-    insert_account_tail(g_account_list, create_account_node("D-014", "123456", "罗伟民-急诊科", ROLE_DOCTOR));
-    insert_account_tail(g_account_list, create_account_node("D-015", "123456", "梁丽萍-眼科", ROLE_DOCTOR));
-    insert_account_tail(g_account_list, create_account_node("D-016", "123456", "谢国华-耳鼻喉科", ROLE_DOCTOR));
-    insert_account_tail(g_account_list, create_account_node("D-017", "123456", "马文婷-口腔科", ROLE_DOCTOR));
-    insert_account_tail(g_account_list, create_account_node("D-018", "123456", "唐俊杰-皮肤科", ROLE_DOCTOR));
-    insert_account_tail(g_account_list, create_account_node("D-027", "123456", "冯彩霞-全科", ROLE_DOCTOR));
-    insert_account_tail(g_account_list, create_account_node(
+        // 各科室医生账户（密码均为123456）
+        insert_account_tail(g_account_list, create_account_node("D-001", "123456", "李建国-内科", ROLE_DOCTOR));
+        insert_account_tail(g_account_list, create_account_node("D-002", "123456", "王大明-外科", ROLE_DOCTOR));
+        insert_account_tail(g_account_list, create_account_node("D-003", "123456", "张小红-妇产科", ROLE_DOCTOR));
+        insert_account_tail(g_account_list, create_account_node("D-004", "123456", "刘小华-儿科", ROLE_DOCTOR));
+        insert_account_tail(g_account_list, create_account_node("D-005", "123456", "陈伟强-骨科", ROLE_DOCTOR));
+        insert_account_tail(g_account_list, create_account_node("D-006", "123456", "赵丽华-心血管内科", ROLE_DOCTOR));
+        insert_account_tail(g_account_list, create_account_node("D-007", "123456", "孙卫东-呼吸内科", ROLE_DOCTOR));
+        insert_account_tail(g_account_list, create_account_node("D-008", "123456", "周秀芳-消化内科", ROLE_DOCTOR));
+        insert_account_tail(g_account_list, create_account_node("D-009", "123456", "吴明德-神经内科", ROLE_DOCTOR));
+        insert_account_tail(g_account_list, create_account_node("D-010", "123456", "郑美玲-内分泌科", ROLE_DOCTOR));
+        insert_account_tail(g_account_list, create_account_node("D-014", "123456", "罗伟民-急诊科", ROLE_DOCTOR));
+        insert_account_tail(g_account_list, create_account_node("D-015", "123456", "梁丽萍-眼科", ROLE_DOCTOR));
+        insert_account_tail(g_account_list, create_account_node("D-016", "123456", "谢国华-耳鼻喉科", ROLE_DOCTOR));
+        insert_account_tail(g_account_list, create_account_node("D-017", "123456", "马文婷-口腔科", ROLE_DOCTOR));
+        insert_account_tail(g_account_list, create_account_node("D-018", "123456", "唐俊杰-皮肤科", ROLE_DOCTOR));
+        insert_account_tail(g_account_list, create_account_node("D-027", "123456", "冯彩霞-全科", ROLE_DOCTOR));
+        insert_account_tail(g_account_list, create_account_node(
 "pharm", "123456", "药剂师"
 , ROLE_PHARMACIST));
 
-    // 3. 打印核验
-    printf("✅ 引擎全部就绪！\n"
+        // 3. 打印核验
+        printf("✅ 引擎全部就绪！\n"
 );
-    printf(" -> 测试患者: %s\n"
+        printf(" -> 测试患者: %s\n"
 , g_patient_list->next->name);
-    printf(" -> 测试医生: %s (%s)\n"
+        printf(" -> 测试医生: %s (%s)\n"
 , g_doctor_list->next->name, g_doctor_list->next->department);
-    printf(" -> 测试药品: %s (库存:%d)\n"
+        printf(" -> 测试药品: %s (库存:%d)\n"
 , g_medicine_list->next->name, g_medicine_list->next->stock);
-    printf(" -> 测试预约: %s (%s %s)\n"
+        printf(" -> 测试预约: %s (%s %s)\n"
 , g_appointment_list->next->appointment_id, g_appointment_list->next->appointment_date, g_appointment_list->next->appointment_slot);
-    printf(" -> 测试床位: %s\n"
+        printf(" -> 测试床位: %s\n"
 , g_ward_list->next->bed_id);
-    printf(" -> 测试超管: %s (权限级别:%d)\n\n"
+        printf(" -> 测试超管: %s (权限级别:%d)\n\n"
 , g_account_list->next->real_name, g_account_list->next->role);
 // 测试查找引擎
-    PatientNode* search_result = find_patient_by_id(g_patient_list, "P-001");
-    if (search_result != NULL) {
-        printf("🔍 雷达搜索成功！找到目标：患者姓名 [%s]，当前余额 [%.2f]\n\n", search_result->name, search_result->balance);
-    } else {
-        printf("❌ 雷达搜索失败，查无此人！\n\n");
+        PatientNode* search_result = find_patient_by_id(g_patient_list, "P-001");
+        if (search_result != NULL) {
+            printf("🔍 雷达搜索成功！找到目标：患者姓名 [%s]，当前余额 [%.2f]\n\n", search_result->name, search_result->balance);
+        } else {
+            printf("❌ 雷达搜索失败，查无此人！\n\n");
+        }
+    }
+    else
+    {
+        printf("📂 成功从本地加载了存档数据！\n");
     }
     // 🚀 时停魔法：按任意键后才清屏进入菜单！
     system(
@@ -3478,12 +3493,10 @@ int main()
     // 第三阶段：系统清理与安全退出 (数据持久化)
     // ---------------------------------------------------------
     printf("\n======================================================\n");
-    printf("     💾 正在保存数据到本地文件 (XOR 加密处理)...\n");
+    printf("     💾 正在保存系统数据到本地文件...\n");
     
     // 这里未来调用 data_io.c 里的函数，把当前双向链表的数据覆盖写入 txt
-    // save_patient_list();
-    // save_doctor_list();
-    // save_medicine_list();
+    save_all_data();
 
     printf("     🧹 正在释放链表内存，清空回收站...\n");
     // 销毁所有双向链表，防止内存泄漏 (非常重要，代码检查必看)
