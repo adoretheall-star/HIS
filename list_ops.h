@@ -11,7 +11,7 @@
 // 1. 初始化带头结点的双向链表
 PatientNode* init_patient_list();
 // 2. 创建一个干净的患者节点
-PatientNode* create_patient_node(const char* id, const char* name, int age, const char* id_card);
+PatientNode* create_patient_node(const char* id, const char* name, int age, char gender, const char* id_card);
 // 3. 尾部安全插入法
 void insert_patient_tail(PatientNode* head, PatientNode* new_node);
 // 4. 按 ID 查找患者 (防瞎找)
@@ -27,7 +27,7 @@ AppointmentNode* find_appointment_by_id(AppointmentNode* head, const char* targe
 // ==========================================
 //三、医生链表操作
 DoctorNode* init_doctor_list();
-DoctorNode* create_doctor_node(const char* id, const char* name, const char* dept);
+DoctorNode* create_doctor_node(const char* id, const char* name, char gender, const char* dept);
 void insert_doctor_tail(DoctorNode* head, DoctorNode* new_node);
 DoctorNode* find_doctor_by_id(DoctorNode* head, const char* target_id);
 // ==========================================
@@ -57,7 +57,7 @@ WardNode* find_ward_by_id(WardNode* head, const char* target_bed_id);
 // ==========================================
 //五、系统账号链表操作
 AccountNode* init_account_list();
-AccountNode* create_account_node(const char* username, const char* pwd, const char* real_name, RoleType role);
+AccountNode* create_account_node(const char* username, const char* pwd, const char* real_name, char gender, RoleType role);
 void insert_account_tail(AccountNode* head, AccountNode* new_node);
 AccountNode* find_account_by_username(AccountNode* head, const char* target_username);
 // ==========================================

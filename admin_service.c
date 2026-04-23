@@ -120,7 +120,7 @@ void show_all_accounts(void)
 }
 
 // 注册新员工账号
-int register_account(const char* username, const char* password, const char* real_name, RoleType role)
+int register_account(const char* username, const char* password, const char* real_name, char gender, RoleType role)
 {
     AccountNode* existing = NULL;
     AccountNode* new_account = NULL;
@@ -157,7 +157,7 @@ int register_account(const char* username, const char* password, const char* rea
         return 0;
     }
 
-    new_account = create_account_node(username, password, real_name, role);
+    new_account = create_account_node(username, password, real_name, gender, role);
     if (new_account == NULL)
     {
         printf("提示：创建账号失败。\n");

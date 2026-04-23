@@ -57,7 +57,7 @@ PatientNode* init_patient_list()
 // ---------------------------------------------------------
 // 功能 2：在内存中捏造一个“干净”的患者节点
 // ---------------------------------------------------------
-PatientNode* create_patient_node(const char* id, const char* name, int age, const char* id_card) {
+PatientNode* create_patient_node(const char* id, const char* name, int age, char gender, const char* id_card) {
     PatientNode* new_node = (PatientNode*)malloc(sizeof(PatientNode));
     if (new_node == NULL) return NULL;
 
@@ -68,6 +68,7 @@ PatientNode* create_patient_node(const char* id, const char* name, int age, cons
     strncpy(new_node->name, name, MAX_NAME_LEN - 1);
     new_node->name[MAX_NAME_LEN - 1] = '\0';
     new_node->age = age;
+    new_node->gender = gender;
     
     strncpy(new_node->id_card, id_card, MAX_ID_LEN - 1);
     new_node->id_card[MAX_ID_LEN - 1] = '\0';
@@ -217,14 +218,14 @@ DoctorNode* init_doctor_list()
     return head;
 }
 
-DoctorNode* create_doctor_node(const char* id, const char* name, const char* dept) 
-{
+DoctorNode* create_doctor_node(const char* id, const char* name, char gender, const char* dept) {
     DoctorNode* new_node = (DoctorNode*)malloc(sizeof(DoctorNode));
     if (new_node == NULL) return NULL;
     strncpy(new_node->id, id, MAX_ID_LEN - 1);
     new_node->id[MAX_ID_LEN - 1] = '\0';
     strncpy(new_node->name, name, MAX_NAME_LEN - 1);
     new_node->name[MAX_NAME_LEN - 1] = '\0';
+    new_node->gender = gender;
     strncpy(new_node->department, dept, MAX_NAME_LEN - 1);
     new_node->department[MAX_NAME_LEN - 1] = '\0';
     new_node->queue_length = 0; // 初始排队人数为0
@@ -387,7 +388,7 @@ AccountNode* init_account_list()
     return head;
 }
 
-AccountNode* create_account_node(const char* username, const char* pwd, const char* real_name, RoleType role) 
+AccountNode* create_account_node(const char* username, const char* pwd, const char* real_name, char gender, RoleType role) 
 {
     AccountNode* new_node = (AccountNode*)malloc(sizeof(AccountNode));
     if (new_node == NULL) return NULL;
@@ -397,6 +398,7 @@ AccountNode* create_account_node(const char* username, const char* pwd, const ch
     new_node->password[MAX_ID_LEN - 1] = '\0';
     strncpy(new_node->real_name, real_name, MAX_NAME_LEN - 1);
     new_node->real_name[MAX_NAME_LEN - 1] = '\0';
+    new_node->gender = gender;
     new_node->role = role;
     new_node->is_on_duty = 1; // 初始值班中
     new_node->error_count = 0;
