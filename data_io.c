@@ -20,6 +20,41 @@ static void trim_newline(char* str) {
     }
 }
 
+static int split_line_by_delimiter(const char* line, char delimiter, char** fields, int max_fields) {
+    if (line == NULL || fields == NULL || max_fields <= 0) return 0;
+    
+    static char line_copy[8192];
+    strncpy(line_copy, line, sizeof(line_copy) - 1);
+    line_copy[sizeof(line_copy) - 1] = '\0';
+    
+    int count = 0;
+    char* start = line_copy;
+    char* p = line_copy;
+    
+    while (*p && count < max_fields) {
+        if (*p == delimiter) {
+            *p = '\0';
+            fields[count++] = start;
+            start = p + 1;
+        }
+        p++;
+    }
+    fields[count++] = start;
+    
+    return count;
+}
+
+static int get_field_count(const char* line, char delimiter) {
+    if (line == NULL) return 0;
+    int count = 1;
+    const char* p = line;
+    while (*p) {
+        if (*p == delimiter) count++;
+        p++;
+    }
+    return count;
+}
+
 int save_patient_list(PatientNode* head) {
     if (head == NULL) return 0;
     ensure_data_dir();
@@ -34,7 +69,7 @@ int save_patient_list(PatientNode* head) {
             char temp[128];
             strcpy(prescription_str, "");
             while (p != NULL) {
-                sprintf(temp, "%s:%d", p->med_id, p->quantity);
+                snprintf(temp, sizeof(temp), "%s:%d", p->med_id, p->quantity);
                 if (strlen(prescription_str) > 0) {
                     strcat(prescription_str, ",");
                 }
@@ -81,15 +116,9 @@ int load_patient_list(PatientNode** head) {
         long queue_time;
 
         char* fields[30];
-        int field_count = 0;
-        char* token = strtok(line, "|");
-        while (token != NULL && field_count < 30) {
-            fields[field_count++] = token;
-            token = strtok(NULL, "|");
-        }
+        int field_count = split_line_by_delimiter(line, '|', fields, 30);
 
-        if (field_count < 25) {
-            token = strtok(NULL, "");
+        if (field_count < 26) {
             continue;
         }
 
@@ -194,9 +223,21 @@ int load_appointment_list(AppointmentNode** head) {
         int appointment_status, fee_paid, is_walk_in;
         double reg_fee;
 
-        sscanf(line, "%[^|]|%[^|]|%[^|]|%[^|]|%[^|]|%[^|]|%d|%lf|%d|%d",
-            appointment_id, patient_id, appointment_date, appointment_slot,
-            appoint_doctor, appoint_dept, &appointment_status, &reg_fee, &fee_paid, &is_walk_in);
+        char* fields[15];
+        int field_count = split_line_by_delimiter(line, '|', fields, 15);
+        
+        if (field_count < 10) continue;
+        
+        strcpy(appointment_id, fields[0]);
+        strcpy(patient_id, fields[1]);
+        strcpy(appointment_date, fields[2]);
+        strcpy(appointment_slot, fields[3]);
+        strcpy(appoint_doctor, fields[4]);
+        strcpy(appoint_dept, fields[5]);
+        appointment_status = atoi(fields[6]);
+        reg_fee = atof(fields[7]);
+        fee_paid = atoi(fields[8]);
+        is_walk_in = atoi(fields[9]);
 
         AppointmentNode* new_node = create_appointment_node(
             appointment_id, patient_id, appointment_date, appointment_slot,
@@ -288,8 +329,19 @@ int load_medicine_list(MedicineNode** head) {
         double price;
         int stock, m_type;
 
-        sscanf(line, "%[^|]|%[^|]|%[^|]|%[^|]|%lf|%d|%d|%[^|]",
-            id, name, alias, generic_name, &price, &stock, &m_type, expiry_date);
+        char* fields[10];
+        int field_count = split_line_by_delimiter(line, '|', fields, 10);
+        
+        if (field_count < 8) continue;
+        
+        strcpy(id, fields[0]);
+        strcpy(name, fields[1]);
+        strcpy(alias, fields[2]);
+        strcpy(generic_name, fields[3]);
+        price = atof(fields[4]);
+        stock = atoi(fields[5]);
+        m_type = atoi(fields[6]);
+        strcpy(expiry_date, fields[7]);
 
         MedicineNode* new_node = create_medicine_node(
             id, name, alias, generic_name, price, stock, m_type, expiry_date);
@@ -330,7 +382,16 @@ int load_ward_list(WardNode** head) {
         char room_id[MAX_ID_LEN], bed_id[MAX_ID_LEN], patient_id[MAX_ID_LEN];
         int ward_type, is_occupied;
 
-        sscanf(line, "%[^|]|%[^|]|%d|%d|%[^|]", room_id, bed_id, &ward_type, &is_occupied, patient_id);
+        char* fields[10];
+        int field_count = split_line_by_delimiter(line, '|', fields, 10);
+        
+        if (field_count < 5) continue;
+        
+        strcpy(room_id, fields[0]);
+        strcpy(bed_id, fields[1]);
+        ward_type = atoi(fields[2]);
+        is_occupied = atoi(fields[3]);
+        strcpy(patient_id, fields[4]);
 
         WardNode* new_node = create_ward_node(room_id, bed_id, ward_type);
         if (new_node == NULL) continue;
@@ -375,8 +436,18 @@ int load_account_list(AccountNode** head) {
         int role, error_count, is_on_duty;
         long lock_time;
 
-        sscanf(line, "%[^|]|%[^|]|%[^|]|%d|%d|%ld|%d",
-            username, password, real_name, &role, &error_count, &lock_time, &is_on_duty);
+        char* fields[10];
+        int field_count = split_line_by_delimiter(line, '|', fields, 10);
+        
+        if (field_count < 7) continue;
+        
+        strcpy(username, fields[0]);
+        strcpy(password, fields[1]);
+        strcpy(real_name, fields[2]);
+        role = atoi(fields[3]);
+        error_count = atoi(fields[4]);
+        lock_time = atol(fields[5]);
+        is_on_duty = atoi(fields[6]);
 
         AccountNode* new_node = create_account_node(username, password, real_name, role);
         if (new_node == NULL) continue;
@@ -425,10 +496,23 @@ int load_consult_record_list(ConsultRecordNode** head) {
         char feedback[MAX_RECORD_LEN];
         int decision, pre_status, post_status, star_rating;
 
-        sscanf(line, "%[^|]|%[^|]|%[^|]|%[^|]|%[^|]|%[^|]|%[^|]|%d|%d|%d|%d|%[^|]",
-            record_id, patient_id, doctor_id, appointment_id, consult_time,
-            diagnosis_text, treatment_advice, &decision, &pre_status, &post_status,
-            &star_rating, feedback);
+        char* fields[15];
+        int field_count = split_line_by_delimiter(line, '|', fields, 15);
+        
+        if (field_count < 12) continue;
+        
+        strcpy(record_id, fields[0]);
+        strcpy(patient_id, fields[1]);
+        strcpy(doctor_id, fields[2]);
+        strcpy(appointment_id, fields[3]);
+        strcpy(consult_time, fields[4]);
+        strcpy(diagnosis_text, fields[5]);
+        strcpy(treatment_advice, fields[6]);
+        decision = atoi(fields[7]);
+        pre_status = atoi(fields[8]);
+        post_status = atoi(fields[9]);
+        star_rating = atoi(fields[10]);
+        strcpy(feedback, fields[11]);
 
         ConsultRecordNode* new_node = create_consult_record_node(
             record_id, patient_id, doctor_id, appointment_id, consult_time,
@@ -474,7 +558,16 @@ int load_check_item_list(CheckItemNode** head) {
         double price;
         int m_type;
 
-        sscanf(line, "%[^|]|%[^|]|%[^|]|%lf|%d", item_id, item_name, dept, &price, &m_type);
+        char* fields[10];
+        int field_count = split_line_by_delimiter(line, '|', fields, 10);
+        
+        if (field_count < 5) continue;
+        
+        strcpy(item_id, fields[0]);
+        strcpy(item_name, fields[1]);
+        strcpy(dept, fields[2]);
+        price = atof(fields[3]);
+        m_type = atoi(fields[4]);
 
         CheckItemNode* new_node = create_check_item_node(item_id, item_name, dept, price, m_type);
         if (new_node == NULL) continue;
@@ -517,9 +610,20 @@ int load_check_record_list(CheckRecordNode** head) {
         char result[MAX_RECORD_LEN];
         int is_completed, is_paid;
 
-        sscanf(line, "%[^|]|%[^|]|%[^|]|%[^|]|%[^|]|%[^|]|%[^|]|%d|%d",
-            record_id, patient_id, item_id, item_name, dept, check_time, result,
-            &is_completed, &is_paid);
+        char* fields[15];
+        int field_count = split_line_by_delimiter(line, '|', fields, 15);
+        
+        if (field_count < 9) continue;
+        
+        strcpy(record_id, fields[0]);
+        strcpy(patient_id, fields[1]);
+        strcpy(item_id, fields[2]);
+        strcpy(item_name, fields[3]);
+        strcpy(dept, fields[4]);
+        strcpy(check_time, fields[5]);
+        strcpy(result, fields[6]);
+        is_completed = atoi(fields[7]);
+        is_paid = atoi(fields[8]);
 
         CheckRecordNode* new_node = create_check_record_node(
             record_id, patient_id, item_id, item_name, dept, check_time, result,
@@ -696,10 +800,11 @@ int save_inpatient_list(InpatientRecord* head) {
 
     InpatientRecord* curr = head->next;
     while (curr != NULL) {
-        fprintf(fp, "%s|%s|%s|%d|%d|%d|%d|%.2f|%d\n",
+        fprintf(fp, "%s|%s|%s|%d|%d|%d|%d|%.2f|%d|%ld\n",
             curr->inpatient_id, curr->patient_id, curr->bed_id,
             curr->ward_type, curr->recommended_ward_type, curr->estimated_days,
-            curr->days_stayed, curr->deposit_balance, curr->is_active);
+            curr->days_stayed, curr->deposit_balance, curr->is_active,
+            (long)curr->last_settlement_time);
         curr = curr->next;
     }
     fclose(fp);
@@ -719,15 +824,30 @@ int load_inpatient_list(InpatientRecord** head) {
         char inpatient_id[MAX_ID_LEN], patient_id[MAX_ID_LEN], bed_id[MAX_ID_LEN];
         int ward_type, recommended_ward_type, estimated_days, days_stayed, is_active;
         double deposit_balance;
+        long last_settlement_time;
 
-        sscanf(line, "%[^|]|%[^|]|%[^|]|%d|%d|%d|%d|%lf|%d",
-            inpatient_id, patient_id, bed_id, &ward_type, &recommended_ward_type,
-            &estimated_days, &days_stayed, &deposit_balance, &is_active);
+        char* fields[15];
+        int field_count = split_line_by_delimiter(line, '|', fields, 15);
+        
+        if (field_count < 10) continue;
+        
+        strcpy(inpatient_id, fields[0]);
+        strcpy(patient_id, fields[1]);
+        strcpy(bed_id, fields[2]);
+        ward_type = atoi(fields[3]);
+        recommended_ward_type = atoi(fields[4]);
+        estimated_days = atoi(fields[5]);
+        days_stayed = atoi(fields[6]);
+        deposit_balance = atof(fields[7]);
+        is_active = atoi(fields[8]);
+        last_settlement_time = atol(fields[9]);
 
         InpatientRecord* new_node = create_inpatient_record_node(
             inpatient_id, patient_id, bed_id, ward_type, recommended_ward_type,
             estimated_days, days_stayed, deposit_balance, is_active);
         if (new_node == NULL) continue;
+        
+        new_node->last_settlement_time = last_settlement_time;
 
         insert_inpatient_record_tail(*head, new_node);
     }

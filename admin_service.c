@@ -3,6 +3,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
+#include <errno.h>
+#include <math.h> // 用于 isnan, isinf 函数
 #include "admin_service.h"
 #include "list_ops.h"
 #include "medicine_service.h"
@@ -115,7 +117,7 @@ int register_account(const char* username, const char* password, const char* rea
         role == ROLE_PHARMACIST ? "药师" : "未知");
     
     // 记录日志
-    sprintf(description, "真实姓名：%s，角色：%s", real_name, 
+    snprintf(description, sizeof(description), "真实姓名：%s，角色：%s", real_name, 
         role == ROLE_ADMIN ? "管理员" :
         role == ROLE_NURSE ? "护士" :
         role == ROLE_DOCTOR ? "医生" :
@@ -240,35 +242,35 @@ int update_account_basic_info(
         
         if (name_changed && password_changed && role_changed)
         {
-            sprintf(description, "修改了姓名、密码和角色");
+            snprintf(description, sizeof(description), "修改了姓名、密码和角色");
         }
         else if (name_changed && password_changed)
         {
-            sprintf(description, "修改了姓名和密码");
+            snprintf(description, sizeof(description), "修改了姓名和密码");
         }
         else if (name_changed && role_changed)
         {
-            sprintf(description, "修改了姓名和角色");
+            snprintf(description, sizeof(description), "修改了姓名和角色");
         }
         else if (password_changed && role_changed)
         {
-            sprintf(description, "修改了密码和角色");
+            snprintf(description, sizeof(description), "修改了密码和角色");
         }
         else if (name_changed)
         {
-            sprintf(description, "修改了姓名");
+            snprintf(description, sizeof(description), "修改了姓名");
         }
         else if (password_changed)
         {
-            sprintf(description, "修改了密码");
+            snprintf(description, sizeof(description), "修改了密码");
         }
         else if (role_changed)
         {
-            sprintf(description, "修改了角色");
+            snprintf(description, sizeof(description), "修改了角色");
         }
         else
         {
-            sprintf(description, "修改了资料");
+            snprintf(description, sizeof(description), "修改了资料");
         }
         
         add_log("修改员工资料", username, description);
@@ -370,7 +372,7 @@ int update_doctor_duty_status(const char* doctor_id, int new_status)
     }
 
     // 记录日志
-    sprintf(description, "医生：%s，新状态：%s", doctor->name, new_status ? "值班中" : "未值班");
+    snprintf(description, sizeof(description), "医生：%s，新状态：%s", doctor->name, new_status ? "值班中" : "未值班");
     add_log("医生值班状态修改", doctor->id, description);
     return 1;
 }
@@ -990,7 +992,7 @@ int update_nurse_duty_status(const char* username, int new_status)
                 account_curr->is_on_duty = new_status;
                 found = 1;
                 // 记录日志
-                sprintf(description, "护士：%s，新状态：%s", account_curr->real_name, new_status ? "值班中" : "未值班");
+                snprintf(description, sizeof(description), "护士：%s，新状态：%s", account_curr->real_name, new_status ? "值班中" : "未值班");
                 add_log("护士值班状态修改", account_curr->username, description);
                 break;
             }
@@ -1102,22 +1104,84 @@ void handle_medicine_register(void)
     int stock;
     int medicare_type;
 
-    printf("\n================ 新增药品 ================\n");
-    get_safe_string("请输入商品名: ", name, MAX_MED_NAME_LEN);
-    get_safe_string("请输入别名（可留空）: ", alias, MAX_ALIAS_LEN);
-    get_safe_string("请输入通用名: ", generic_name, MAX_GENERIC_NAME_LEN);
-    price = get_safe_double("请输入药品单价: ");
-    stock = get_safe_int("请输入初始库存: ");
-    printf("医保类型：0=非医保 1=甲类医保 2=乙类医保\n");
-    medicare_type = get_safe_int("请输入医保类型编号: ");
-    get_safe_string("请输入效期（YYYY-MM-DD）: ", expiry_date, MAX_DATE_LEN);
-
-    if (medicare_type != MEDICARE_NONE &&
-        medicare_type != MEDICARE_CLASS_A &&
-        medicare_type != MEDICARE_CLASS_B)
+    printf("\n================ 新增药品 ===============-\n");
+    printf("提示：任意输入项输入 'B' 可返回上一级菜单\n\n");
+    
+    // 商品名（必填）
+    while (1)
     {
-        printf("提示：医保类型非法，新增药品已取消。\n");
-        return;
+        if (!get_form_string("请输入商品名（输入 B 返回上一级）: ", name, MAX_MED_NAME_LEN))
+        {
+            return; // 返回上一级
+        }
+        if (is_blank_string(name))
+        {
+            printf("商品名不能为空，请重新输入\n");
+            continue;
+        }
+        break;
+    }
+    
+    // 别名（选填）
+    if (!get_form_string("请输入别名（可留空，输入 B 返回上一级）: ", alias, MAX_ALIAS_LEN))
+    {
+        return; // 返回上一级
+    }
+    
+    // 通用名（必填）
+    while (1)
+    {
+        if (!get_form_string("请输入通用名（输入 B 返回上一级）: ", generic_name, MAX_GENERIC_NAME_LEN))
+        {
+            return; // 返回上一级
+        }
+        if (is_blank_string(generic_name))
+        {
+            printf("通用名不能为空，请重新输入\n");
+            continue;
+        }
+        break;
+    }
+    
+    // 单价（必填）
+    while (1)
+    {
+        if (!get_form_double("请输入药品单价（输入 B 返回上一级）: ", &price, 0, "单价必须是大于 0 的数字，请重新输入\n"))
+        {
+            return; // 返回上一级
+        }
+        break;
+    }
+    
+    // 库存（必填）
+    while (1)
+    {
+        if (!get_form_int("请输入初始库存（输入 B 返回上一级）: ", &stock, 0, 999999, "库存必须是大于等于 0 的整数，请重新输入\n"))
+        {
+            return; // 返回上一级
+        }
+        break;
+    }
+    
+    // 医保类型（必填）
+    printf("医保类型：0=非医保 1=甲类医保 2=乙类医保\n");
+    while (1)
+    {
+        if (!get_form_int("请输入医保类型编号（输入 B 返回上一级）: ", &medicare_type, 0, 2, "医保类型输入非法，请重新输入\n"))
+        {
+            return; // 返回上一级
+        }
+        break;
+    }
+    
+    // 效期（必填）
+    while (1)
+    {
+        if (!get_form_date("请输入效期（YYYY-MM-DD，输入 B 返回上一级）: ", expiry_date, MAX_DATE_LEN))
+        {
+            return; // 返回上一级
+        }
+        break;
     }
 
     register_medicine(
@@ -1135,43 +1199,134 @@ void handle_medicine_basic_info_update(void)
 {
     char med_id[MAX_ID_LEN];
     char new_name[MAX_MED_NAME_LEN];
-    char alias_input[MAX_ALIAS_LEN];
+    char new_alias[MAX_ALIAS_LEN];
     char new_generic_name[MAX_GENERIC_NAME_LEN];
     char new_expiry_date[MAX_DATE_LEN];
     const char* alias_ptr = NULL;
-    double new_price;
-    int alias_action;
+    double new_price = -1.0; // 初始化为-1，表示不修改
 
-    printf("\n================ 修改药品基础信息 ================\n");
-    get_safe_string("请输入药品编号: ", med_id, MAX_ID_LEN);
-    get_safe_string("请输入新商品名（直接回车表示不修改）: ", new_name, MAX_MED_NAME_LEN);
-    get_safe_string("请输入新通用名（直接回车表示不修改）: ", new_generic_name, MAX_GENERIC_NAME_LEN);
-    new_price = get_safe_double("请输入新单价（<=0 表示不修改）: ");
-    get_safe_string("请输入新效期（YYYY-MM-DD，直接回车表示不修改）: ", new_expiry_date, MAX_DATE_LEN);
+    printf("\n================ 修改药品基础信息 ===============-\n");
 
-    printf("别名修改方式：\n");
-    printf("  [0] 不修改别名\n");
-    printf("  [1] 清空别名\n");
-    printf("  [2] 输入新别名\n");
-    alias_action = get_safe_int("👉 请输入操作编号: ");
-    if (alias_action == 1)
+    // 1. 药品编号（必填）
+    MedicineNode* medicine_node = NULL;
+    while (1)
     {
-        alias_input[0] = '\0';
-        alias_ptr = alias_input;
-    }
-    else if (alias_action == 2)
-    {
-        get_safe_string("请输入新别名: ", alias_input, MAX_ALIAS_LEN);
-        alias_ptr = alias_input;
+        get_safe_string("请输入药品编号（输入 B 返回上一级）: ", med_id, MAX_ID_LEN);
+        
+        // 检查是否输入B/b返回上一级
+        if (strcmp(med_id, "B") == 0 || strcmp(med_id, "b") == 0)
+        {
+            return;
+        }
+        
+        // 检查是否为空
+        if (is_blank_string(med_id))
+        {
+            printf("药品编号不能为空，请重新输入\n");
+            continue;
+        }
+        
+        // 检查药品是否存在
+        medicine_node = find_medicine_by_id(g_medicine_list, med_id);
+        if (medicine_node == NULL)
+        {
+            printf("未找到编号为 %s 的药品，修改流程结束\n", med_id);
+            return;
+        }
+        
+        break;
     }
 
+    // 显示当前药品信息
+    printf("\n------------- 当前药品信息 ------------\n");
+    printf("药品编号：%s\n", medicine_node->id);
+    printf("商品名：%s\n", medicine_node->name);
+    printf("通用名：%s\n", medicine_node->generic_name);
+    printf("别名：%s\n", (medicine_node->alias[0] == '\0') ? "无" : medicine_node->alias);
+    printf("单价：%.2f\n", medicine_node->price);
+    printf("库存：%d\n", medicine_node->stock);
+    
+    // 显示医保类型
+    switch (medicine_node->m_type)
+    {
+        case MEDICARE_NONE:
+            printf("医保类型：非医保\n");
+            break;
+        case MEDICARE_CLASS_A:
+            printf("医保类型：甲类医保\n");
+            break;
+        case MEDICARE_CLASS_B:
+            printf("医保类型：乙类医保\n");
+            break;
+        default:
+            printf("医保类型：未知\n");
+            break;
+    }
+    printf("效期：%s\n", medicine_node->expiry_date);
+    printf("----------------------------------------\n");
+
+    // 2. 商品名（选填，空白字符串表示不修改）
+    get_safe_string("请输入新商品名（留空不修改，输入 B 返回上一级）: ", new_name, MAX_MED_NAME_LEN);
+    if (strcmp(new_name, "B") == 0 || strcmp(new_name, "b") == 0)
+    {
+        return;
+    }
+
+    // 3. 通用名（选填，空白字符串表示不修改）
+    get_safe_string("请输入新通用名（留空不修改，输入 B 返回上一级）: ", new_generic_name, MAX_GENERIC_NAME_LEN);
+    if (strcmp(new_generic_name, "B") == 0 || strcmp(new_generic_name, "b") == 0)
+    {
+        return;
+    }
+
+    // 4. 别名（选填，输入 B 返回上一级，空字符串表示清空）
+    get_safe_string("请输入新别名（留空不修改，输入 B 返回上一级，输入空字符串清空别名）: ", new_alias, MAX_ALIAS_LEN);
+    if (strcmp(new_alias, "B") == 0 || strcmp(new_alias, "b") == 0)
+    {
+        return;
+    }
+    if (!is_blank_string(new_alias))
+    {
+        alias_ptr = new_alias;
+    }
+
+    // 5. 单价（选填，-1 表示不修改）
+    while (1)
+    {
+        char price_str[32];
+        get_safe_string("请输入新单价（留空不修改，输入 B 返回上一级）: ", price_str, sizeof(price_str));
+        if (strcmp(price_str, "B") == 0 || strcmp(price_str, "b") == 0)
+        {
+            return;
+        }
+        if (is_blank_string(price_str))
+        {
+            new_price = -1.0; // 保持不变
+            break;
+        }
+        if (sscanf(price_str, "%lf", &new_price) != 1 || new_price <= 0)
+        {
+            printf("单价必须是大于 0 的数字，请重新输入\n");
+            continue;
+        }
+        break;
+    }
+
+    // 6. 效期（选填，空白字符串表示不修改）
+    get_safe_string("请输入新效期（留空不修改，输入 B 返回上一级）: ", new_expiry_date, MAX_DATE_LEN);
+    if (strcmp(new_expiry_date, "B") == 0 || strcmp(new_expiry_date, "b") == 0)
+    {
+        return;
+    }
+
+    // 调用 update_medicine_basic_info 函数
     update_medicine_basic_info(
         med_id,
-        new_name,
+        is_blank_string(new_name) ? NULL : new_name,
         alias_ptr,
-        new_generic_name,
+        is_blank_string(new_generic_name) ? NULL : new_generic_name,
         new_price,
-        new_expiry_date
+        is_blank_string(new_expiry_date) ? NULL : new_expiry_date
     );
 }
 
@@ -1180,13 +1335,67 @@ void handle_medicine_stock_update(void)
     char med_id[MAX_ID_LEN];
     int new_stock;
 
-    printf("\n================ 修改药品库存 ================\n");
-    get_safe_string("请输入药品编号: ", med_id, MAX_ID_LEN);
-    new_stock = get_safe_int("请输入新库存: ");
+    printf("\n================ 修改药品库存 ===============-\n");
+    printf("提示：输入 'B' 可返回上一级菜单\n\n");
+
+    while (1)
+    {
+        get_safe_string("请输入药品编号（输入 B 返回上一级）: ", med_id, MAX_ID_LEN);
+        if (strcmp(med_id, "B") == 0 || strcmp(med_id, "b") == 0)
+        {
+            return;
+        }
+        if (is_blank_string(med_id))
+        {
+            printf("药品编号不能为空，请重新输入\n");
+            continue;
+        }
+        break;
+    }
+
+    while (1)
+    {
+        char stock_str[32];
+        get_safe_string("请输入新库存数量（输入 B 返回上一级）: ", stock_str, sizeof(stock_str));
+        if (strcmp(stock_str, "B") == 0 || strcmp(stock_str, "b") == 0)
+        {
+            return;
+        }
+        if (sscanf(stock_str, "%d", &new_stock) != 1 || new_stock < 0)
+        {
+            printf("库存数量必须是大于等于 0 的整数，请重新输入\n");
+            continue;
+        }
+        break;
+    }
+
     update_medicine_stock(med_id, new_stock);
 }
 
-void handle_expiring_medicine_check(void)
+void handle_medicine_search(void)
+{
+    char keyword[MAX_MED_NAME_LEN];
+
+    printf("\n================ 查询药品 ===============-\n");
+    get_safe_string("请输入查询关键词: ", keyword, MAX_MED_NAME_LEN);
+    search_medicine_by_keyword(keyword);
+}
+
+void handle_medicine_show_all(void)
+{
+    show_all_medicines();
+}
+
+void handle_medicine_low_stock(void)
+{
+    int threshold;
+
+    printf("\n================ 低库存药品 ===============-\n");
+    threshold = get_safe_int("请输入低库存阈值: ");
+    show_low_stock_medicines(threshold);
+}
+
+void handle_medicine_expiring(void)
 {
     char today[MAX_DATE_LEN];
     int days_threshold;
@@ -1206,7 +1415,7 @@ void handle_medicine_dispense(void)
 {
     char patient_id[MAX_ID_LEN];
 
-    printf("\n================ 发药处理 ================\n");
+    printf("\n================ 发药处理 ===============-\n");
     show_paid_patients_waiting_for_dispense();
     printf("------------------------------------------------------\n");
     get_safe_string("请输入要发药的患者编号: ", patient_id, MAX_ID_LEN);
@@ -1216,9 +1425,60 @@ void handle_medicine_dispense(void)
 void handle_medicine_remove(void)
 {
     char med_id[MAX_ID_LEN];
+    MedicineNode* medicine = NULL;
+    int confirm;
 
-    printf("\n================ 下架药品 ================\n");
+    printf("\n================ 下架药品 ===============-\n");
     get_safe_string("请输入要下架的药品编号: ", med_id, MAX_ID_LEN);
+
+    // 查找药品是否存在
+    medicine = find_medicine_by_id(g_medicine_list, med_id);
+    if (medicine == NULL)
+    {
+        printf("提示：未找到对应药品，下架失败。\n");
+        return;
+    }
+
+    // 显示药品基本信息
+    printf("\n当前药品信息：\n");
+    printf("药品编号：%s\n", medicine->id);
+    printf("商品名：%s\n", medicine->name);
+    printf("通用名：%s\n", medicine->generic_name);
+    printf("别名：%s\n", medicine->alias[0] == '\0' ? "无" : medicine->alias);
+    printf("单价：%.2f\n", medicine->price);
+    printf("库存：%d\n", medicine->stock);
+    // 显示医保类型
+    switch (medicine->m_type)
+    {
+        case MEDICARE_NONE:
+            printf("医保类型：非医保\n");
+            break;
+        case MEDICARE_CLASS_A:
+            printf("医保类型：甲类医保\n");
+            break;
+        case MEDICARE_CLASS_B:
+            printf("医保类型：乙类医保\n");
+            break;
+        default:
+            printf("医保类型：未知\n");
+            break;
+    }
+    printf("效期：%s\n", medicine->expiry_date);
+    printf("----------------------------------------\n");
+
+    // 二次确认
+    printf("是否确定下架该药品？\n");
+    printf("[1] 确定下架\n");
+    printf("[0] 取消返回\n");
+    confirm = get_safe_int("请输入操作编号: ");
+
+    if (confirm != 1)
+    {
+        printf("提示：已取消下架操作。\n");
+        return;
+    }
+
+    // 执行下架操作
     remove_medicine(med_id);
 }
 
@@ -1257,64 +1517,236 @@ void add_log(const char* operation, const char* target, const char* description)
     // 获取当前时间
     time(&now);
     local_time = localtime(&now);
-    strftime(new_log->timestamp, 20, "%Y-%m-%d %H:%M:%S", local_time);
-    
-    strncpy(new_log->operation, operation, 49);
-    new_log->operation[49] = '\0';
-    strncpy(new_log->target, target, 49);
-    new_log->target[49] = '\0';
-    strncpy(new_log->description, description, 199);
-    new_log->description[199] = '\0';
+    strftime(new_log->timestamp, sizeof(new_log->timestamp), "%Y-%m-%d %H:%M:%S", local_time);
 
-    new_log->next = NULL;
-
-    // 将新日志添加到链表末尾
-    if (g_log_list != NULL)
+    // 复制操作、目标和描述
+    if (operation != NULL)
     {
-        curr = g_log_list;
-        while (curr->next != NULL)
-        {
-            curr = curr->next;
-        }
-        curr->next = new_log;
-    }
-}
-
-// 显示日志
-void show_logs(void)
-{
-    LogNode* curr = NULL;
-    int log_count = 0;
-
-    printf("\n======================================================\n");
-    printf("                  操作日志\n");
-    printf("======================================================\n");
-    printf("【日志列表】\n");
-    printf("------------------------------------------------------\n");
-
-    if (g_log_list != NULL && g_log_list->next != NULL)
-    {
-        curr = g_log_list->next;
-        while (curr != NULL)
-        {
-            log_count++;
-            printf("[%s] %s - %s\n", curr->timestamp, curr->operation, curr->target);
-            printf("  %s\n", curr->description);
-            printf("------------------------------------------------------\n");
-            curr = curr->next;
-        }
-    }
-
-    if (log_count == 0)
-    {
-        printf("当前无日志记录\n");
-        printf("------------------------------------------------------\n");
+        strncpy(new_log->operation, operation, sizeof(new_log->operation) - 1);
+        new_log->operation[sizeof(new_log->operation) - 1] = '\0';
     }
     else
     {
-        printf("共 %d 条日志记录\n", log_count);
-        printf("------------------------------------------------------\n");
+        new_log->operation[0] = '\0';
     }
 
+    if (target != NULL)
+    {
+        strncpy(new_log->target, target, sizeof(new_log->target) - 1);
+        new_log->target[sizeof(new_log->target) - 1] = '\0';
+    }
+    else
+    {
+        new_log->target[0] = '\0';
+    }
+
+    if (description != NULL)
+    {
+        strncpy(new_log->description, description, sizeof(new_log->description) - 1);
+        new_log->description[sizeof(new_log->description) - 1] = '\0';
+    }
+    else
+    {
+        new_log->description[0] = '\0';
+    }
+
+    // 添加到链表尾部
+    curr = g_log_list;
+    while (curr->next != NULL)
+    {
+        curr = curr->next;
+    }
+    curr->next = new_log;
+    new_log->next = NULL;
+}
+
+// 显示系统日志
+void show_system_logs(void)
+{
+    LogNode* curr = NULL;
+    int count = 0;
+
+    if (g_log_list == NULL || g_log_list->next == NULL)
+    {
+        printf("当前暂无系统日志\n");
+        return;
+    }
+
+    printf("\n==============================================================\n");
+    printf("                        系统日志\n");
+    printf("==============================================================\n");
+    printf("时间                  操作          目标          描述\n");
+    printf("--------------------------------------------------------------\n");
+
+    curr = g_log_list->next;
+    while (curr != NULL)
+    {
+        printf("%-20s %-10s %-10s %-s\n", 
+            curr->timestamp, 
+            curr->operation, 
+            curr->target, 
+            curr->description);
+        count++;
+        curr = curr->next;
+    }
+
+    printf("--------------------------------------------------------------\n");
+    printf("日志总数：%d\n", count);
+    printf("==============================================================\n");
+}
+
+// 清理日志（保留最近 N 条）
+void clean_logs(int keep_count)
+{
+    LogNode* curr = NULL;
+    LogNode* prev = NULL;
+    LogNode* temp = NULL;
+    int count = 0;
+    int to_delete = 0;
+
+    if (g_log_list == NULL || g_log_list->next == NULL)
+    {
+        return;
+    }
+
+    // 统计日志总数
+    curr = g_log_list->next;
+    while (curr != NULL)
+    {
+        count++;
+        curr = curr->next;
+    }
+
+    // 计算需要删除的日志数量
+    to_delete = count - keep_count;
+    if (to_delete <= 0)
+    {
+        return;
+    }
+
+    // 删除最旧的 to_delete 条日志
+    curr = g_log_list->next;
+    prev = g_log_list;
+    while (curr != NULL && to_delete > 0)
+    {
+        temp = curr;
+        curr = curr->next;
+        prev->next = curr;
+        free(temp);
+        to_delete--;
+    }
+}
+
+// 显示医保类型统计
+void show_medicare_statistics(void)
+{
+    MedicineNode* curr = NULL;
+    int total_count = 0;
+    int none_count = 0;
+    int class_a_count = 0;
+    int class_b_count = 0;
+
+    if (g_medicine_list == NULL || g_medicine_list->next == NULL)
+    {
+        printf("当前暂无药品数据\n");
+        return;
+    }
+
+    curr = g_medicine_list->next;
+    while (curr != NULL)
+    {
+        total_count++;
+        switch (curr->m_type)
+        {
+            case MEDICARE_NONE:
+                none_count++;
+                break;
+            case MEDICARE_CLASS_A:
+                class_a_count++;
+                break;
+            case MEDICARE_CLASS_B:
+                class_b_count++;
+                break;
+            default:
+                break;
+        }
+        curr = curr->next;
+    }
+
+    printf("\n======================================================\n");
+    printf("                  医保类型统计\n");
     printf("======================================================\n");
+    printf("药品总数：%d\n", total_count);
+    printf("非医保药品数：%d (%.1f%%)\n", none_count, total_count > 0 ? (float)none_count / total_count * 100 : 0);
+    printf("甲类医保药品数：%d (%.1f%%)\n", class_a_count, total_count > 0 ? (float)class_a_count / total_count * 100 : 0);
+    printf("乙类医保药品数：%d (%.1f%%)\n", class_b_count, total_count > 0 ? (float)class_b_count / total_count * 100 : 0);
+    printf("======================================================\n");
+}
+
+// 显示药品价格分布
+void show_price_distribution(void)
+{
+    MedicineNode* curr = NULL;
+    int total_count = 0;
+    int price_0_50 = 0;
+    int price_50_100 = 0;
+    int price_100_500 = 0;
+    int price_500_1000 = 0;
+    int price_1000_plus = 0;
+
+    if (g_medicine_list == NULL || g_medicine_list->next == NULL)
+    {
+        printf("当前暂无药品数据\n");
+        return;
+    }
+
+    curr = g_medicine_list->next;
+    while (curr != NULL)
+    {
+        total_count++;
+        if (curr->price < 50)
+        {
+            price_0_50++;
+        }
+        else if (curr->price < 100)
+        {
+            price_50_100++;
+        }
+        else if (curr->price < 500)
+        {
+            price_100_500++;
+        }
+        else if (curr->price < 1000)
+        {
+            price_500_1000++;
+        }
+        else
+        {
+            price_1000_plus++;
+        }
+        curr = curr->next;
+    }
+
+    printf("\n======================================================\n");
+    printf("                  药品价格分布\n");
+    printf("======================================================\n");
+    printf("药品总数：%d\n", total_count);
+    printf("0-50元：%d (%.1f%%)\n", price_0_50, total_count > 0 ? (float)price_0_50 / total_count * 100 : 0);
+    printf("50-100元：%d (%.1f%%)\n", price_50_100, total_count > 0 ? (float)price_50_100 / total_count * 100 : 0);
+    printf("100-500元：%d (%.1f%%)\n", price_100_500, total_count > 0 ? (float)price_100_500 / total_count * 100 : 0);
+    printf("500-1000元：%d (%.1f%%)\n", price_500_1000, total_count > 0 ? (float)price_500_1000 / total_count * 100 : 0);
+    printf("1000元以上：%d (%.1f%%)\n", price_1000_plus, total_count > 0 ? (float)price_1000_plus / total_count * 100 : 0);
+    printf("======================================================\n");
+}
+
+// 显示系统日志
+void show_logs(void)
+{
+    show_system_logs();
+}
+
+// 处理近效期药品检查
+void handle_expiring_medicine_check(void)
+{
+    handle_medicine_expiring();
 }

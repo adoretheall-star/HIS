@@ -557,17 +557,16 @@ PatientNode* register_patient(
     PatientNode* existing_patient = find_patient_by_id_card(id_card);
     if (existing_patient != NULL)
     {
-        // 检查老档案是否处于黑名单状态
+        // 无论老档案是否在黑名单中，都不允许重复建档
         if (existing_patient->is_blacklisted != 0)
         {
-            printf("⚠️ 该身份证号对应的患者已在黑名单中，新档案将同步黑名单状态！\n");
-            // 允许建档，但会在后续同步黑名单状态
+            printf("⚠️ 该身份证号对应的患者已在黑名单中，请使用原档案处理，不能创建新档案！\n");
         }
         else
         {
             printf("⚠️ 该身份证号已存在，不能重复建档！\n");
-            return NULL;
         }
+        return NULL;
     }
     
     // 时空折叠：夜间模式接管
@@ -648,17 +647,6 @@ PatientNode* register_patient(
         new_patient->is_emergency = 1;
         printf("🚨 该患者症状符合急诊特征，已标记为急诊绿色通道患者！\n");
     }
-
-    // 同步黑名单状态（如果老档案在黑名单中）
-    if (existing_patient != NULL && existing_patient->is_blacklisted != 0)
-    {
-        new_patient->is_blacklisted = existing_patient->is_blacklisted;
-        new_patient->blacklist_expire = existing_patient->blacklist_expire;
-        new_patient->emergency_debt = existing_patient->emergency_debt;
-        printf("⚠️ 已同步黑名单状态：%s\n", 
-               existing_patient->is_blacklisted == 1 ? "爽约黑名单" : "逃单黑名单");
-    }
-
     // 将患者节点插入到链表尾部
     insert_patient_tail(g_patient_list, new_patient);
 
@@ -1829,7 +1817,7 @@ int submit_new_complaint(const char* patient_id)
         complaint_count++;
         complaint_curr = complaint_curr->next;
     }
-    sprintf(complaint_id, "CP-%03d", complaint_count + 1);
+    snprintf(complaint_id, sizeof(complaint_id), "CP-%03d", complaint_count + 1);
 
     // 生成当前系统时间
     char submit_time[MAX_NAME_LEN];

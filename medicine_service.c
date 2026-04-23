@@ -507,6 +507,12 @@ MedicineNode* register_medicine(
         return NULL;
     }
 
+    if (!is_future_date(expiry_date))
+    {
+        printf("提示：药品效期必须晚于今天，无法新增药品。\n");
+        return NULL;
+    }
+
     if (is_duplicate_medicine(name, generic_name))
     {
         printf("提示：疑似重复药品，新增失败。\n");
@@ -715,7 +721,14 @@ int update_medicine_basic_info(
         return 0; // 效期非法，修改失败
     }
 
-    // 3.2. 修改后的 商品名 + 通用名 组合不能与其他药品重复（排除当前药品自己）
+    // 3.2. 如果 new_expiry_date 非空白，效期必须晚于当前日期
+    if (!is_blank_string(new_expiry_date) && !is_future_date(final_expiry_date))
+    {
+        printf("提示：药品效期必须晚于当前日期，修改失败。\n");
+        return 0; // 效期不是未来日期，修改失败
+    }
+
+    // 3.3. 修改后的 商品名 + 通用名 组合不能与其他药品重复（排除当前药品自己）
     curr_check = g_medicine_list->next;
     while (curr_check != NULL)
     {

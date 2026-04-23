@@ -345,9 +345,9 @@ int register_inpatient(const char* patient_id, int estimated_days, double deposi
         return 0;
     }
 
-    if (deposit < 0)
+    if (deposit <= 0)
     {
-        printf("⚠️ 押金不能为负数！\n");
+        printf("⚠️ 押金必须大于 0！\n");
         return 0;
     }
 
@@ -377,7 +377,7 @@ int register_inpatient(const char* patient_id, int estimated_days, double deposi
         return 0;
     }
 
-    // 初始化住院记录链表（押金已在 main.c 中扣除，余额已检查）
+    // 初始化住院记录链表（押金已在调用前扣除，余额已检查）
 
     if (g_inpatient_list == NULL)
     {
@@ -414,7 +414,7 @@ int register_inpatient(const char* patient_id, int estimated_days, double deposi
     // 插入住院记录
     insert_inpatient_record_tail(g_inpatient_list, new_record);
 
-    // 更新患者状态为住院中（押金已在 main.c 中扣除）
+    // 更新患者状态为住院中（押金已在调用前扣除）
     patient->status = STATUS_HOSPITALIZED;
 
     // 记录日志
@@ -475,23 +475,31 @@ int assign_bed_to_patient(const char* patient_id, const char* bed_id)
     printf("📋 推荐病房类型：%s\n", 
         inpatient_record->recommended_ward_type == WARD_TYPE_ICU ? "ICU" : "普通病房");
 
-    // 显示推荐类型的可用床位
+    // 显示推荐类型可用床位
     printf("\n💡 推荐类型可用床位：\n");
-    WardNode* curr_bed = g_ward_list->next;
-    int has_recommended_beds = 0;
-    while (curr_bed != NULL)
+    
+    if (g_ward_list == NULL)
     {
-        if (!curr_bed->is_occupied && curr_bed->ward_type == inpatient_record->recommended_ward_type)
-        {
-            printf("  - %s (%s)\n", curr_bed->bed_id, 
-                curr_bed->ward_type == WARD_TYPE_ICU ? "ICU" : "普通病房");
-            has_recommended_beds = 1;
-        }
-        curr_bed = curr_bed->next;
+        printf("  ⚠️ 床位链表未初始化，暂无可用床位！\n");
     }
-    if (!has_recommended_beds)
+    else
     {
-        printf("  无推荐类型可用床位\n");
+        WardNode* curr_bed = g_ward_list->next;
+        int has_recommended_beds = 0;
+        while (curr_bed != NULL)
+        {
+            if (!curr_bed->is_occupied && curr_bed->ward_type == inpatient_record->recommended_ward_type)
+            {
+                printf("  - %s (%s)\n", curr_bed->bed_id, 
+                    curr_bed->ward_type == WARD_TYPE_ICU ? "ICU" : "普通病房");
+                has_recommended_beds = 1;
+            }
+            curr_bed = curr_bed->next;
+        }
+        if (!has_recommended_beds)
+        {
+            printf("  无推荐类型可用床位\n");
+        }
     }
 
     // 检查床位是否存在且可用
@@ -836,6 +844,24 @@ int daily_settlement(const char* patient_id)
         printf("⚠️ 该患者未分配床位，无法执行日结计费！\n");
         return 0;
     }
+    
+    // 检查当天是否已结算
+    time_t now = time(NULL);
+    struct tm* local_time = localtime(&now);
+    char today[11];
+    strftime(today, sizeof(today), "%Y-%m-%d", local_time);
+    
+    char last_settlement_date[11];
+    struct tm* settlement_time = localtime((time_t*)&inpatient_record->last_settlement_time);
+    if (inpatient_record->last_settlement_time > 0)
+    {
+        strftime(last_settlement_date, sizeof(last_settlement_date), "%Y-%m-%d", settlement_time);
+        if (strcmp(today, last_settlement_date) == 0)
+        {
+            printf("⚠️ 该患者今日已完成日结，不能重复结算！\n");
+            return 0;
+        }
+    }
 
     // 计算当日费用
     daily_rate = get_ward_rate(inpatient_record->ward_type);
@@ -852,6 +878,7 @@ int daily_settlement(const char* patient_id)
     // 执行日结计费
     inpatient_record->days_stayed++;
     inpatient_record->deposit_balance -= daily_rate;
+    inpatient_record->last_settlement_time = (long)now;
 
     // 记录日志
     char description[200];

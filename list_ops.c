@@ -591,6 +591,7 @@ InpatientRecord* create_inpatient_record_node(
     new_node->days_stayed = days_stayed;
     new_node->deposit_balance = deposit_balance;
     new_node->is_active = is_active;
+    new_node->last_settlement_time = 0;
 
     // 断开一切外界联系，等待被插入大链表
     new_node->prev = NULL;

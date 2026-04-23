@@ -494,18 +494,16 @@ static void admin_medicine_menu()
     {
         system("cls");
         printf("\n======================================================\n");
-        printf("               💊 药品与发药管理\n");
+        printf("               💊 药品管理\n");
         printf("======================================================\n");
         printf("  [1] 查看全部药品\n");
-        printf("  [2] 按关键词查询药品\n");
+        printf("  [2] 查询药品\n");
         printf("  [3] 新增药品\n");
-        printf("  [4] 修改药品基础信息\n");
+        printf("  [4] 修改药品信息\n");
         printf("  [5] 修改药品库存\n");
         printf("  [6] 查看低库存药品\n");
         printf("  [7] 查看近效期药品\n");
         printf("  [8] 下架药品\n");
-        printf("  [9] 查看待发药患者\n");
-        printf("  [10] 执行发药\n");
         printf("  [0] 返回上一级\n");
         printf("------------------------------------------------------\n");
 
@@ -543,14 +541,6 @@ static void admin_medicine_menu()
                 break;
             case 8:
                 handle_medicine_remove();
-                system("pause");
-                break;
-            case 9:
-                show_paid_patients_waiting_for_dispense();
-                system("pause");
-                break;
-            case 10:
-                handle_medicine_dispense();
                 system("pause");
                 break;
             case 0:
@@ -1229,6 +1219,9 @@ static void handle_doctor_consultation()
         while (temp != NULL)
         {
             CheckRecordNode* next = temp->next;
+            // 断开临时链表节点的关系
+            temp->next = NULL;
+            temp->prev = NULL;
             // 将节点添加到主链表
             if (g_check_record_list->next == NULL)
             {
@@ -1247,6 +1240,7 @@ static void handle_doctor_consultation()
             }
             temp = next;
         }
+        temp_check_record_list = NULL;
     }
 
     if (decision == 2)
@@ -2519,7 +2513,7 @@ static void handle_patient_self_registration()
     // 现场挂号使用当天日期
     time_t now = time(NULL);
     struct tm *local_time = localtime(&now);
-    sprintf(appointment_date, "%04d-%02d-%02d", 
+    snprintf(appointment_date, sizeof(appointment_date), "%04d-%02d-%02d", 
             local_time->tm_year + 1900, 
             local_time->tm_mon + 1, 
             local_time->tm_mday);
@@ -3590,6 +3584,7 @@ static void inpatient_menu()
                 break;
             case 4:
                 handle_inpatient_register();
+                system("pause");
                 break;
             case 5:
                 handle_bed_assign();
@@ -3639,6 +3634,8 @@ static void handle_inpatient_register()
     PatientNode* patient = NULL;
     InpatientRecord* inpatient_record = NULL;
     char input_buf[64];
+    int i;
+    double temp_deposit;
     
     printf("\n================ 住院登记 ===============-\n");
     
@@ -3651,7 +3648,6 @@ static void handle_inpatient_register()
         if (my_strcasecmp(patient_id, "q") == 0)
         {
             printf("\n已取消本次住院登记，返回上一级\n");
-            system("pause");
             return;
         }
         
@@ -3685,18 +3681,29 @@ static void handle_inpatient_register()
     // 输入预计住院天数（必须大于0；输入Q取消）
     while (1)
     {
-        printf("请输入预计住院天数 (输入Q返回上一级): ");
-        get_safe_string(input_buf, input_buf, sizeof(input_buf));
+        get_safe_string("请输入预计住院天数 (输入Q返回上一级): ", input_buf, sizeof(input_buf));
         
         // 检查是否取消
         if (my_strcasecmp(input_buf, "q") == 0)
         {
             printf("\n已取消本次住院登记，返回上一级\n");
-            system("pause");
             return;
         }
         
-        // 转换为整数并验证
+        // 严格校验：检查是否为纯数字
+        for (i = 0; input_buf[i] != '\0'; i++)
+        {
+            if (!isdigit((unsigned char)input_buf[i]))
+            {
+                break;
+            }
+        }
+        if (input_buf[i] != '\0' || i == 0)
+        {
+            printf("⚠️ 预计住院天数必须是正整数，请重新输入\n");
+            continue;
+        }
+        
         estimated_days = atoi(input_buf);
         if (estimated_days <= 0)
         {
@@ -3710,43 +3717,59 @@ static void handle_inpatient_register()
     // 输入初始押金（必须大于0；输入Q取消）
     while (1)
     {
-        printf("请输入初始押金金额 (输入Q返回上一级): ");
-        get_safe_string(input_buf, input_buf, sizeof(input_buf));
+        get_safe_string("请输入初始押金金额 (输入Q返回上一级): ", input_buf, sizeof(input_buf));
         
         // 检查是否取消
         if (my_strcasecmp(input_buf, "q") == 0)
         {
             printf("\n已取消本次住院登记，返回上一级\n");
-            system("pause");
             return;
         }
         
-        // 转换为浮点数并验证
-        deposit = atof(input_buf);
-        if (deposit <= 0)
+        // 严格校验：检查是否为合法浮点数
+        char* endptr;
+        temp_deposit = strtod(input_buf, &endptr);
+        if (*endptr != '\0' || endptr == input_buf)
+        {
+            printf("⚠️ 初始押金必须是合法数字，请重新输入\n");
+            continue;
+        }
+        if (temp_deposit <= 0)
         {
             printf("⚠️ 初始押金必须大于0，请重新输入\n");
             continue;
         }
         
+        deposit = temp_deposit;
         break;
     }
     
     // 输入病情级别（1=普通/2=重症；输入Q取消）
     while (1)
     {
-        printf("请输入病情级别 (1=普通, 2=重症, 输入Q返回上一级): ");
-        get_safe_string(input_buf, input_buf, sizeof(input_buf));
+        get_safe_string("请输入病情级别 (1=普通, 2=重症, 输入Q返回上一级): ", input_buf, sizeof(input_buf));
         
         // 检查是否取消
         if (my_strcasecmp(input_buf, "q") == 0)
         {
             printf("\n已取消本次住院登记，返回上一级\n");
-            system("pause");
             return;
         }
         
-        // 转换为整数并验证
+        // 严格校验：检查是否为纯数字
+        for (i = 0; input_buf[i] != '\0'; i++)
+        {
+            if (!isdigit((unsigned char)input_buf[i]))
+            {
+                break;
+            }
+        }
+        if (input_buf[i] != '\0' || i == 0)
+        {
+            printf("⚠️ 病情级别必须是1或2，请重新输入\n");
+            continue;
+        }
+        
         condition_level = atoi(input_buf);
         if (condition_level != 1 && condition_level != 2)
         {
@@ -3757,19 +3780,77 @@ static void handle_inpatient_register()
         break;
     }
     
+    // 校验患者余额是否足够
+    if (patient->balance < deposit)
+    {
+        printf("\n⚠️ 患者账户余额不足！\n");
+        printf("   当前余额: %.2f 元\n", patient->balance);
+        printf("   需要押金: %.2f 元\n", deposit);
+        printf("   差额: %.2f 元\n", deposit - patient->balance);
+        printf("\n❌ 住院登记失败，请先充值\n");
+        return;
+    }
+    
+    // 显示住院登记摘要
+    printf("\n======================================================\n");
+    printf("                   住院登记摘要\n");
+    printf("======================================================\n");
+    printf("患者编号：%s\n", patient_id);
+    printf("患者姓名：%s\n", patient->name);
+    printf("预计住院天数：%d 天\n", estimated_days);
+    printf("初始押金：%.2f 元\n", deposit);
+    printf("病情级别：%s\n", condition_level == 1 ? "普通" : "重症");
+    printf("推荐病房类型：%s\n", condition_level == 2 ? "ICU" : "普通病房");
+    printf("患者当前余额：%.2f 元\n", patient->balance);
+    printf("扣除押金后余额：%.2f 元\n", patient->balance - deposit);
+    printf("======================================================\n");
+    
+    // 确认提交
+    get_safe_string("是否确认提交住院登记？(Y/N): ", input_buf, sizeof(input_buf));
+    if (my_strcasecmp(input_buf, "y") != 0 && my_strcasecmp(input_buf, "yes") != 0)
+    {
+        printf("\n已取消住院登记\n");
+        return;
+    }
+    
+    // 扣除押金
+    patient->balance -= deposit;
+    
     // 调用住院登记函数
     if (register_inpatient(patient_id, estimated_days, deposit, condition_level))
     {
         printf("\n✅ 住院登记成功！\n");
-        // 提示用户尽快分配床位
-        printf("📋 请尽快为患者分配床位\n");
+        
+        // 询问是否立即分配床位
+        get_safe_string("是否立即为患者分配床位？(Y/N): ", input_buf, sizeof(input_buf));
+        if (my_strcasecmp(input_buf, "y") == 0 || my_strcasecmp(input_buf, "yes") == 0)
+        {
+            // 显示空闲床位
+            show_free_beds();
+            
+            // 输入床位编号
+            char bed_id[MAX_ID_LEN];
+            get_safe_string("请输入床位编号 (输入Q取消): ", bed_id, MAX_ID_LEN);
+            
+            if (my_strcasecmp(bed_id, "q") != 0 && !is_blank_string(bed_id))
+            {
+                if (assign_bed_to_patient(patient_id, bed_id))
+                {
+                    printf("\n✅ 床位分配成功！\n");
+                }
+                else
+                {
+                    printf("\n❌ 床位分配失败，请稍后手动分配\n");
+                }
+            }
+        }
     }
     else
     {
-        printf("\n❌ 住院登记失败，请检查输入信息\n");
+        // 登记失败，回滚押金
+        patient->balance += deposit;
+        printf("\n❌ 住院登记失败，押金已退回\n");
     }
-    
-    system("pause");
 }
 
 // 分配床位处理函数

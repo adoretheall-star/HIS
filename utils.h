@@ -45,4 +45,19 @@ void safe_copy_string(char* dest, int dest_size, const char* src);
 // 9. 获取单个字符（用于 Y/N 确认等场景）
 char get_single_char(const char* prompt);
 
+// 10. 表单字符串输入（支持返回上一级，输入B/b）
+int get_form_string(const char* prompt, char* buffer, int max_len);
+
+// 11. 表单整数输入（支持返回上一级，输入B/b）
+int get_form_int(const char* prompt, int* value, int min, int max, const char* error_msg);
+
+// 12. 表单浮点数输入（支持返回上一级，输入B/b）
+int get_form_double(const char* prompt, double* value, double min, const char* error_msg);
+
+// 13. 表单日期输入（支持返回上一级，输入B/b）
+int get_form_date(const char* prompt, char* buffer, int max_len);
+
+// 14. 检查日期是否为未来日期（晚于今天）
+int is_future_date(const char* date_str);
+
 #endif

@@ -241,6 +241,7 @@ typedef struct InpatientRecord
     int days_stayed;                   // 已住院天数
     double deposit_balance;            // 押金余额
     int is_active;                     // 1: 活跃, 0: 已出院
+    long last_settlement_time;         // 最近一次日结时间戳
     
     struct InpatientRecord* prev;//前驱指针
     struct InpatientRecord* next; //后继指针

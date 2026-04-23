@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // 文件名: doctor_service.c
 // 作用: 医生接诊相关业务层实现
 // ==========================================
@@ -633,8 +633,10 @@ int doctor_consult_patient(
     }
 
     // 更新患者的预约记录状态（联动更新）
+    // 优先匹配：当前已签到 + 当前医生匹配或当前科室匹配
     AppointmentNode* curr_appointment = NULL;
-    AppointmentNode* latest_appointment = NULL;
+    AppointmentNode* matched_appointment = NULL;
+    AppointmentNode* latest_valid_appointment = NULL;
     char appointment_id[MAX_ID_LEN] = {0};
     
     if (g_appointment_list != NULL)
@@ -644,36 +646,67 @@ int doctor_consult_patient(
         {
             if (strcmp(curr_appointment->patient_id, patient_id) == 0)
             {
-                latest_appointment = curr_appointment;
-                strncpy(appointment_id, curr_appointment->appointment_id, MAX_ID_LEN - 1);
-                appointment_id[MAX_ID_LEN - 1] = '\0';
+                // 记录最新的有效预约（不管状态）
+                latest_valid_appointment = curr_appointment;
+                
+                // 优先匹配：已签到 + 医生或科室匹配
+                if (curr_appointment->appointment_status == CHECKED_IN)
+                {
+                    int doctor_match = (strlen(curr_appointment->appoint_doctor) > 0 && 
+                                       strcmp(curr_appointment->appoint_doctor, doctor->id) == 0);
+                    int dept_match = (strlen(curr_appointment->appoint_dept) > 0 && 
+                                     strcmp(curr_appointment->appoint_dept, doctor->department) == 0);
+                    
+                    if (doctor_match || dept_match)
+                    {
+                        matched_appointment = curr_appointment;
+                        break;
+                    }
+                }
             }
             curr_appointment = curr_appointment->next;
         }
         
-        // 如果找到患者的预约记录，更新其状态
-            if (latest_appointment != NULL)
+        // 如果没找到匹配的，使用已签到的最新预约
+        if (matched_appointment == NULL && latest_valid_appointment != NULL)
+        {
+            if (latest_valid_appointment->appointment_status == CHECKED_IN)
             {
-                // 根据诊疗决策更新预约状态
-                switch (decision)
-                {
-                    case 1: // 结束就诊
-                        latest_appointment->appointment_status = CHECKED_IN; // 保持已签到状态
-                        break;
-                    case 2: // 开药
-                        latest_appointment->appointment_status = CHECKED_IN;
-                        break;
-                    case 3: // 开检查
-                        latest_appointment->appointment_status = CHECKED_IN;
-                        break;
-                    case 4: // 办理住院
-                        latest_appointment->appointment_status = CHECKED_IN;
-                        break;
-                }
+                matched_appointment = latest_valid_appointment;
+            }
+        }
+        
+        // 如果找到了匹配的预约，更新其状态
+        if (matched_appointment != NULL)
+        {
+            strncpy(appointment_id, matched_appointment->appointment_id, MAX_ID_LEN - 1);
+            appointment_id[MAX_ID_LEN - 1] = '\0';
+            
+            // 根据诊疗决策更新预约状态
+            switch (decision)
+            {
+                case 1: // 结束就诊
+                    matched_appointment->appointment_status = CHECKED_IN;
+                    break;
+                case 2: // 开药
+                    matched_appointment->appointment_status = CHECKED_IN;
+                    break;
+                case 3: // 开检查
+                    matched_appointment->appointment_status = CHECKED_IN;
+                    break;
+                case 4: // 办理住院
+                    matched_appointment->appointment_status = CHECKED_IN;
+                    break;
             }
             
             // 显示接诊成功提示
             printf("\n✅ 接诊成功！\n");
+        }
+        else
+        {
+            // 没有找到匹配的预约，仍然允许接诊但不绑定预约
+            printf("\n⚠️ 未找到该患者的匹配预约记录，但允许继续接诊！\n");
+        }
     }
 
     char record_id[MAX_ID_LEN] = {0};
@@ -1376,6 +1409,13 @@ int doctor_update_check_result(const char* doctor_id, const char* record_id, con
             if (curr->is_completed == 1)
             {
                 printf("⚠️ 该检查记录已完成，无法修改！\n");
+                return 0;
+            }
+            
+            // 检查是否已缴费
+            if (curr->is_paid == 0)
+            {
+                printf("⚠️ 该检查记录尚未缴费，不能录入结果！请先完成缴费。\n");
                 return 0;
             }
 
