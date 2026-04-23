@@ -3,13 +3,17 @@
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
-#include <errno.h>
 #include <math.h> // 用于 isnan, isinf 函数
 #include "admin_service.h"
 #include "list_ops.h"
 #include "medicine_service.h"
 #include "pharmacy_service.h"
+#include "data_io.h"
+#include "patient_service.h"
 #include "utils.h"
+
+// 外部函数声明
+extern void query_patient_complaints(const char* patient_id);
 
 // 解析日期字符串为 tm 结构
 static int parse_date_string(const char* date_str, struct tm* tm_out)
@@ -749,6 +753,457 @@ void show_resource_warnings(void)
     printf("======================================================\n");
     printf("提示：当前页面用于管理员快速查看资源风险\n");
     printf("后续可继续扩展排队负载、传染病异常提醒等\n");
+    printf("======================================================\n");
+}
+
+// ==========================================
+// 投诉管理模块
+// ==========================================
+
+// 管理员投诉管理子菜单
+void admin_complaint_menu()
+{
+    int running = 1;
+    
+    while (running)
+    {
+        system("cls");
+        printf("\n======================================================\n");
+        printf("               📝 投诉管理\n");
+        printf("======================================================\n");
+        printf("  [1] 查看所有投诉\n");
+        printf("  [2] 处理投诉\n");
+        printf("  [3] 按患者编号查询投诉历史\n");
+        printf("  [4] 按投诉编号查询投诉详情\n");
+        printf("  [0] 返回上一级\n");
+        printf("------------------------------------------------------\n");
+        
+        switch (get_safe_int("👉 请输入操作编号: "))
+        {
+            case 1:
+                show_all_complaints();
+                system("pause");
+                break;
+            case 2:
+                handle_complaint_response();
+                system("pause");
+                break;
+            case 3:
+                query_patient_complaints_by_id();
+                system("pause");
+                break;
+            case 4:
+                query_complaint_by_id();
+                system("pause");
+                break;
+            case 0:
+                running = 0;
+                break;
+            default:
+                printf("\n⚠️ 无效的选项，请重新输入！\n");
+                system("pause");
+                break;
+        }
+    }
+}
+
+// 显示所有投诉
+void show_all_complaints()
+{
+    if (g_complaint_list == NULL || g_complaint_list->next == NULL)
+    {
+        printf("\n⚠️ 当前暂无投诉记录！\n");
+        return;
+    }
+    
+    printf("\n======================================================\n");
+    printf("                    投诉列表\n");
+    printf("======================================================\n");
+    
+    ComplaintNode* curr = g_complaint_list->next;
+    int index = 1;
+    
+    while (curr != NULL)
+    {
+        printf("\n【投诉工单 %d】\n", index++);
+        printf("工单编号：%s\n", curr->complaint_id);
+        printf("患者编号：%s\n", curr->patient_id);
+        printf("提交时间：%s\n", curr->submit_time);
+        
+        // 打印投诉类型
+        printf("投诉类型：");
+        switch (curr->target_type)
+        {
+            case 1: printf("对医生\n"); break;
+            case 2: printf("对护士/前台\n"); break;
+            case 3: printf("对药师\n"); break;
+            default: printf("未知\n"); break;
+        }
+        
+        printf("被投诉人：%s（账号：%s）\n", curr->target_name, curr->target_id);
+        printf("投诉内容：%s\n", curr->content);
+        
+        // 打印处理状态
+        printf("处理状态：");
+        if (curr->status == 0)
+        {
+            printf("待处理\n");
+        }
+        else
+        {
+            printf("已回复\n");
+            printf("处理意见：%s\n", curr->response);
+        }
+        printf("------------------------------------------------------\n");
+        curr = curr->next;
+    }
+    
+    printf("======================================================\n");
+}
+
+// 处理投诉
+void handle_complaint_response()
+{
+    if (g_complaint_list == NULL || g_complaint_list->next == NULL)
+    {
+        printf("\n⚠️ 当前暂无投诉记录！\n");
+        return;
+    }
+    
+    // 先显示待处理的投诉
+    printf("\n======================================================\n");
+    printf("                    待处理投诉\n");
+    printf("======================================================\n");
+    
+    ComplaintNode* curr = g_complaint_list->next;
+    int index = 1;
+    int has_pending = 0;
+    
+    while (curr != NULL)
+    {
+        if (curr->status == 0)
+        {
+            has_pending = 1;
+            printf("\n【投诉工单 %d】\n", index++);
+            printf("工单编号：%s\n", curr->complaint_id);
+            printf("患者编号：%s\n", curr->patient_id);
+            printf("投诉类型：");
+            switch (curr->target_type)
+            {
+                case 1: printf("对医生\n"); break;
+                case 2: printf("对护士/前台\n"); break;
+                case 3: printf("对药师\n"); break;
+                default: printf("未知\n"); break;
+            }
+            printf("被投诉人：%s（账号：%s）\n", curr->target_name, curr->target_id);
+            printf("投诉内容：%s\n", curr->content);
+            printf("------------------------------------------------------\n");
+        }
+        curr = curr->next;
+    }
+    
+    if (!has_pending)
+    {
+        printf("\n✅ 当前没有待处理的投诉！\n");
+        return;
+    }
+    
+    // 输入要处理的投诉编号
+    char complaint_id[MAX_ID_LEN];
+    get_safe_string("请输入要处理的投诉工单编号: ", complaint_id, MAX_ID_LEN);
+    
+    // 查找投诉
+    curr = g_complaint_list->next;
+    ComplaintNode* target_complaint = NULL;
+    
+    while (curr != NULL)
+    {
+        if (strcmp(curr->complaint_id, complaint_id) == 0)
+        {
+            target_complaint = curr;
+            break;
+        }
+        curr = curr->next;
+    }
+    
+    if (target_complaint == NULL)
+    {
+        printf("\n⚠️ 未找到该投诉工单！\n");
+        return;
+    }
+    
+    if (target_complaint->status != 0)
+    {
+        printf("\n⚠️ 该投诉工单已经处理过了！\n");
+        return;
+    }
+    
+    // 输入处理意见
+    char response[MAX_RECORD_LEN];
+    get_safe_string("请输入处理意见: ", response, MAX_RECORD_LEN);
+    
+    // 更新投诉状态和回复
+    target_complaint->status = 1;
+    strncpy(target_complaint->response, response, MAX_RECORD_LEN - 1);
+    target_complaint->response[MAX_RECORD_LEN - 1] = '\0';
+    
+    // 保存到文件
+    save_complaint_list(g_complaint_list);
+    
+    printf("\n✅ 投诉处理成功！\n");
+    printf("工单编号：%s\n", target_complaint->complaint_id);
+    printf("处理意见：%s\n", target_complaint->response);
+}
+
+// 按患者编号查询投诉历史
+void query_patient_complaints_by_id()
+{
+    char patient_id[MAX_ID_LEN];
+    get_safe_string("请输入患者编号: ", patient_id, MAX_ID_LEN);
+    
+    // 调用现有的 query_patient_complaints 函数
+    query_patient_complaints(patient_id);
+}
+
+// 按投诉编号查询投诉详情
+void query_complaint_by_id()
+{
+    char complaint_id[MAX_ID_LEN];
+    get_safe_string("请输入投诉编号: ", complaint_id, MAX_ID_LEN);
+    
+    if (g_complaint_list == NULL || g_complaint_list->next == NULL)
+    {
+        printf("\n⚠️ 当前暂无投诉记录！\n");
+        return;
+    }
+    
+    // 查找投诉
+    ComplaintNode* curr = g_complaint_list->next;
+    ComplaintNode* target_complaint = NULL;
+    
+    while (curr != NULL)
+    {
+        if (strcmp(curr->complaint_id, complaint_id) == 0)
+        {
+            target_complaint = curr;
+            break;
+        }
+        curr = curr->next;
+    }
+    
+    if (target_complaint == NULL)
+    {
+        printf("\n⚠️ 未找到该投诉工单！\n");
+        return;
+    }
+    
+    // 显示投诉详情
+    printf("\n======================================================\n");
+    printf("                    投诉详情\n");
+    printf("======================================================\n");
+    printf("工单编号：%s\n", target_complaint->complaint_id);
+    printf("患者编号：%s\n", target_complaint->patient_id);
+    printf("提交时间：%s\n", target_complaint->submit_time);
+    
+    // 打印投诉类型
+    printf("投诉类型：");
+    switch (target_complaint->target_type)
+    {
+        case 1: printf("对医生\n"); break;
+        case 2: printf("对护士/前台\n"); break;
+        case 3: printf("对药师\n"); break;
+        default: printf("未知\n"); break;
+    }
+    
+    printf("被投诉人：%s（账号：%s）\n", target_complaint->target_name, target_complaint->target_id);
+    printf("投诉内容：%s\n", target_complaint->content);
+    
+    // 打印处理状态
+    printf("处理状态：");
+    if (target_complaint->status == 0)
+    {
+        printf("待处理\n");
+    }
+    else
+    {
+        printf("已回复\n");
+        printf("处理意见：%s\n", target_complaint->response);
+    }
+    printf("======================================================\n");
+}
+
+// ==========================================
+// 评价管理模块
+// ==========================================
+
+// 管理员评价管理子菜单
+void admin_evaluation_menu()
+{
+    int running = 1;
+    
+    while (running)
+    {
+        system("cls");
+        printf("\n======================================================\n");
+        printf("               ⭐ 评价管理\n");
+        printf("======================================================\n");
+        printf("  [1] 查看所有评价\n");
+        printf("  [2] 查看评价统计\n");
+        printf("  [0] 返回上一级\n");
+        printf("------------------------------------------------------\n");
+        
+        switch (get_safe_int("👉 请输入操作编号: "))
+        {
+            case 1:
+                show_all_evaluations();
+                system("pause");
+                break;
+            case 2:
+                show_evaluation_statistics();
+                system("pause");
+                break;
+            case 0:
+                running = 0;
+                break;
+            default:
+                printf("\n⚠️ 无效的选项，请重新输入！\n");
+                system("pause");
+                break;
+        }
+    }
+}
+
+// 显示所有评价
+void show_all_evaluations()
+{
+    if (g_consult_record_list == NULL || g_consult_record_list->next == NULL)
+    {
+        printf("\n⚠️ 当前暂无评价记录！\n");
+        return;
+    }
+    
+    printf("\n======================================================\n");
+    printf("                    评价列表\n");
+    printf("======================================================\n");
+    
+    ConsultRecordNode* curr = g_consult_record_list->next;
+    int index = 1;
+    int evaluation_count = 0;
+    
+    while (curr != NULL)
+    {
+        if (curr->star_rating > 0)
+        {
+            evaluation_count++;
+            printf("\n【评价工单 %d】\n", index++);
+            printf("记录编号：%s\n", curr->record_id);
+            printf("患者编号：%s\n", curr->patient_id);
+            printf("就诊医生：%s（编号：%s）\n", 
+                   find_doctor_by_id(g_doctor_list, curr->doctor_id) ? 
+                   find_doctor_by_id(g_doctor_list, curr->doctor_id)->name : "未知", 
+                   curr->doctor_id);
+            printf("就诊时间：%s\n", curr->consult_time);
+            
+            // 打印星级评价
+            printf("满意度评分：");
+            for (int i = 0; i < curr->star_rating; i++)
+            {
+                printf("⭐");
+            }
+            printf(" (%d星)\n", curr->star_rating);
+            
+            // 打印文字评价
+            if (strlen(curr->feedback) > 0)
+            {
+                printf("文字评价：%s\n", curr->feedback);
+            }
+            else
+            {
+                printf("文字评价：（无）\n");
+            }
+            printf("------------------------------------------------------\n");
+        }
+        curr = curr->next;
+    }
+    
+    if (evaluation_count == 0)
+    {
+        printf("\n⚠️ 当前暂无评价记录！\n");
+    }
+    else
+    {
+        printf("\n共找到 %d 条评价记录\n", evaluation_count);
+    }
+    printf("======================================================\n");
+}
+
+// 显示评价统计
+void show_evaluation_statistics()
+{
+    if (g_consult_record_list == NULL)
+    {
+        printf("\n⚠️ 接诊记录链表尚未初始化！\n");
+        return;
+    }
+    
+    int total_evaluations = 0;
+    int star_counts[6] = {0}; // star_counts[0] 表示未评价, star_counts[1-5] 表示各星级
+    float total_score = 0.0;
+    
+    ConsultRecordNode* curr = g_consult_record_list->next;
+    while (curr != NULL)
+    {
+        if (curr->star_rating > 0)
+        {
+            total_evaluations++;
+            star_counts[curr->star_rating]++;
+            total_score += curr->star_rating;
+        }
+        else
+        {
+            star_counts[0]++;
+        }
+        curr = curr->next;
+    }
+    
+    printf("\n======================================================\n");
+    printf("                    评价统计\n");
+    printf("======================================================\n");
+    printf("总评价数量：%d\n", total_evaluations);
+    
+    if (total_evaluations > 0)
+    {
+        float average_score = total_score / total_evaluations;
+        printf("平均满意度：%.2f 星\n", average_score);
+        printf("------------------------------------------------------\n");
+        printf("各星级评价分布：\n");
+        printf("  ⭐⭐⭐⭐⭐ (5星): %d 条 (%.1f%%)\n", 
+               star_counts[5], (float)star_counts[5] / total_evaluations * 100);
+        printf("  ⭐⭐⭐⭐ (4星): %d 条 (%.1f%%)\n", 
+               star_counts[4], (float)star_counts[4] / total_evaluations * 100);
+        printf("  ⭐⭐⭐ (3星): %d 条 (%.1f%%)\n", 
+               star_counts[3], (float)star_counts[3] / total_evaluations * 100);
+        printf("  ⭐⭐ (2星): %d 条 (%.1f%%)\n", 
+               star_counts[2], (float)star_counts[2] / total_evaluations * 100);
+        printf("  ⭐ (1星): %d 条 (%.1f%%)\n", 
+               star_counts[1], (float)star_counts[1] / total_evaluations * 100);
+        
+        // 好评率（4星及以上）
+        int positive_count = star_counts[5] + star_counts[4];
+        float positive_rate = (float)positive_count / total_evaluations * 100;
+        printf("------------------------------------------------------\n");
+        printf("好评率（4星及以上）：%.1f%%\n", positive_rate);
+        
+        // 差评率（2星及以下）
+        int negative_count = star_counts[2] + star_counts[1];
+        float negative_rate = (float)negative_count / total_evaluations * 100;
+        printf("差评率（2星及以下）：%.1f%%\n", negative_rate);
+    }
+    else
+    {
+        printf("\n⚠️ 当前暂无评价记录！\n");
+    }
+    
     printf("======================================================\n");
 }
 

@@ -101,13 +101,13 @@ int save_patient_list(PatientNode* head) {
 int load_patient_list(PatientNode** head) {
     ensure_data_dir();
     FILE* fp = fopen(DATA_DIR "patients.txt", "r");
-    if (fp == NULL) return 1;
+    if (fp == NULL) return 0;
 
     // 跳过表头
     char header_buffer[512];
     if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
         fclose(fp);
-        return 1;
+        return 0;
     }
 
     char line[4096];
@@ -155,9 +155,8 @@ int load_patient_list(PatientNode** head) {
         is_blacklisted = atoi(fields[20]);
         is_emergency = atoi(fields[21]);
         queue_time = atol(fields[22]);
-        call_count = atoi(fields[23]);
+        call_count = atol(fields[23]);
         emergency_debt = atof(fields[24]);
-        unpaid_time = atol(fields[25]);
 
         PatientNode* new_node = create_patient_node(id, name, age, id_card);
         if (new_node == NULL) continue;
