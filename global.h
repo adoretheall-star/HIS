@@ -17,7 +17,7 @@
 #define MAX_MED_NAME_LEN 100
 #define MAX_RECORD_LEN 200
 #define MAX_ALIAS_LEN 50
-#define MAX_GENERIC_NAME_LEN 50
+#define MAX_GENERIC_NAME_LEN 200
 #define MAX_DATE_LEN 20
 
 // ==========================================
@@ -62,7 +62,9 @@ typedef enum //预约状态
 typedef enum //病房类型
 {
     WARD_TYPE_GENERAL = 1, // 普通病房
-    WARD_TYPE_ICU = 2      // ICU
+    WARD_TYPE_ICU = 2,     // ICU
+    WARD_TYPE_ISOLATION = 3, // 传染病隔离病房
+    WARD_TYPE_SINGLE = 4 // 单人病房
 } WardType;
 
 // ==========================================
@@ -241,6 +243,7 @@ typedef struct InpatientRecord
     int days_stayed;                   // 已住院天数
     double deposit_balance;            // 押金余额
     int is_active;                     // 1: 活跃, 0: 已出院
+    long last_settlement_time;         // 最近一次日结时间戳
     
     struct InpatientRecord* prev;//前驱指针
     struct InpatientRecord* next; //后继指针

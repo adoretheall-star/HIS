@@ -20,11 +20,49 @@ static void trim_newline(char* str) {
     }
 }
 
+static int split_line_by_delimiter(const char* line, char delimiter, char** fields, int max_fields) {
+    if (line == NULL || fields == NULL || max_fields <= 0) return 0;
+    
+    static char line_copy[8192];
+    strncpy(line_copy, line, sizeof(line_copy) - 1);
+    line_copy[sizeof(line_copy) - 1] = '\0';
+    
+    int count = 0;
+    char* start = line_copy;
+    char* p = line_copy;
+    
+    while (*p && count < max_fields) {
+        if (*p == delimiter) {
+            *p = '\0';
+            fields[count++] = start;
+            start = p + 1;
+        }
+        p++;
+    }
+    fields[count++] = start;
+    
+    return count;
+}
+
+static int get_field_count(const char* line, char delimiter) {
+    if (line == NULL) return 0;
+    int count = 1;
+    const char* p = line;
+    while (*p) {
+        if (*p == delimiter) count++;
+        p++;
+    }
+    return count;
+}
+
 int save_patient_list(PatientNode* head) {
     if (head == NULL) return 0;
     ensure_data_dir();
     FILE* fp = fopen(DATA_DIR "patients.txt", "w");
     if (fp == NULL) return 0;
+
+    // 写入表头
+    fprintf(fp, "患者编号|姓名|年龄|身份证号|医保类型(0=无,1=职工,2=居民,3=新农合)|症状|目标科室|医生编号|就诊卡号|余额|状态(0=未就诊,1=已就诊,2=住院中)|诊断结果|治疗意见|处方|处方数量|爽约时间1|爽约时间2|爽约时间3|爽约次数|黑名单过期时间|是否黑名单(0=否,1=是)|是否急诊(0=否,1=是)|排队时间|呼叫次数|急诊欠费|欠费时间\n");
 
     PatientNode* curr = head->next;
     while (curr != NULL) {
@@ -34,7 +72,7 @@ int save_patient_list(PatientNode* head) {
             char temp[128];
             strcpy(prescription_str, "");
             while (p != NULL) {
-                sprintf(temp, "%s:%d", p->med_id, p->quantity);
+                snprintf(temp, sizeof(temp), "%s:%d", p->med_id, p->quantity);
                 if (strlen(prescription_str) > 0) {
                     strcat(prescription_str, ",");
                 }
@@ -65,6 +103,13 @@ int load_patient_list(PatientNode** head) {
     FILE* fp = fopen(DATA_DIR "patients.txt", "r");
     if (fp == NULL) return 1;
 
+    // 跳过表头
+    char header_buffer[512];
+    if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
+        fclose(fp);
+        return 1;
+    }
+
     char line[4096];
     while (fgets(line, sizeof(line), fp) != NULL) {
         trim_newline(line);
@@ -81,15 +126,9 @@ int load_patient_list(PatientNode** head) {
         long queue_time;
 
         char* fields[30];
-        int field_count = 0;
-        char* token = strtok(line, "|");
-        while (token != NULL && field_count < 30) {
-            fields[field_count++] = token;
-            token = strtok(NULL, "|");
-        }
+        int field_count = split_line_by_delimiter(line, '|', fields, 30);
 
-        if (field_count < 25) {
-            token = strtok(NULL, "");
+        if (field_count < 26) {
             continue;
         }
 
@@ -167,6 +206,9 @@ int save_appointment_list(AppointmentNode* head) {
     FILE* fp = fopen(DATA_DIR "appointments.txt", "w");
     if (fp == NULL) return 0;
 
+    // 写入表头
+    fprintf(fp, "预约编号|患者编号|预约日期|预约时段|医生编号|科室|状态(1=待确认,2=已确认,3=已完成,4=已取消)|挂号费|是否缴费(0=否,1=是)|是否现场挂号(0=否,1=是)\n");
+
     AppointmentNode* curr = head->next;
     while (curr != NULL) {
         fprintf(fp, "%s|%s|%s|%s|%s|%s|%d|%.2f|%d|%d\n",
@@ -184,6 +226,13 @@ int load_appointment_list(AppointmentNode** head) {
     FILE* fp = fopen(DATA_DIR "appointments.txt", "r");
     if (fp == NULL) return 1;
 
+    // 跳过表头
+    char header_buffer[512];
+    if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
+        fclose(fp);
+        return 1;
+    }
+
     char line[512];
     while (fgets(line, sizeof(line), fp) != NULL) {
         trim_newline(line);
@@ -194,9 +243,21 @@ int load_appointment_list(AppointmentNode** head) {
         int appointment_status, fee_paid, is_walk_in;
         double reg_fee;
 
-        sscanf(line, "%[^|]|%[^|]|%[^|]|%[^|]|%[^|]|%[^|]|%d|%lf|%d|%d",
-            appointment_id, patient_id, appointment_date, appointment_slot,
-            appoint_doctor, appoint_dept, &appointment_status, &reg_fee, &fee_paid, &is_walk_in);
+        char* fields[15];
+        int field_count = split_line_by_delimiter(line, '|', fields, 15);
+        
+        if (field_count < 10) continue;
+        
+        strcpy(appointment_id, fields[0]);
+        strcpy(patient_id, fields[1]);
+        strcpy(appointment_date, fields[2]);
+        strcpy(appointment_slot, fields[3]);
+        strcpy(appoint_doctor, fields[4]);
+        strcpy(appoint_dept, fields[5]);
+        appointment_status = atoi(fields[6]);
+        reg_fee = atof(fields[7]);
+        fee_paid = atoi(fields[8]);
+        is_walk_in = atoi(fields[9]);
 
         AppointmentNode* new_node = create_appointment_node(
             appointment_id, patient_id, appointment_date, appointment_slot,
@@ -219,6 +280,9 @@ int save_doctor_list(DoctorNode* head) {
     FILE* fp = fopen(DATA_DIR "doctors.txt", "w");
     if (fp == NULL) return 0;
 
+    // 写入表头
+    fprintf(fp, "医生编号|姓名|科室|排队长度|是否值班(0=否,1=是)\n");
+
     DoctorNode* curr = head->next;
     while (curr != NULL) {
         fprintf(fp, "%s|%s|%s|%d|%d\n",
@@ -233,6 +297,13 @@ int load_doctor_list(DoctorNode** head) {
     ensure_data_dir();
     FILE* fp = fopen(DATA_DIR "doctors.txt", "r");
     if (fp == NULL) return 1;
+
+    // 跳过表头
+    char header_buffer[512];
+    if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
+        fclose(fp);
+        return 1;
+    }
 
     char line[256];
     while (fgets(line, sizeof(line), fp) != NULL) {
@@ -262,6 +333,9 @@ int save_medicine_list(MedicineNode* head) {
     FILE* fp = fopen(DATA_DIR "medicines.txt", "w");
     if (fp == NULL) return 0;
 
+    // 写入表头
+    fprintf(fp, "药品编号|商品名|别名|通用名|单价|库存|医保类型(0=自费,1=甲类,2=乙类)|有效期\n");
+
     MedicineNode* curr = head->next;
     while (curr != NULL) {
         fprintf(fp, "%s|%s|%s|%s|%.2f|%d|%d|%s\n",
@@ -278,6 +352,13 @@ int load_medicine_list(MedicineNode** head) {
     FILE* fp = fopen(DATA_DIR "medicines.txt", "r");
     if (fp == NULL) return 1;
 
+    // 跳过表头
+    char header_buffer[512];
+    if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
+        fclose(fp);
+        return 1;
+    }
+
     char line[512];
     while (fgets(line, sizeof(line), fp) != NULL) {
         trim_newline(line);
@@ -288,8 +369,19 @@ int load_medicine_list(MedicineNode** head) {
         double price;
         int stock, m_type;
 
-        sscanf(line, "%[^|]|%[^|]|%[^|]|%[^|]|%lf|%d|%d|%[^|]",
-            id, name, alias, generic_name, &price, &stock, &m_type, expiry_date);
+        char* fields[10];
+        int field_count = split_line_by_delimiter(line, '|', fields, 10);
+        
+        if (field_count < 8) continue;
+        
+        strcpy(id, fields[0]);
+        strcpy(name, fields[1]);
+        strcpy(alias, fields[2]);
+        strcpy(generic_name, fields[3]);
+        price = atof(fields[4]);
+        stock = atoi(fields[5]);
+        m_type = atoi(fields[6]);
+        strcpy(expiry_date, fields[7]);
 
         MedicineNode* new_node = create_medicine_node(
             id, name, alias, generic_name, price, stock, m_type, expiry_date);
@@ -307,6 +399,9 @@ int save_ward_list(WardNode* head) {
     FILE* fp = fopen(DATA_DIR "wards.txt", "w");
     if (fp == NULL) return 0;
 
+    // 写入表头
+    fprintf(fp, "病房号|床位号|病房类型(1=普通,2=ICU,3=隔离病房,4=单人病房)|是否占用(0=否,1=是)|患者编号\n");
+
     WardNode* curr = head->next;
     while (curr != NULL) {
         fprintf(fp, "%s|%s|%d|%d|%s\n",
@@ -322,6 +417,13 @@ int load_ward_list(WardNode** head) {
     FILE* fp = fopen(DATA_DIR "wards.txt", "r");
     if (fp == NULL) return 1;
 
+    // 跳过表头
+    char header_buffer[512];
+    if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
+        fclose(fp);
+        return 1;
+    }
+
     char line[256];
     while (fgets(line, sizeof(line), fp) != NULL) {
         trim_newline(line);
@@ -330,7 +432,16 @@ int load_ward_list(WardNode** head) {
         char room_id[MAX_ID_LEN], bed_id[MAX_ID_LEN], patient_id[MAX_ID_LEN];
         int ward_type, is_occupied;
 
-        sscanf(line, "%[^|]|%[^|]|%d|%d|%[^|]", room_id, bed_id, &ward_type, &is_occupied, patient_id);
+        char* fields[10];
+        int field_count = split_line_by_delimiter(line, '|', fields, 10);
+        
+        if (field_count < 5) continue;
+        
+        strcpy(room_id, fields[0]);
+        strcpy(bed_id, fields[1]);
+        ward_type = atoi(fields[2]);
+        is_occupied = atoi(fields[3]);
+        strcpy(patient_id, fields[4]);
 
         WardNode* new_node = create_ward_node(room_id, bed_id, ward_type);
         if (new_node == NULL) continue;
@@ -350,6 +461,9 @@ int save_account_list(AccountNode* head) {
     FILE* fp = fopen(DATA_DIR "accounts.txt", "w");
     if (fp == NULL) return 0;
 
+    // 写入表头
+    fprintf(fp, "用户名|密码|真实姓名|角色(0=管理员,1=医生,2=护士,3=药师)|错误次数|锁定时间|是否值班(0=否,1=是)\n");
+
     AccountNode* curr = head->next;
     while (curr != NULL) {
         fprintf(fp, "%s|%s|%s|%d|%d|%ld|%d\n",
@@ -366,6 +480,13 @@ int load_account_list(AccountNode** head) {
     FILE* fp = fopen(DATA_DIR "accounts.txt", "r");
     if (fp == NULL) return 1;
 
+    // 跳过表头
+    char header_buffer[512];
+    if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
+        fclose(fp);
+        return 1;
+    }
+
     char line[512];
     while (fgets(line, sizeof(line), fp) != NULL) {
         trim_newline(line);
@@ -375,8 +496,18 @@ int load_account_list(AccountNode** head) {
         int role, error_count, is_on_duty;
         long lock_time;
 
-        sscanf(line, "%[^|]|%[^|]|%[^|]|%d|%d|%ld|%d",
-            username, password, real_name, &role, &error_count, &lock_time, &is_on_duty);
+        char* fields[10];
+        int field_count = split_line_by_delimiter(line, '|', fields, 10);
+        
+        if (field_count < 7) continue;
+        
+        strcpy(username, fields[0]);
+        strcpy(password, fields[1]);
+        strcpy(real_name, fields[2]);
+        role = atoi(fields[3]);
+        error_count = atoi(fields[4]);
+        lock_time = atol(fields[5]);
+        is_on_duty = atoi(fields[6]);
 
         AccountNode* new_node = create_account_node(username, password, real_name, role);
         if (new_node == NULL) continue;
@@ -397,6 +528,9 @@ int save_consult_record_list(ConsultRecordNode* head) {
     FILE* fp = fopen(DATA_DIR "consult_records.txt", "w");
     if (fp == NULL) return 0;
 
+    // 写入表头
+    fprintf(fp, "记录编号|患者编号|医生编号|预约编号|就诊时间|诊断结果|治疗意见|决策(0=未决定,1=门诊,2=住院,3=转院)|就诊前状态(0=未就诊,1=待检查,2=待诊断)|就诊后状态(0=未完成,1=已完成,2=已转诊)|星级评分(1-5星,0=未评价)|评价内容\n");
+
     ConsultRecordNode* curr = head->next;
     while (curr != NULL) {
         fprintf(fp, "%s|%s|%s|%s|%s|%s|%s|%d|%d|%d|%d|%s\n",
@@ -414,6 +548,13 @@ int load_consult_record_list(ConsultRecordNode** head) {
     FILE* fp = fopen(DATA_DIR "consult_records.txt", "r");
     if (fp == NULL) return 1;
 
+    // 跳过表头
+    char header_buffer[512];
+    if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
+        fclose(fp);
+        return 1;
+    }
+
     char line[1024];
     while (fgets(line, sizeof(line), fp) != NULL) {
         trim_newline(line);
@@ -425,10 +566,23 @@ int load_consult_record_list(ConsultRecordNode** head) {
         char feedback[MAX_RECORD_LEN];
         int decision, pre_status, post_status, star_rating;
 
-        sscanf(line, "%[^|]|%[^|]|%[^|]|%[^|]|%[^|]|%[^|]|%[^|]|%d|%d|%d|%d|%[^|]",
-            record_id, patient_id, doctor_id, appointment_id, consult_time,
-            diagnosis_text, treatment_advice, &decision, &pre_status, &post_status,
-            &star_rating, feedback);
+        char* fields[15];
+        int field_count = split_line_by_delimiter(line, '|', fields, 15);
+        
+        if (field_count < 12) continue;
+        
+        strcpy(record_id, fields[0]);
+        strcpy(patient_id, fields[1]);
+        strcpy(doctor_id, fields[2]);
+        strcpy(appointment_id, fields[3]);
+        strcpy(consult_time, fields[4]);
+        strcpy(diagnosis_text, fields[5]);
+        strcpy(treatment_advice, fields[6]);
+        decision = atoi(fields[7]);
+        pre_status = atoi(fields[8]);
+        post_status = atoi(fields[9]);
+        star_rating = atoi(fields[10]);
+        strcpy(feedback, fields[11]);
 
         ConsultRecordNode* new_node = create_consult_record_node(
             record_id, patient_id, doctor_id, appointment_id, consult_time,
@@ -450,6 +604,9 @@ int save_check_item_list(CheckItemNode* head) {
     FILE* fp = fopen(DATA_DIR "check_items.txt", "w");
     if (fp == NULL) return 0;
 
+    // 写入表头
+    fprintf(fp, "检查项目编号|检查项目名称|所属科室|价格|医保类型(0=自费,1=甲类,2=乙类)\n");
+
     CheckItemNode* curr = head->next;
     while (curr != NULL) {
         fprintf(fp, "%s|%s|%s|%.2f|%d\n",
@@ -465,6 +622,13 @@ int load_check_item_list(CheckItemNode** head) {
     FILE* fp = fopen(DATA_DIR "check_items.txt", "r");
     if (fp == NULL) return 1;
 
+    // 跳过表头
+    char header_buffer[512];
+    if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
+        fclose(fp);
+        return 1;
+    }
+
     char line[512];
     while (fgets(line, sizeof(line), fp) != NULL) {
         trim_newline(line);
@@ -474,7 +638,16 @@ int load_check_item_list(CheckItemNode** head) {
         double price;
         int m_type;
 
-        sscanf(line, "%[^|]|%[^|]|%[^|]|%lf|%d", item_id, item_name, dept, &price, &m_type);
+        char* fields[10];
+        int field_count = split_line_by_delimiter(line, '|', fields, 10);
+        
+        if (field_count < 5) continue;
+        
+        strcpy(item_id, fields[0]);
+        strcpy(item_name, fields[1]);
+        strcpy(dept, fields[2]);
+        price = atof(fields[3]);
+        m_type = atoi(fields[4]);
 
         CheckItemNode* new_node = create_check_item_node(item_id, item_name, dept, price, m_type);
         if (new_node == NULL) continue;
@@ -490,6 +663,9 @@ int save_check_record_list(CheckRecordNode* head) {
     ensure_data_dir();
     FILE* fp = fopen(DATA_DIR "check_records.txt", "w");
     if (fp == NULL) return 0;
+
+    // 写入表头
+    fprintf(fp, "检查记录编号|患者编号|检查项目编号|检查项目名称|所属科室|检查时间|检查结果|是否完成(0=否,1=是)|是否缴费(0=否,1=是)\n");
 
     CheckRecordNode* curr = head->next;
     while (curr != NULL) {
@@ -507,6 +683,13 @@ int load_check_record_list(CheckRecordNode** head) {
     FILE* fp = fopen(DATA_DIR "check_records.txt", "r");
     if (fp == NULL) return 1;
 
+    // 跳过表头
+    char header_buffer[512];
+    if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
+        fclose(fp);
+        return 1;
+    }
+
     char line[512];
     while (fgets(line, sizeof(line), fp) != NULL) {
         trim_newline(line);
@@ -517,9 +700,20 @@ int load_check_record_list(CheckRecordNode** head) {
         char result[MAX_RECORD_LEN];
         int is_completed, is_paid;
 
-        sscanf(line, "%[^|]|%[^|]|%[^|]|%[^|]|%[^|]|%[^|]|%[^|]|%d|%d",
-            record_id, patient_id, item_id, item_name, dept, check_time, result,
-            &is_completed, &is_paid);
+        char* fields[15];
+        int field_count = split_line_by_delimiter(line, '|', fields, 15);
+        
+        if (field_count < 9) continue;
+        
+        strcpy(record_id, fields[0]);
+        strcpy(patient_id, fields[1]);
+        strcpy(item_id, fields[2]);
+        strcpy(item_name, fields[3]);
+        strcpy(dept, fields[4]);
+        strcpy(check_time, fields[5]);
+        strcpy(result, fields[6]);
+        is_completed = atoi(fields[7]);
+        is_paid = atoi(fields[8]);
 
         CheckRecordNode* new_node = create_check_record_node(
             record_id, patient_id, item_id, item_name, dept, check_time, result,
@@ -538,9 +732,16 @@ int save_alert_list(AlertNode* head) {
     FILE* fp = fopen(DATA_DIR "alerts.txt", "w");
     if (fp == NULL) return 0;
 
+    // 写入表头
+    fprintf(fp, "消息内容|时间\n");
+
     AlertNode* curr = head->next;
     while (curr != NULL) {
-        fprintf(fp, "%s|%ld\n", curr->message, (long)curr->time);
+        // 将时间戳转换为可读格式
+        char time_str[20];
+        struct tm* local_time = localtime(&curr->time);
+        strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", local_time);
+        fprintf(fp, "%s|%s\n", curr->message, time_str);
         curr = curr->next;
     }
     fclose(fp);
@@ -552,19 +753,40 @@ int load_alert_list(AlertNode** head) {
     FILE* fp = fopen(DATA_DIR "alerts.txt", "r");
     if (fp == NULL) return 1;
 
+    // 跳过表头
+    char header_buffer[512];
+    if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
+        fclose(fp);
+        return 1;
+    }
+
     char line[512];
     while (fgets(line, sizeof(line), fp) != NULL) {
         trim_newline(line);
         if (strlen(line) == 0) continue;
 
         char message[256];
-        long alert_time;
+        char time_str[20];
+        time_t alert_time;
 
         char* last_pipe = strrchr(line, '|');
         if (last_pipe != NULL) {
             *last_pipe = '\0';
             strcpy(message, line);
-            alert_time = atol(last_pipe + 1);
+            strcpy(time_str, last_pipe + 1);
+            
+            // 解析日期时间字符串 (格式: YYYY-MM-DD HH:MM:SS)
+            struct tm tm = {0};
+            if (sscanf(time_str, "%d-%d-%d %d:%d:%d", 
+                       &tm.tm_year, &tm.tm_mon, &tm.tm_mday,
+                       &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 6) {
+                tm.tm_year -= 1900;  // 年份从1900开始
+                tm.tm_mon -= 1;      // 月份从0开始
+                alert_time = mktime(&tm);
+            } else {
+                // 解析失败，使用当前时间
+                alert_time = time(NULL);
+            }
         } else {
             continue;
         }
@@ -574,7 +796,7 @@ int load_alert_list(AlertNode** head) {
 
         strncpy(new_node->message, message, 255);
         new_node->message[255] = '\0';
-        new_node->time = (time_t)alert_time;
+        new_node->time = alert_time;
         new_node->prev = NULL;
         new_node->next = NULL;
 
@@ -593,6 +815,9 @@ int save_complaint_list(ComplaintNode* head) {
     FILE* fp = fopen(DATA_DIR "complaints.txt", "w");
     if (fp == NULL) return 0;
 
+    // 写入表头
+    fprintf(fp, "投诉编号|患者编号|目标类型(1=医生,2=护士/前台,3=药师)|目标ID|目标名称|投诉内容|状态(0=待处理,1=已回复)|回复|提交时间\n");
+
     ComplaintNode* curr = head->next;
     while (curr != NULL) {
         fprintf(fp, "%s|%s|%d|%s|%s|%s|%d|%s|%s\n",
@@ -608,6 +833,13 @@ int load_complaint_list(ComplaintNode** head) {
     ensure_data_dir();
     FILE* fp = fopen(DATA_DIR "complaints.txt", "r");
     if (fp == NULL) return 1;
+
+    // 跳过表头
+    char header_buffer[512];
+    if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
+        fclose(fp);
+        return 1;
+    }
 
     char line[1024];
     while (fgets(line, sizeof(line), fp) != NULL) {
@@ -635,10 +867,13 @@ int load_complaint_list(ComplaintNode** head) {
 }
 
 int save_log_list(LogNode* head) {
-    if (head == NULL) return 0;
+    if (head == NULL) return 1;
     ensure_data_dir();
     FILE* fp = fopen(DATA_DIR "logs.txt", "w");
     if (fp == NULL) return 0;
+
+    // 写入表头
+    fprintf(fp, "时间戳|操作|目标|描述\n");
 
     LogNode* curr = head;
     while (curr != NULL) {
@@ -653,6 +888,13 @@ int load_log_list(LogNode** head) {
     ensure_data_dir();
     FILE* fp = fopen(DATA_DIR "logs.txt", "r");
     if (fp == NULL) return 1;
+
+    // 跳过表头
+    char header_buffer[512];
+    if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
+        fclose(fp);
+        return 1;
+    }
 
     char line[512];
     while (fgets(line, sizeof(line), fp) != NULL) {
@@ -694,12 +936,16 @@ int save_inpatient_list(InpatientRecord* head) {
     FILE* fp = fopen(DATA_DIR "inpatients.txt", "w");
     if (fp == NULL) return 0;
 
+    // 写入表头
+    fprintf(fp, "住院记录编号|患者编号|床位号|病房类型(1=普通,2=ICU,3=隔离病房,4=单人病房)|推荐病房类型(1=普通,2=ICU,3=隔离病房,4=单人病房)|预计天数|已住天数|押金余额|是否活跃(0=否,1=是)\n");
+
     InpatientRecord* curr = head->next;
     while (curr != NULL) {
-        fprintf(fp, "%s|%s|%s|%d|%d|%d|%d|%.2f|%d\n",
+        fprintf(fp, "%s|%s|%s|%d|%d|%d|%d|%.2f|%d|%ld\n",
             curr->inpatient_id, curr->patient_id, curr->bed_id,
             curr->ward_type, curr->recommended_ward_type, curr->estimated_days,
-            curr->days_stayed, curr->deposit_balance, curr->is_active);
+            curr->days_stayed, curr->deposit_balance, curr->is_active,
+            (long)curr->last_settlement_time);
         curr = curr->next;
     }
     fclose(fp);
@@ -711,6 +957,13 @@ int load_inpatient_list(InpatientRecord** head) {
     FILE* fp = fopen(DATA_DIR "inpatients.txt", "r");
     if (fp == NULL) return 1;
 
+    // 跳过表头
+    char header_buffer[512];
+    if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
+        fclose(fp);
+        return 1;
+    }
+
     char line[512];
     while (fgets(line, sizeof(line), fp) != NULL) {
         trim_newline(line);
@@ -719,15 +972,30 @@ int load_inpatient_list(InpatientRecord** head) {
         char inpatient_id[MAX_ID_LEN], patient_id[MAX_ID_LEN], bed_id[MAX_ID_LEN];
         int ward_type, recommended_ward_type, estimated_days, days_stayed, is_active;
         double deposit_balance;
+        long last_settlement_time;
 
-        sscanf(line, "%[^|]|%[^|]|%[^|]|%d|%d|%d|%d|%lf|%d",
-            inpatient_id, patient_id, bed_id, &ward_type, &recommended_ward_type,
-            &estimated_days, &days_stayed, &deposit_balance, &is_active);
+        char* fields[15];
+        int field_count = split_line_by_delimiter(line, '|', fields, 15);
+        
+        if (field_count < 10) continue;
+        
+        strcpy(inpatient_id, fields[0]);
+        strcpy(patient_id, fields[1]);
+        strcpy(bed_id, fields[2]);
+        ward_type = atoi(fields[3]);
+        recommended_ward_type = atoi(fields[4]);
+        estimated_days = atoi(fields[5]);
+        days_stayed = atoi(fields[6]);
+        deposit_balance = atof(fields[7]);
+        is_active = atoi(fields[8]);
+        last_settlement_time = atol(fields[9]);
 
         InpatientRecord* new_node = create_inpatient_record_node(
             inpatient_id, patient_id, bed_id, ward_type, recommended_ward_type,
             estimated_days, days_stayed, deposit_balance, is_active);
         if (new_node == NULL) continue;
+        
+        new_node->last_settlement_time = last_settlement_time;
 
         insert_inpatient_record_tail(*head, new_node);
     }

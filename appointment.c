@@ -310,6 +310,46 @@ AppointmentNode* register_appointment(
         printf("⚠️ 预约时段不能为空！\n");
         return NULL;
     }
+    
+    if (strlen(appointment_date) != 10 || appointment_date[4] != '-' || appointment_date[7] != '-')
+    {
+        printf("⚠️ 预约日期格式非法，请使用 YYYY-MM-DD 格式！\n");
+        return NULL;
+    }
+    
+    int date_year = atoi(appointment_date);
+    int date_month = atoi(appointment_date + 5);
+    int date_day = atoi(appointment_date + 8);
+    if (date_year < 2024 || date_year > 2100 || date_month < 1 || date_month > 12 || date_day < 1 || date_day > 31)
+    {
+        printf("⚠️ 预约日期不合法，请检查年月日是否正确！\n");
+        return NULL;
+    }
+    
+    if (strcmp(appointment_slot, "上午") != 0 && strcmp(appointment_slot, "下午") != 0 &&
+        strcmp(appointment_slot, "晚上") != 0 && strcmp(appointment_slot, "上午时段") != 0 &&
+        strcmp(appointment_slot, "下午时段") != 0 && strcmp(appointment_slot, "晚上时段") != 0 &&
+        strcmp(appointment_slot, "上午 8:00-12:00") != 0 && strcmp(appointment_slot, "下午 14:00-18:00") != 0 &&
+        strcmp(appointment_slot, "晚上 18:00-22:00") != 0)
+    {
+        printf("⚠️ 预约时段非法，系统只支持：上午/下午/晚上 或带具体时间的时段格式！\n");
+        return NULL;
+    }
+    
+    AppointmentNode* curr_check = g_appointment_list->next;
+    while (curr_check != NULL)
+    {
+        if (strcmp(curr_check->patient_id, patient_id) == 0 &&
+            strcmp(curr_check->appointment_date, appointment_date) == 0 &&
+            strcmp(curr_check->appointment_slot, appointment_slot) == 0 &&
+            (curr_check->appointment_status == RESERVED || curr_check->appointment_status == CHECKED_IN))
+        {
+            printf("⚠️ 您已存在该时段的有效预约（预约号：%s），不能重复预约！\n", curr_check->appointment_id);
+            return NULL;
+        }
+        curr_check = curr_check->next;
+    }
+    
     has_doctor = (appoint_doctor != NULL && strlen(appoint_doctor) > 0);
     has_dept = (appoint_dept != NULL && strlen(appoint_dept) > 0);
     if (!validate_appointment_target(appoint_doctor, appoint_dept))

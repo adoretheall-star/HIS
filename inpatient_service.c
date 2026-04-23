@@ -23,6 +23,8 @@ extern InpatientRecord* g_inpatient_list;
 // 病房费用标准
 #define GENERAL_WARD_RATE 120.0  // 普通病房每天费用
 #define ICU_WARD_RATE 500.0      // ICU每天费用
+#define ISOLATION_WARD_RATE 300.0  // 隔离病房每天费用
+#define SINGLE_WARD_RATE 400.0    // 单人病房每天费用
 
 // ==========================================
 // 内部辅助函数
@@ -72,7 +74,17 @@ static void generate_inpatient_id(char* new_id)
  */
 static double get_ward_rate(WardType ward_type)
 {
-    return ward_type == WARD_TYPE_ICU ? ICU_WARD_RATE : GENERAL_WARD_RATE;
+    switch (ward_type) {
+        case WARD_TYPE_ICU:
+            return ICU_WARD_RATE;
+        case WARD_TYPE_ISOLATION:
+            return ISOLATION_WARD_RATE;
+        case WARD_TYPE_SINGLE:
+            return SINGLE_WARD_RATE;
+        case WARD_TYPE_GENERAL:
+        default:
+            return GENERAL_WARD_RATE;
+    }
 }
 
 // ==========================================
@@ -109,7 +121,7 @@ void show_all_beds()
         printf("%-13s %-13s %-12s %-10s %s\n",
             curr->room_id,
             curr->bed_id,
-            curr->ward_type == WARD_TYPE_ICU ? "ICU" : "普通病房",
+            curr->ward_type == WARD_TYPE_ICU ? "ICU" : (curr->ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (curr->ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房")),
             curr->is_occupied ? "占用" : "空闲",
             curr->is_occupied ? curr->patient_id : "-");
 
@@ -148,7 +160,7 @@ void show_free_beds()
             printf("%-13s %-13s %s\n",
                 curr->room_id,
                 curr->bed_id,
-                curr->ward_type == WARD_TYPE_ICU ? "ICU" : "普通病房");
+                curr->ward_type == WARD_TYPE_ICU ? "ICU" : (curr->ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (curr->ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房")));
         }
         curr = curr->next;
     }
@@ -192,7 +204,7 @@ void show_hospitalized_patients()
                 
                 if (strlen(curr->bed_id) > 0)
                 {
-                    actual_ward_type = curr->ward_type == WARD_TYPE_ICU ? "ICU" : "普通病房";
+                    actual_ward_type = curr->ward_type == WARD_TYPE_ICU ? "ICU" : (curr->ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (curr->ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房"));
                     // 通过床位编号查找病房编号
                     bed = find_bed_by_id(curr->bed_id);
                     if (bed != NULL)
@@ -207,7 +219,7 @@ void show_hospitalized_patients()
                     patient->name,
                     room_id,
                     strlen(curr->bed_id) > 0 ? curr->bed_id : "未分配",
-                    curr->recommended_ward_type == WARD_TYPE_ICU ? "ICU" : "普通病房",
+                    curr->recommended_ward_type == WARD_TYPE_ICU ? "ICU" : (curr->recommended_ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (curr->recommended_ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房")),
                     actual_ward_type,
                     curr->days_stayed,
                     curr->deposit_balance);
@@ -221,7 +233,7 @@ void show_hospitalized_patients()
                 
                 if (strlen(curr->bed_id) > 0)
                 {
-                    actual_ward_type = curr->ward_type == WARD_TYPE_ICU ? "ICU" : "普通病房";
+                    actual_ward_type = curr->ward_type == WARD_TYPE_ICU ? "ICU" : (curr->ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (curr->ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房"));
                     // 通过床位编号查找病房编号
                     bed = find_bed_by_id(curr->bed_id);
                     if (bed != NULL)
@@ -236,7 +248,7 @@ void show_hospitalized_patients()
                     "患者档案缺失",
                     room_id,
                     strlen(curr->bed_id) > 0 ? curr->bed_id : "未分配",
-                    curr->recommended_ward_type == WARD_TYPE_ICU ? "ICU" : "普通病房",
+                    curr->recommended_ward_type == WARD_TYPE_ICU ? "ICU" : (curr->recommended_ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (curr->recommended_ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房")),
                     actual_ward_type,
                     curr->days_stayed,
                     curr->deposit_balance);
@@ -294,7 +306,7 @@ void show_inpatient_record_by_patient_id(const char* patient_id)
             
             if (strlen(curr->bed_id) > 0)
             {
-                actual_ward_type = curr->ward_type == WARD_TYPE_ICU ? "ICU" : "普通病房";
+                actual_ward_type = curr->ward_type == WARD_TYPE_ICU ? "ICU" : (curr->ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (curr->ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房"));
                 // 通过床位编号查找病房编号
                 bed = find_bed_by_id(curr->bed_id);
                 if (bed != NULL)
@@ -307,7 +319,7 @@ void show_inpatient_record_by_patient_id(const char* patient_id)
                 curr->inpatient_id,
                 room_id,
                 strlen(curr->bed_id) > 0 ? curr->bed_id : "未分配",
-                curr->recommended_ward_type == WARD_TYPE_ICU ? "ICU" : "普通病房",
+                curr->recommended_ward_type == WARD_TYPE_ICU ? "ICU" : (curr->recommended_ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (curr->recommended_ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房")),
                 actual_ward_type,
                 curr->estimated_days,
                 curr->days_stayed,
@@ -345,9 +357,9 @@ int register_inpatient(const char* patient_id, int estimated_days, double deposi
         return 0;
     }
 
-    if (deposit < 0)
+    if (deposit <= 0)
     {
-        printf("⚠️ 押金不能为负数！\n");
+        printf("⚠️ 押金必须大于 0！\n");
         return 0;
     }
 
@@ -377,7 +389,7 @@ int register_inpatient(const char* patient_id, int estimated_days, double deposi
         return 0;
     }
 
-    // 初始化住院记录链表（押金已在 main.c 中扣除，余额已检查）
+    // 初始化住院记录链表（押金已在调用前扣除，余额已检查）
 
     if (g_inpatient_list == NULL)
     {
@@ -414,18 +426,18 @@ int register_inpatient(const char* patient_id, int estimated_days, double deposi
     // 插入住院记录
     insert_inpatient_record_tail(g_inpatient_list, new_record);
 
-    // 更新患者状态为住院中（押金已在 main.c 中扣除）
+    // 更新患者状态为住院中（押金已在调用前扣除）
     patient->status = STATUS_HOSPITALIZED;
 
     // 记录日志
     char description[200];
     snprintf(description, sizeof(description), "患者 %s (%s) 住院登记，预计住院 %d 天，押金 %.2f 元，推荐病房类型：%s",
         patient->name, patient_id, estimated_days, deposit,
-        recommended_ward_type == WARD_TYPE_ICU ? "ICU" : "普通病房");
+        recommended_ward_type == WARD_TYPE_ICU ? "ICU" : (recommended_ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (recommended_ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房")));
     add_log("住院登记", patient_id, description);
 
     printf("✅ 住院登记成功！住院号：%s\n", new_inpatient_id);
-    printf("📋 推荐病房类型：%s\n", recommended_ward_type == WARD_TYPE_ICU ? "ICU" : "普通病房");
+    printf("📋 推荐病房类型：%s\n", recommended_ward_type == WARD_TYPE_ICU ? "ICU" : (recommended_ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (recommended_ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房")));
     return 1;
 }
 
@@ -473,25 +485,29 @@ int assign_bed_to_patient(const char* patient_id, const char* bed_id)
 
     // 显示推荐病房类型
     printf("📋 推荐病房类型：%s\n", 
-        inpatient_record->recommended_ward_type == WARD_TYPE_ICU ? "ICU" : "普通病房");
+        inpatient_record->recommended_ward_type == WARD_TYPE_ICU ? "ICU" : (inpatient_record->recommended_ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (inpatient_record->recommended_ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房")));
 
-    // 显示推荐类型的可用床位
+    // 显示推荐类型可用床位
     printf("\n💡 推荐类型可用床位：\n");
-    WardNode* curr_bed = g_ward_list->next;
-    int has_recommended_beds = 0;
-    while (curr_bed != NULL)
+    
+    if (g_ward_list == NULL)
     {
-        if (!curr_bed->is_occupied && curr_bed->ward_type == inpatient_record->recommended_ward_type)
+        printf("  ⚠️ 床位链表未初始化，暂无可用床位！\n");
+    }
+    else
+    {
+        WardNode* curr_bed = g_ward_list->next;
+        int has_recommended_beds = 0;
+        while (curr_bed != NULL)
         {
             printf("  - %s (%s)\n", curr_bed->bed_id, 
-                curr_bed->ward_type == WARD_TYPE_ICU ? "ICU" : "普通病房");
+                curr_bed->ward_type == WARD_TYPE_ICU ? "ICU" : (curr_bed->ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (curr_bed->ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房")));
             has_recommended_beds = 1;
         }
-        curr_bed = curr_bed->next;
-    }
-    if (!has_recommended_beds)
-    {
-        printf("  无推荐类型可用床位\n");
+        if (!has_recommended_beds)
+        {
+            printf("  无推荐类型可用床位\n");
+        }
     }
 
     // 检查床位是否存在且可用
@@ -513,8 +529,8 @@ int assign_bed_to_patient(const char* patient_id, const char* bed_id)
     {
         printf("⚠️ 所选床位类型与推荐类型不一致！\n");
         printf("   推荐：%s，实际：%s\n", 
-            inpatient_record->recommended_ward_type == WARD_TYPE_ICU ? "ICU" : "普通病房",
-            bed->ward_type == WARD_TYPE_ICU ? "ICU" : "普通病房");
+            inpatient_record->recommended_ward_type == WARD_TYPE_ICU ? "ICU" : (inpatient_record->recommended_ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (inpatient_record->recommended_ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房")),
+            bed->ward_type == WARD_TYPE_ICU ? "ICU" : (bed->ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (bed->ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房")));
         printf("   继续分配？(1=是/0=否): ");
         int confirm = get_safe_int("");
         if (confirm != 1)
@@ -540,7 +556,7 @@ int assign_bed_to_patient(const char* patient_id, const char* bed_id)
     {
         snprintf(description, sizeof(description), "为患者 %s (%s) 分配床位 %s，类型：%s（系统推荐类型）",
             patient->name, patient_id, bed_id,
-            bed->ward_type == WARD_TYPE_ICU ? "ICU" : "普通病房");
+            bed->ward_type == WARD_TYPE_ICU ? "ICU" : (bed->ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (bed->ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房")));
     }
     else
     {
@@ -548,13 +564,13 @@ int assign_bed_to_patient(const char* patient_id, const char* bed_id)
         {
             snprintf(description, sizeof(description), "为患者 %s (%s) 分配床位 %s，类型：%s（系统推荐 ICU，人工调整为普通病房）",
                 patient->name, patient_id, bed_id,
-                bed->ward_type == WARD_TYPE_ICU ? "ICU" : "普通病房");
+                bed->ward_type == WARD_TYPE_ICU ? "ICU" : (bed->ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (bed->ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房")));
         }
         else
         {
             snprintf(description, sizeof(description), "为患者 %s (%s) 分配床位 %s，类型：%s（系统推荐普通病房，人工调整为 ICU）",
                 patient->name, patient_id, bed_id,
-                bed->ward_type == WARD_TYPE_ICU ? "ICU" : "普通病房");
+                bed->ward_type == WARD_TYPE_ICU ? "ICU" : (bed->ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (bed->ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房")));
         }
     }
     add_log("床位分配", patient_id, description);
@@ -836,6 +852,24 @@ int daily_settlement(const char* patient_id)
         printf("⚠️ 该患者未分配床位，无法执行日结计费！\n");
         return 0;
     }
+    
+    // 检查当天是否已结算
+    time_t now = time(NULL);
+    struct tm* local_time = localtime(&now);
+    char today[11];
+    strftime(today, sizeof(today), "%Y-%m-%d", local_time);
+    
+    char last_settlement_date[11];
+    struct tm* settlement_time = localtime((time_t*)&inpatient_record->last_settlement_time);
+    if (inpatient_record->last_settlement_time > 0)
+    {
+        strftime(last_settlement_date, sizeof(last_settlement_date), "%Y-%m-%d", settlement_time);
+        if (strcmp(today, last_settlement_date) == 0)
+        {
+            printf("⚠️ 该患者今日已完成日结，不能重复结算！\n");
+            return 0;
+        }
+    }
 
     // 计算当日费用
     daily_rate = get_ward_rate(inpatient_record->ward_type);
@@ -852,6 +886,7 @@ int daily_settlement(const char* patient_id)
     // 执行日结计费
     inpatient_record->days_stayed++;
     inpatient_record->deposit_balance -= daily_rate;
+    inpatient_record->last_settlement_time = (long)now;
 
     // 记录日志
     char description[200];
@@ -898,7 +933,7 @@ void show_deposit_warnings()
                 const char* room_id = "未分配";
                 if (strlen(curr->bed_id) > 0)
                 {
-                    actual_ward_type = curr->ward_type == WARD_TYPE_ICU ? "ICU" : "普通病房";
+                    actual_ward_type = curr->ward_type == WARD_TYPE_ICU ? "ICU" : (curr->ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (curr->ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房"));
                     // 通过床位编号查找病房编号
                     WardNode* bed = find_bed_by_id(curr->bed_id);
                     if (bed != NULL)
@@ -923,7 +958,7 @@ void show_deposit_warnings()
                         patient->name,
                         room_id,
                         curr->bed_id,
-                        curr->recommended_ward_type == WARD_TYPE_ICU ? "ICU" : "普通病房",
+                        curr->recommended_ward_type == WARD_TYPE_ICU ? "ICU" : (curr->recommended_ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (curr->recommended_ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房")),
                         actual_ward_type,
                         curr->days_stayed,
                         curr->deposit_balance,
@@ -932,15 +967,7 @@ void show_deposit_warnings()
                 else if (strlen(curr->bed_id) == 0)  // 未分床但押金较少
                 {
                     // 根据推荐病房类型计算预警阈值
-                    double warning_threshold = 0.0;
-                    if (curr->recommended_ward_type == WARD_TYPE_ICU)
-                    {
-                        warning_threshold = get_ward_rate(WARD_TYPE_ICU) * 3;  // ICU 3天费用
-                    }
-                    else
-                    {
-                        warning_threshold = get_ward_rate(WARD_TYPE_GENERAL) * 3;  // 普通病房 3天费用
-                    }
+                    double warning_threshold = get_ward_rate(curr->recommended_ward_type) * 3;  // 3天费用
                     
                     if (curr->deposit_balance < warning_threshold)
                     {
@@ -950,7 +977,7 @@ void show_deposit_warnings()
                         patient->name,
                         room_id,
                         "-",
-                        curr->recommended_ward_type == WARD_TYPE_ICU ? "ICU" : "普通病房",
+                        curr->recommended_ward_type == WARD_TYPE_ICU ? "ICU" : (curr->recommended_ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (curr->recommended_ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房")),
                         actual_ward_type,
                         curr->days_stayed,
                         curr->deposit_balance,
