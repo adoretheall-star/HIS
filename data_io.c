@@ -61,6 +61,9 @@ int save_patient_list(PatientNode* head) {
     FILE* fp = fopen(DATA_DIR "patients.txt", "w");
     if (fp == NULL) return 0;
 
+    // 写入表头
+    fprintf(fp, "患者编号|姓名|年龄|身份证号|医保类型(0=无,1=职工,2=居民,3=新农合)|症状|目标科室|医生编号|就诊卡号|余额|状态(0=未就诊,1=已就诊,2=住院中)|诊断结果|治疗意见|处方|处方数量|爽约时间1|爽约时间2|爽约时间3|爽约次数|黑名单过期时间|是否黑名单(0=否,1=是)|是否急诊(0=否,1=是)|排队时间|呼叫次数|急诊欠费|欠费时间\n");
+
     PatientNode* curr = head->next;
     while (curr != NULL) {
         char prescription_str[2048] = "";
@@ -99,6 +102,13 @@ int load_patient_list(PatientNode** head) {
     ensure_data_dir();
     FILE* fp = fopen(DATA_DIR "patients.txt", "r");
     if (fp == NULL) return 1;
+
+    // 跳过表头
+    char header_buffer[512];
+    if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
+        fclose(fp);
+        return 1;
+    }
 
     char line[4096];
     while (fgets(line, sizeof(line), fp) != NULL) {
@@ -196,6 +206,9 @@ int save_appointment_list(AppointmentNode* head) {
     FILE* fp = fopen(DATA_DIR "appointments.txt", "w");
     if (fp == NULL) return 0;
 
+    // 写入表头
+    fprintf(fp, "预约编号|患者编号|预约日期|预约时段|医生编号|科室|状态(1=待确认,2=已确认,3=已完成,4=已取消)|挂号费|是否缴费(0=否,1=是)|是否现场挂号(0=否,1=是)\n");
+
     AppointmentNode* curr = head->next;
     while (curr != NULL) {
         fprintf(fp, "%s|%s|%s|%s|%s|%s|%d|%.2f|%d|%d\n",
@@ -212,6 +225,13 @@ int load_appointment_list(AppointmentNode** head) {
     ensure_data_dir();
     FILE* fp = fopen(DATA_DIR "appointments.txt", "r");
     if (fp == NULL) return 1;
+
+    // 跳过表头
+    char header_buffer[512];
+    if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
+        fclose(fp);
+        return 1;
+    }
 
     char line[512];
     while (fgets(line, sizeof(line), fp) != NULL) {
@@ -260,6 +280,9 @@ int save_doctor_list(DoctorNode* head) {
     FILE* fp = fopen(DATA_DIR "doctors.txt", "w");
     if (fp == NULL) return 0;
 
+    // 写入表头
+    fprintf(fp, "医生编号|姓名|科室|排队长度|是否值班(0=否,1=是)\n");
+
     DoctorNode* curr = head->next;
     while (curr != NULL) {
         fprintf(fp, "%s|%s|%s|%d|%d\n",
@@ -274,6 +297,13 @@ int load_doctor_list(DoctorNode** head) {
     ensure_data_dir();
     FILE* fp = fopen(DATA_DIR "doctors.txt", "r");
     if (fp == NULL) return 1;
+
+    // 跳过表头
+    char header_buffer[512];
+    if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
+        fclose(fp);
+        return 1;
+    }
 
     char line[256];
     while (fgets(line, sizeof(line), fp) != NULL) {
@@ -303,6 +333,9 @@ int save_medicine_list(MedicineNode* head) {
     FILE* fp = fopen(DATA_DIR "medicines.txt", "w");
     if (fp == NULL) return 0;
 
+    // 写入表头
+    fprintf(fp, "药品编号|商品名|别名|通用名|单价|库存|医保类型(0=自费,1=甲类,2=乙类)|有效期\n");
+
     MedicineNode* curr = head->next;
     while (curr != NULL) {
         fprintf(fp, "%s|%s|%s|%s|%.2f|%d|%d|%s\n",
@@ -318,6 +351,13 @@ int load_medicine_list(MedicineNode** head) {
     ensure_data_dir();
     FILE* fp = fopen(DATA_DIR "medicines.txt", "r");
     if (fp == NULL) return 1;
+
+    // 跳过表头
+    char header_buffer[512];
+    if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
+        fclose(fp);
+        return 1;
+    }
 
     char line[512];
     while (fgets(line, sizeof(line), fp) != NULL) {
@@ -359,6 +399,9 @@ int save_ward_list(WardNode* head) {
     FILE* fp = fopen(DATA_DIR "wards.txt", "w");
     if (fp == NULL) return 0;
 
+    // 写入表头
+    fprintf(fp, "病房号|床位号|病房类型(1=普通,2=ICU,3=隔离病房,4=单人病房)|是否占用(0=否,1=是)|患者编号\n");
+
     WardNode* curr = head->next;
     while (curr != NULL) {
         fprintf(fp, "%s|%s|%d|%d|%s\n",
@@ -373,6 +416,13 @@ int load_ward_list(WardNode** head) {
     ensure_data_dir();
     FILE* fp = fopen(DATA_DIR "wards.txt", "r");
     if (fp == NULL) return 1;
+
+    // 跳过表头
+    char header_buffer[512];
+    if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
+        fclose(fp);
+        return 1;
+    }
 
     char line[256];
     while (fgets(line, sizeof(line), fp) != NULL) {
@@ -411,6 +461,9 @@ int save_account_list(AccountNode* head) {
     FILE* fp = fopen(DATA_DIR "accounts.txt", "w");
     if (fp == NULL) return 0;
 
+    // 写入表头
+    fprintf(fp, "用户名|密码|真实姓名|角色(0=管理员,1=医生,2=护士,3=药师)|错误次数|锁定时间|是否值班(0=否,1=是)\n");
+
     AccountNode* curr = head->next;
     while (curr != NULL) {
         fprintf(fp, "%s|%s|%s|%d|%d|%ld|%d\n",
@@ -426,6 +479,13 @@ int load_account_list(AccountNode** head) {
     ensure_data_dir();
     FILE* fp = fopen(DATA_DIR "accounts.txt", "r");
     if (fp == NULL) return 1;
+
+    // 跳过表头
+    char header_buffer[512];
+    if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
+        fclose(fp);
+        return 1;
+    }
 
     char line[512];
     while (fgets(line, sizeof(line), fp) != NULL) {
@@ -468,6 +528,9 @@ int save_consult_record_list(ConsultRecordNode* head) {
     FILE* fp = fopen(DATA_DIR "consult_records.txt", "w");
     if (fp == NULL) return 0;
 
+    // 写入表头
+    fprintf(fp, "记录编号|患者编号|医生编号|预约编号|就诊时间|诊断结果|治疗意见|决策(0=未决定,1=门诊,2=住院,3=转院)|就诊前状态(0=未就诊,1=待检查,2=待诊断)|就诊后状态(0=未完成,1=已完成,2=已转诊)|星级评分(1-5星,0=未评价)|评价内容\n");
+
     ConsultRecordNode* curr = head->next;
     while (curr != NULL) {
         fprintf(fp, "%s|%s|%s|%s|%s|%s|%s|%d|%d|%d|%d|%s\n",
@@ -484,6 +547,13 @@ int load_consult_record_list(ConsultRecordNode** head) {
     ensure_data_dir();
     FILE* fp = fopen(DATA_DIR "consult_records.txt", "r");
     if (fp == NULL) return 1;
+
+    // 跳过表头
+    char header_buffer[512];
+    if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
+        fclose(fp);
+        return 1;
+    }
 
     char line[1024];
     while (fgets(line, sizeof(line), fp) != NULL) {
@@ -534,6 +604,9 @@ int save_check_item_list(CheckItemNode* head) {
     FILE* fp = fopen(DATA_DIR "check_items.txt", "w");
     if (fp == NULL) return 0;
 
+    // 写入表头
+    fprintf(fp, "检查项目编号|检查项目名称|所属科室|价格|医保类型(0=自费,1=甲类,2=乙类)\n");
+
     CheckItemNode* curr = head->next;
     while (curr != NULL) {
         fprintf(fp, "%s|%s|%s|%.2f|%d\n",
@@ -548,6 +621,13 @@ int load_check_item_list(CheckItemNode** head) {
     ensure_data_dir();
     FILE* fp = fopen(DATA_DIR "check_items.txt", "r");
     if (fp == NULL) return 1;
+
+    // 跳过表头
+    char header_buffer[512];
+    if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
+        fclose(fp);
+        return 1;
+    }
 
     char line[512];
     while (fgets(line, sizeof(line), fp) != NULL) {
@@ -584,6 +664,9 @@ int save_check_record_list(CheckRecordNode* head) {
     FILE* fp = fopen(DATA_DIR "check_records.txt", "w");
     if (fp == NULL) return 0;
 
+    // 写入表头
+    fprintf(fp, "检查记录编号|患者编号|检查项目编号|检查项目名称|所属科室|检查时间|检查结果|是否完成(0=否,1=是)|是否缴费(0=否,1=是)\n");
+
     CheckRecordNode* curr = head->next;
     while (curr != NULL) {
         fprintf(fp, "%s|%s|%s|%s|%s|%s|%s|%d|%d\n",
@@ -599,6 +682,13 @@ int load_check_record_list(CheckRecordNode** head) {
     ensure_data_dir();
     FILE* fp = fopen(DATA_DIR "check_records.txt", "r");
     if (fp == NULL) return 1;
+
+    // 跳过表头
+    char header_buffer[512];
+    if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
+        fclose(fp);
+        return 1;
+    }
 
     char line[512];
     while (fgets(line, sizeof(line), fp) != NULL) {
@@ -642,9 +732,16 @@ int save_alert_list(AlertNode* head) {
     FILE* fp = fopen(DATA_DIR "alerts.txt", "w");
     if (fp == NULL) return 0;
 
+    // 写入表头
+    fprintf(fp, "消息内容|时间\n");
+
     AlertNode* curr = head->next;
     while (curr != NULL) {
-        fprintf(fp, "%s|%ld\n", curr->message, (long)curr->time);
+        // 将时间戳转换为可读格式
+        char time_str[20];
+        struct tm* local_time = localtime(&curr->time);
+        strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", local_time);
+        fprintf(fp, "%s|%s\n", curr->message, time_str);
         curr = curr->next;
     }
     fclose(fp);
@@ -656,19 +753,40 @@ int load_alert_list(AlertNode** head) {
     FILE* fp = fopen(DATA_DIR "alerts.txt", "r");
     if (fp == NULL) return 1;
 
+    // 跳过表头
+    char header_buffer[512];
+    if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
+        fclose(fp);
+        return 1;
+    }
+
     char line[512];
     while (fgets(line, sizeof(line), fp) != NULL) {
         trim_newline(line);
         if (strlen(line) == 0) continue;
 
         char message[256];
-        long alert_time;
+        char time_str[20];
+        time_t alert_time;
 
         char* last_pipe = strrchr(line, '|');
         if (last_pipe != NULL) {
             *last_pipe = '\0';
             strcpy(message, line);
-            alert_time = atol(last_pipe + 1);
+            strcpy(time_str, last_pipe + 1);
+            
+            // 解析日期时间字符串 (格式: YYYY-MM-DD HH:MM:SS)
+            struct tm tm = {0};
+            if (sscanf(time_str, "%d-%d-%d %d:%d:%d", 
+                       &tm.tm_year, &tm.tm_mon, &tm.tm_mday,
+                       &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 6) {
+                tm.tm_year -= 1900;  // 年份从1900开始
+                tm.tm_mon -= 1;      // 月份从0开始
+                alert_time = mktime(&tm);
+            } else {
+                // 解析失败，使用当前时间
+                alert_time = time(NULL);
+            }
         } else {
             continue;
         }
@@ -678,7 +796,7 @@ int load_alert_list(AlertNode** head) {
 
         strncpy(new_node->message, message, 255);
         new_node->message[255] = '\0';
-        new_node->time = (time_t)alert_time;
+        new_node->time = alert_time;
         new_node->prev = NULL;
         new_node->next = NULL;
 
@@ -697,6 +815,9 @@ int save_complaint_list(ComplaintNode* head) {
     FILE* fp = fopen(DATA_DIR "complaints.txt", "w");
     if (fp == NULL) return 0;
 
+    // 写入表头
+    fprintf(fp, "投诉编号|患者编号|目标类型(1=医生,2=护士/前台,3=药师)|目标ID|目标名称|投诉内容|状态(0=待处理,1=已回复)|回复|提交时间\n");
+
     ComplaintNode* curr = head->next;
     while (curr != NULL) {
         fprintf(fp, "%s|%s|%d|%s|%s|%s|%d|%s|%s\n",
@@ -712,6 +833,13 @@ int load_complaint_list(ComplaintNode** head) {
     ensure_data_dir();
     FILE* fp = fopen(DATA_DIR "complaints.txt", "r");
     if (fp == NULL) return 1;
+
+    // 跳过表头
+    char header_buffer[512];
+    if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
+        fclose(fp);
+        return 1;
+    }
 
     char line[1024];
     while (fgets(line, sizeof(line), fp) != NULL) {
@@ -739,10 +867,13 @@ int load_complaint_list(ComplaintNode** head) {
 }
 
 int save_log_list(LogNode* head) {
-    if (head == NULL) return 0;
+    if (head == NULL) return 1;
     ensure_data_dir();
     FILE* fp = fopen(DATA_DIR "logs.txt", "w");
     if (fp == NULL) return 0;
+
+    // 写入表头
+    fprintf(fp, "时间戳|操作|目标|描述\n");
 
     LogNode* curr = head;
     while (curr != NULL) {
@@ -757,6 +888,13 @@ int load_log_list(LogNode** head) {
     ensure_data_dir();
     FILE* fp = fopen(DATA_DIR "logs.txt", "r");
     if (fp == NULL) return 1;
+
+    // 跳过表头
+    char header_buffer[512];
+    if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
+        fclose(fp);
+        return 1;
+    }
 
     char line[512];
     while (fgets(line, sizeof(line), fp) != NULL) {
@@ -798,6 +936,9 @@ int save_inpatient_list(InpatientRecord* head) {
     FILE* fp = fopen(DATA_DIR "inpatients.txt", "w");
     if (fp == NULL) return 0;
 
+    // 写入表头
+    fprintf(fp, "住院记录编号|患者编号|床位号|病房类型(1=普通,2=ICU,3=隔离病房,4=单人病房)|推荐病房类型(1=普通,2=ICU,3=隔离病房,4=单人病房)|预计天数|已住天数|押金余额|是否活跃(0=否,1=是)\n");
+
     InpatientRecord* curr = head->next;
     while (curr != NULL) {
         fprintf(fp, "%s|%s|%s|%d|%d|%d|%d|%.2f|%d|%ld\n",
@@ -815,6 +956,13 @@ int load_inpatient_list(InpatientRecord** head) {
     ensure_data_dir();
     FILE* fp = fopen(DATA_DIR "inpatients.txt", "r");
     if (fp == NULL) return 1;
+
+    // 跳过表头
+    char header_buffer[512];
+    if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
+        fclose(fp);
+        return 1;
+    }
 
     char line[512];
     while (fgets(line, sizeof(line), fp) != NULL) {

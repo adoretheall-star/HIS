@@ -1884,7 +1884,13 @@ static void handle_internal_appointment_register()
     printf("\n================ 预约登记 ================\n");
     get_safe_string("请输入患者编号: ", patient_id, MAX_ID_LEN);
     get_safe_string("请输入预约日期: ", appointment_date, MAX_NAME_LEN);
-    get_safe_string("请输入预约时段: ", appointment_slot, MAX_NAME_LEN);
+    // 夜间模式下自动设置为晚上
+    if (is_night_shift()) {
+        strcpy(appointment_slot, "晚上");
+        printf("当前为夜间模式，自动设置预约时段为: %s\n", appointment_slot);
+    } else {
+        get_safe_string("请输入预约时段: ", appointment_slot, MAX_NAME_LEN);
+    }
     get_safe_string("请输入预约科室(可留空): ", appoint_dept, MAX_NAME_LEN);
     
     // 如果输入了科室，显示该科室的医生列表
@@ -2165,20 +2171,26 @@ static void handle_patient_self_appointment_register()
     
     // 预约时段输入环节
     input_slot:
-    get_safe_string("请输入预约时段(输入 0 回退上一步，输入 00 退出): ", appointment_slot, MAX_NAME_LEN);
-    if (strcmp(appointment_slot, "00") == 0)
-    {
-        printf("操作取消！\n");
-        return;
-    }
-    if (strcmp(appointment_slot, "0") == 0)
-        goto input_date;
-    // 时段校验
-    if (strlen(appointment_slot) == 0)
-    {
-        printf("预约时段不能为空，请重新输入：");
-        get_safe_string("", appointment_slot, MAX_NAME_LEN);
-        goto input_slot;
+    // 夜间模式下自动设置为晚上
+    if (is_night_shift()) {
+        strcpy(appointment_slot, "晚上");
+        printf("当前为夜间模式，自动设置预约时段为: %s\n", appointment_slot);
+    } else {
+        get_safe_string("请输入预约时段(输入 0 回退上一步，输入 00 退出): ", appointment_slot, MAX_NAME_LEN);
+        if (strcmp(appointment_slot, "00") == 0)
+        {
+            printf("操作取消！\n");
+            return;
+        }
+        if (strcmp(appointment_slot, "0") == 0)
+            goto input_date;
+        // 时段校验
+        if (strlen(appointment_slot) == 0)
+        {
+            printf("预约时段不能为空，请重新输入：");
+            get_safe_string("", appointment_slot, MAX_NAME_LEN);
+            goto input_slot;
+        }
     }
     
     // 症状输入环节
@@ -2522,29 +2534,35 @@ static void handle_patient_self_registration()
     
     // 时段输入环节
     input_slot:
-    get_safe_string("请输入挂号时段(输入 0 回退上一步，输入 00 退出): ", appointment_slot, MAX_NAME_LEN);
-    if (strcmp(appointment_slot, "00") == 0)
-    {
-        printf("操作取消！\n");
-        // 恢复原症状
-        strncpy(patient->symptom, old_symptom, MAX_SYMPTOM_LEN - 1);
-        patient->symptom[MAX_SYMPTOM_LEN - 1] = '\0';
-        patient->is_emergency = old_is_emergency;
-        return;
-    }
-    if (strcmp(appointment_slot, "0") == 0)
-    {
-        if (is_emergency_case)
-            goto input_symptom;
-        else
-            goto input_dept;
-    }
-    // 时段校验
-    if (strlen(appointment_slot) == 0)
-    {
-        printf("挂号时段不能为空，请重新输入：");
-        get_safe_string("", appointment_slot, MAX_NAME_LEN);
-        goto input_slot;
+    // 夜间模式下自动设置为晚上
+    if (is_night_shift()) {
+        strcpy(appointment_slot, "晚上");
+        printf("当前为夜间模式，自动设置挂号时段为: %s\n", appointment_slot);
+    } else {
+        get_safe_string("请输入挂号时段(输入 0 回退上一步，输入 00 退出): ", appointment_slot, MAX_NAME_LEN);
+        if (strcmp(appointment_slot, "00") == 0)
+        {
+            printf("操作取消！\n");
+            // 恢复原症状
+            strncpy(patient->symptom, old_symptom, MAX_SYMPTOM_LEN - 1);
+            patient->symptom[MAX_SYMPTOM_LEN - 1] = '\0';
+            patient->is_emergency = old_is_emergency;
+            return;
+        }
+        if (strcmp(appointment_slot, "0") == 0)
+        {
+            if (is_emergency_case)
+                goto input_symptom;
+            else
+                goto input_dept;
+        }
+        // 时段校验
+        if (strlen(appointment_slot) == 0)
+        {
+            printf("挂号时段不能为空，请重新输入：");
+            get_safe_string("", appointment_slot, MAX_NAME_LEN);
+            goto input_slot;
+        }
     }
     
     // 医生输入环节（急诊也保留选择权）
@@ -3335,48 +3353,12 @@ int main()
         insert_patient_tail(g_patient_list, create_patient_node(
 "P-001", "张三", 19, "110101199001011234"
 ));
-        // 各科室医生数据
-        insert_doctor_tail(g_doctor_list, create_doctor_node("D-001", "李建国", "内科"));
-        insert_doctor_tail(g_doctor_list, create_doctor_node("D-002", "王大明", "外科"));
-        insert_doctor_tail(g_doctor_list, create_doctor_node("D-003", "张小红", "妇产科"));
-        insert_doctor_tail(g_doctor_list, create_doctor_node("D-004", "刘小华", "儿科"));
-        insert_doctor_tail(g_doctor_list, create_doctor_node("D-005", "陈伟强", "骨科"));
-        insert_doctor_tail(g_doctor_list, create_doctor_node("D-006", "赵丽华", "心血管内科"));
-        insert_doctor_tail(g_doctor_list, create_doctor_node("D-007", "孙卫东", "呼吸内科"));
-        insert_doctor_tail(g_doctor_list, create_doctor_node("D-008", "周秀芳", "消化内科"));
-        insert_doctor_tail(g_doctor_list, create_doctor_node("D-009", "吴明德", "神经内科"));
-        insert_doctor_tail(g_doctor_list, create_doctor_node("D-010", "郑美玲", "内分泌科"));
-        insert_doctor_tail(g_doctor_list, create_doctor_node("D-011", "黄志强", "肾内科"));
-        insert_doctor_tail(g_doctor_list, create_doctor_node("D-012", "林建华", "泌尿外科"));
-        insert_doctor_tail(g_doctor_list, create_doctor_node("D-013", "何晓燕", "肿瘤科"));
-        insert_doctor_tail(g_doctor_list, create_doctor_node("D-014", "罗伟民", "急诊科"));
-        insert_doctor_tail(g_doctor_list, create_doctor_node("D-015", "梁丽萍", "眼科"));
-        insert_doctor_tail(g_doctor_list, create_doctor_node("D-016", "谢国华", "耳鼻喉科"));
-        insert_doctor_tail(g_doctor_list, create_doctor_node("D-017", "马文婷", "口腔科"));
-        insert_doctor_tail(g_doctor_list, create_doctor_node("D-018", "唐俊杰", "皮肤科"));
-        insert_doctor_tail(g_doctor_list, create_doctor_node("D-019", "许文静", "风湿免疫科"));
-        insert_doctor_tail(g_doctor_list, create_doctor_node("D-020", "杨浩然", "感染科"));
-        insert_doctor_tail(g_doctor_list, create_doctor_node("D-021", "胡晓峰", "精神科"));
-        insert_doctor_tail(g_doctor_list, create_doctor_node("D-022", "朱秀兰", "康复医学科"));
-        insert_doctor_tail(g_doctor_list, create_doctor_node("D-023", "韩伟东", "普通外科"));
-        insert_doctor_tail(g_doctor_list, create_doctor_node("D-024", "曹丽华", "肝胆外科"));
-        insert_doctor_tail(g_doctor_list, create_doctor_node("D-025", "蒋志明", "心胸外科"));
-        insert_doctor_tail(g_doctor_list, create_doctor_node("D-026", "丁晓明", "神经外科"));
-        insert_doctor_tail(g_doctor_list, create_doctor_node("D-027", "冯彩霞", "全科"));
-        
-        // ==============================================
-        // 辅助检查科室（不直接接诊患者，提供检查服务）
-        // ==============================================
-        insert_doctor_tail(g_doctor_list, create_doctor_node("D-101", "放射科", "放射科"));
-        insert_doctor_tail(g_doctor_list, create_doctor_node("D-102", "影像科", "影像科"));
-        insert_doctor_tail(g_doctor_list, create_doctor_node("D-103", "检验科", "检验科"));
-        insert_doctor_tail(g_doctor_list, create_doctor_node("D-104", "超声科", "超声科"));
-        insert_doctor_tail(g_doctor_list, create_doctor_node("D-105", "心电图室", "心电图室"));
+
         
         insert_medicine_tail(g_medicine_list, create_medicine_node(
 "M-001", "阿莫西林", "阿莫", "阿莫西林胶囊", 15.5, 100, MEDICARE_CLASS_A, "2027-04-01"));
         insert_appointment_tail(g_appointment_list, create_appointment_node(
-"A-001", "P-001", "2026-04-01", "上午", "D-001", "外科", RESERVED
+"A-001", "P-001", "2026-04-01", "上午", "D-201", "外科", RESERVED
 ));
         insert_ward_tail(g_ward_list, create_ward_node(
 "W-101", "B-101", WARD_TYPE_GENERAL
@@ -3387,34 +3369,21 @@ int main()
         insert_account_tail(g_account_list, create_account_node(
 "nurse", "123456", "护士"
 , ROLE_NURSE));
-        // 各科室医生账户（密码均为123456）
-        insert_account_tail(g_account_list, create_account_node("D-001", "123456", "李建国-内科", ROLE_DOCTOR));
-        insert_account_tail(g_account_list, create_account_node("D-002", "123456", "王大明-外科", ROLE_DOCTOR));
-        insert_account_tail(g_account_list, create_account_node("D-003", "123456", "张小红-妇产科", ROLE_DOCTOR));
-        insert_account_tail(g_account_list, create_account_node("D-004", "123456", "刘小华-儿科", ROLE_DOCTOR));
-        insert_account_tail(g_account_list, create_account_node("D-005", "123456", "陈伟强-骨科", ROLE_DOCTOR));
-        insert_account_tail(g_account_list, create_account_node("D-006", "123456", "赵丽华-心血管内科", ROLE_DOCTOR));
-        insert_account_tail(g_account_list, create_account_node("D-007", "123456", "孙卫东-呼吸内科", ROLE_DOCTOR));
-        insert_account_tail(g_account_list, create_account_node("D-008", "123456", "周秀芳-消化内科", ROLE_DOCTOR));
-        insert_account_tail(g_account_list, create_account_node("D-009", "123456", "吴明德-神经内科", ROLE_DOCTOR));
-        insert_account_tail(g_account_list, create_account_node("D-010", "123456", "郑美玲-内分泌科", ROLE_DOCTOR));
-        insert_account_tail(g_account_list, create_account_node("D-014", "123456", "罗伟民-急诊科", ROLE_DOCTOR));
-        insert_account_tail(g_account_list, create_account_node("D-015", "123456", "梁丽萍-眼科", ROLE_DOCTOR));
-        insert_account_tail(g_account_list, create_account_node("D-016", "123456", "谢国华-耳鼻喉科", ROLE_DOCTOR));
-        insert_account_tail(g_account_list, create_account_node("D-017", "123456", "马文婷-口腔科", ROLE_DOCTOR));
-        insert_account_tail(g_account_list, create_account_node("D-018", "123456", "唐俊杰-皮肤科", ROLE_DOCTOR));
-        insert_account_tail(g_account_list, create_account_node("D-027", "123456", "冯彩霞-全科", ROLE_DOCTOR));
         insert_account_tail(g_account_list, create_account_node(
 "pharm", "123456", "药剂师"
 , ROLE_PHARMACIST));
+
+
+
+
+
+
 
         // 3. 打印核验
         printf("✅ 引擎全部就绪！\n"
 );
         printf(" -> 测试患者: %s\n"
 , g_patient_list->next->name);
-        printf(" -> 测试医生: %s (%s)\n"
-, g_doctor_list->next->name, g_doctor_list->next->department);
         printf(" -> 测试药品: %s (库存:%d)\n"
 , g_medicine_list->next->name, g_medicine_list->next->stock);
         printf(" -> 测试预约: %s (%s %s)\n"
@@ -3430,15 +3399,425 @@ int main()
         } else {
             printf("❌ 雷达搜索失败，查无此人！\n\n");
         }
+
+        // ==========================================
+        // 1. 定义真实数据字典 (百家姓与科室关联)
+        // ==========================================
+        const char* surnames[] = {"王", "李", "张", "刘", "陈", "杨", "黄", "赵", "吴", "周", "徐", "孙", "马", "朱", "胡", "郭", "何", "高", "林", "罗" };
+        const char* given_names[] = {
+            "伟", "芳", "娜", "敏", "静", "强", "磊", "军", "洋", "勇",
+            "建国", "欣怡", "浩然", "雨桐", "子轩", "梓涵", "诗涵", "雨泽", "宇轩", "雨晨",
+            "佳琪", "子豪", "雨欣", "一诺", "艺馨", "思远", "雨桐", "语桐", "雨菲", "雨萌"
+        };
+        
+        // 提取所有科室名称（来自 D-001 到 D-027 医生）
+        const char* all_depts[] = {
+            "内科", "外科", "妇产科", "儿科", "骨科", "心血管内科", "呼吸内科", "消化内科",
+            "神经内科", "内分泌科", "肾内科", "泌尿外科", "肿瘤科", "急诊科", "眼科", "耳鼻喉科",
+            "口腔科", "皮肤科", "风湿免疫科", "感染科", "精神科", "康复医学科", "普通外科",
+            "肝胆外科", "心胸外科", "神经外科", "全科", "放射科", "影像科", "检验科",
+            "超声科", "心电图室"
+        };
+        int num_depts = sizeof(all_depts) / sizeof(all_depts[0]);
+        
+        char temp_id[32], temp_name[128], temp_room[64], temp_generic[256], temp_alias[128 ];
+        int  i;
+        
+        // ==========================================
+        // 2. 生成 120 名医生 (按科室分组，制造重名，覆盖所有科室)
+        // ==========================================
+        int doctor_count = 0;
+        int doc_id = 1;
+        
+        // 先生成前两名重名医生（李建国），分配到前两个科室
+        for (int j = 0; j < 2 && doctor_count < 120; j++) {
+            sprintf(temp_id, "D-2%02d", doc_id++);
+            sprintf(temp_name, "李建国");
+            char* dept = (char*)all_depts[j % num_depts];
+            insert_doctor_tail(g_doctor_list, create_doctor_node(temp_id, temp_name, dept));
+            // 为医生账号添加科室信息
+            char doctor_full_name[128];
+            sprintf(doctor_full_name, "%s-%s", temp_name, dept);
+            insert_account_tail(g_account_list, create_account_node(temp_id, "123456", doctor_full_name, ROLE_DOCTOR));
+            doctor_count++;
+        }
+        
+        // 按科室分组生成剩余医生，确保每个科室至少有3名医生
+        for (int dept_idx = 0; dept_idx < num_depts; dept_idx++) {
+            char* dept = (char*)all_depts[dept_idx];
+            // 计算每个科室需要生成的医生数量
+            // 前两个科室已经有1名医生（李建国），所以需要生成2名
+            // 其他科室需要生成3名
+            int doctors_needed = 3;
+            if (dept_idx < 2) {
+                doctors_needed = 2;
+            }
+            // 如果还有剩余名额，每个科室再增加1名医生
+            if (doctor_count + num_depts * 1 <= 120) {
+                doctors_needed++;
+            }
+            // 生成医生
+            for (int j = 0; j < doctors_needed && doctor_count < 120; j++) {
+                sprintf(temp_id, "D-2%02d", doc_id++);
+                // 生成更多样化的名字
+                int surname_idx = (doctor_count * 7) % (sizeof(surnames)/sizeof(surnames[0]));
+                int given_name_idx = (doctor_count * 11) % (sizeof(given_names)/sizeof(given_names[0]));
+                sprintf(temp_name, "%s%s", surnames[surname_idx], given_names[given_name_idx]);
+                insert_doctor_tail(g_doctor_list, create_doctor_node(temp_id, temp_name, dept));
+                // 为医生账号添加科室信息
+                char doctor_full_name[128];
+                sprintf(doctor_full_name, "%s-%s", temp_name, dept);
+                insert_account_tail(g_account_list, create_account_node(temp_id, "123456", doctor_full_name, ROLE_DOCTOR));
+                doctor_count++;
+            }
+        }
+        
+        // ==========================================
+        // 3. 生成 30 种药品 (使用真实药品字典)
+        // ==========================================
+        // ==========================================
+        // 高质量真实药品字典 (30种)
+        // ==========================================
+        const char* real_medicines[30][8] = {
+            // 编号, 商品名, 别名, 通用名/说明(含科室相关性), 单价, 库存, 医保类型, 有效期
+            {
+"M-002", "小儿氨酚黄那敏颗粒", "儿童退烧药", "[儿科专属]缓解儿童普通感冒及流行性感冒引起的重度发热", "22.50", "4", "1", "2026-10-01"
+},
+            {
+"M-003", "硝苯地平缓释片(II)", "降压缓释片", "[心血管内科专属]高血压及心绞痛长效靶向控制缓释制剂", "35.80", "800", "1", "2026-05-01"
+},
+            {
+"M-004", "奥美拉唑肠溶胶囊", "护胃特效药", "[消化内科专属]胃溃疡及十二指肠溃疡重度粘膜修复特效药", "45.00", "600", "1", "2026-12-31"
+},
+            {
+"M-005", "布地奈德福莫特罗粉", "哮喘吸入剂", "[呼吸内科专属]支气管哮喘及重度慢性阻塞性肺疾病控制剂", "128.50", "200", "2", "2027-08-20"
+},
+            {
+"M-006", "塞来昔布胶囊", "骨科止痛药", "[骨科专属]骨关节炎及类风湿关节炎急性期抗炎镇痛靶向药", "55.00", "400", "2", "2026-09-09"
+},
+            {
+"M-007", "盐酸二甲双胍片", "降糖基础药", "[内分泌科专属]2型糖尿病一线首选控制血糖药物", "18.50", "1000", "1", "2028-01-01"
+},
+            {
+"M-008", "甲钴胺片", "营养神经药", "[神经内科专属]周围神经病变及维生素B12缺乏症修复药", "32.00", "500", "1", "2027-03-12"
+},
+            {
+"M-009", "炉甘石洗剂", "止痒水", "[皮肤科专属]急性瘙痒性皮肤病及荨麻疹外用收敛止痒药", "9.90", "300", "1", "2026-06-30"
+},
+            {
+"M-010", "玻璃酸钠滴眼液", "人工泪液", "[眼科专属]干眼症及角膜上皮机械性损伤修复润滑剂", "28.50", "450", "2", "2026-11-11"
+},
+            {
+"M-011", "黄体酮胶囊", "保胎药", "[妇产科专属]先兆流产及黄体功能不足补充治疗药", "42.00", "250", "2", "2027-02-28"
+},
+            {
+"M-012", "阿卡波糖片", "拜唐苹", "配合饮食控制用于2型糖尿病降低餐后血糖", "65.00", "600", "1", "2027-07-01"
+},
+            {
+"M-013", "瑞舒伐他汀钙片", "可定", "原发性高胆固醇血症及混合型脂质异常血症靶向药", "48.50", "400", "1", "2028-05-20"
+},
+            {
+"M-014", "多潘立酮片", "吗丁啉", "缓解由胃排空延缓引起的消化不良和恶心呕吐症状", "25.00", "800", "1", "2027-09-15"
+},
+            {
+"M-015", "盐酸氨溴索口服溶液", "沐舒坦", "适用于伴有痰液分泌不正常及排痰功能不良的急性呼吸道疾病", "38.00", "500", "1", "2026-12-01"
+},
+            {
+"M-016", "双氯芬酸钠缓释胶囊", "扶他林", "缓解各种急慢性关节炎症及软组织风湿病引起的疼痛", "29.80", "350", "1", "2027-04-30"
+},
+            {
+"M-017", "普瑞巴林胶囊", "乐瑞卡", "用于治疗带状疱疹后神经痛及纤维肌痛综合征", "88.00", "150", "2", "2027-10-10"
+},
+            {
+"M-018", "莫匹罗星软膏", "百多邦", "革兰阳性球菌引起的皮肤感染如脓疱病及毛囊炎", "22.00", "400", "1", "2026-08-15"
+},
+            {
+"M-019", "妥布霉素滴眼液", "托百士", "敏感细菌引起的眼部及眼附属器局部感染", "35.50", "200", "1", "2027-01-20"
+},
+            {
+"M-020", "头孢克肟分散片", "世福素", "对链球菌等敏感菌引起的急性呼吸道和泌尿道感染有效", "45.00", "600", "1", "2028-02-28"
+},
+            {
+"M-021", "阿奇霉素肠溶片", "希舒美", "化脓性链球菌引起的急性咽炎及敏感细菌引起的下呼吸道感染", "52.00", "500", "1", "2027-06-18"
+},
+            {
+"M-022", "左氧氟沙星片", "可乐必妥", "成年人由敏感细菌引起的轻至中度感染如急性细菌性鼻窦炎", "40.00", "450", "1", "2028-03-15"
+},
+            {
+"M-023", "布洛芬缓释胶囊", "芬必得", "缓解轻至中度疼痛如头痛关节痛偏头痛牙痛肌肉痛神经痛", "18.00", "1200", "1", "2027-11-11"
+},
+            {
+"M-024", "对乙酰氨基酚片", "泰诺林", "普通感冒或流行性感冒引起的发热及轻至中度疼痛", "15.00", "1500", "1", "2028-08-08"
+},
+            {
+"M-025", "氯雷他定片", "开瑞坦", "缓解过敏性鼻炎有关的症状如打喷嚏流鼻涕鼻痒鼻塞", "28.00", "800", "1", "2027-05-05"
+},
+            {
+"M-026", "碳酸钙D3片", "钙尔奇", "用于妊娠和哺乳期妇女更年期妇女老年人等的钙补充剂", "36.00", "600", "1", "2028-10-01"
+},
+            {
+"M-027", "铝碳酸镁咀嚼片", "达喜", "急慢性胃炎反流性食管炎及与胃酸有关的胃部不适", "32.50", "550", "1", "2027-09-09"
+},
+            {
+"M-028", "孟鲁司特钠咀嚼片", "顺尔宁", "适用于成人和儿童哮喘的预防和长期治疗", "68.00", "300", "2", "2027-12-20"
+},
+            {
+"M-029", "美托洛尔缓释片", "倍他乐克", "高血压及心绞痛伴有左心室收缩功能异常的症状稳定的慢性心力衰竭", "45.80", "400", "1", "2028-04-10"
+},
+            {
+"M-030", "维生素C泡腾片", "力度伸", "增强机体抵抗力用于预防和治疗各种急慢性传染性疾病", "25.00", "1000", "1", "2027-08-08"
+},
+            {
+"M-031", "复方甘草口服溶液", "甘草合剂", "用于一般性及化痰性咳嗽的对症治疗", "12.50", "800", "1", "2026-10-30"
+}
+        };
+
+        for (i = 0; i < 30; i++) {
+            insert_medicine_tail(g_medicine_list, create_medicine_node(
+                (char*)real_medicines[i][0], (char*)real_medicines[i][1], (char*)real_medicines[i][2],
+                (char*)real_medicines[i][3], atof(real_medicines[i][4]), atoi(real_medicines[i][5]),
+                atoi(real_medicines[i][6]), (char*)real_medicines[i][7]
+            ));
+        }
+        
+        // ==========================================
+        // 4. 生成 50 张病床 (按科室分组，体现病房与科室关联，3种病房)
+        // ==========================================
+        i = 1;
+        for (int dept_idx = 0; dept_idx < num_depts && i <= 50; dept_idx++) {
+            char* dept = (char*)all_depts[dept_idx];
+            // 每个科室分配2-3张病床
+            for (int j = 0; j < 3 && i <= 50; j++) {
+                sprintf(temp_id, "B-1%02d", i);
+                sprintf(temp_room, "%s病区-%02d房", dept, (j/4)+1); // 科室关联病房
+                int ward_type = (i % 4) + 1; // 1=普通, 2=ICU, 3=隔离病房, 4=单人病房
+                insert_ward_tail(g_ward_list, create_ward_node(temp_room, temp_id, ward_type));
+                i++;
+            }
+        }
+        
+        // ==========================================
+        // 5. 生成 110 名患者及 35 名住院关联 (按ID排序，制造重名)
+        // ==========================================
+        // 先生成所有患者
+        for (i = 1; i <= 150; i++) {
+            sprintf(temp_id, "P-1%03d", i);
+            // 只保留两个重名测试
+            if (i == 1 || i == 2) sprintf(temp_name, "张伟");
+            else {
+                // 生成更多样化的名字
+                int surname_idx = (i * 13) % (sizeof(surnames)/sizeof(surnames[0]));
+                int given_name_idx = (i * 17) % (sizeof(given_names)/sizeof(given_names[0]));
+                sprintf(temp_name, "%s%s", surnames[surname_idx], given_names[given_name_idx]);
+            }
+            
+            char temp_id_card[32];
+            sprintf(temp_id_card, "1101051990%02d%02d123%d", (i%12)+1, (i%28)+1, i%10);
+            
+            PatientNode* p = create_patient_node(temp_id, temp_name, 20 + (i%50), temp_id_card);
+            if (p != NULL) {
+                p->balance = 10000.0; // 统一充值1万元方便测试
+                
+                // 为前3个患者设置黑名单状态，用于测试安全预警
+                if (i == 1) {
+                    // 患者1：永久黑名单（急诊逃单）
+                    p->is_blacklisted = 2;
+                    strcpy(p->name, "李逃单");
+                } else if (i == 2) {
+                    // 患者2：临时黑名单（爽约3次）
+                    p->is_blacklisted = 1;
+                    p->missed_count = 3;
+                    p->missed_time_1 = time(NULL) - 86400 * 10; // 10天前
+                    p->missed_time_2 = time(NULL) - 86400 * 20; // 20天前
+                    p->missed_time_3 = time(NULL) - 86400 * 5;  // 5天前
+                    p->blacklist_expire = time(NULL) + 86400 * 80; // 还有80天过期
+                    strcpy(p->name, "王爽约");
+                } else if (i == 3) {
+                    // 患者3：即将解禁的黑名单患者（用于测试急诊放行预警）
+                    p->is_blacklisted = 1;
+                    p->missed_count = 3;
+                    p->missed_time_1 = time(NULL) - 86400 * 85; // 85天前
+                    p->missed_time_2 = time(NULL) - 86400 * 86; // 86天前
+                    p->missed_time_3 = time(NULL) - 86400 * 87; // 87天前
+                    p->blacklist_expire = time(NULL) + 86400 * 5; // 还有5天过期
+                    strcpy(p->name, "张即将解禁");
+                }
+                
+                insert_patient_tail(g_patient_list, p);
+            }
+        }
+        
+        // 再为前 35 名患者分配病床 (满足 >=30 住院患者要求)
+        for (i = 1; i <= 40; i++) {
+            char temp_patient_id[32];
+            sprintf(temp_patient_id, "P-1%03d", i);
+            char bed_id[32];
+            sprintf(bed_id, "B-1%02d", i);
+            // 创建住院记录 (关联患者与床位)
+            double deposit = 5000.0;
+            if (i == 1) {
+                deposit = 15.50;  // 押金不足，触发预警
+            } else if (i == 2) {
+                deposit = -120.00;  // 已经欠费，触发预警
+            }
+            InpatientRecord* in_record = create_inpatient_record_node(
+                temp_patient_id, temp_patient_id, bed_id, (i%4)+1, (i%4)+1, 10, 0, deposit, 1);
+            insert_inpatient_record_tail(g_inpatient_list, in_record);
+            
+            // 更新床位状态为已占用
+            WardNode* bed = find_bed_by_id(bed_id);
+            if (bed != NULL) {
+                bed->is_occupied = 1;
+                strcpy(bed->patient_id, temp_patient_id);
+            }
+        }
+        // ==========================================
+        // 6. 生成历史业务数据 (预约、病历、检查、投诉)
+        // ==========================================
+        // 评价字典 (星级、评价内容)
+        const char* feedback_dict[][2] = {
+            {"5", "医生非常耐心，医术高超！"},
+            {"5", "医生讲解详细，态度很好。"},
+            {"4", "医生还行，诊断比较准确。"},
+            {"4", "总体满意，但等候时间有点长。"},
+            {"3", "医生态度一般，没有特别差但也没有很好。"},
+            {"3", "看诊时间有点短，感觉有点敷衍。"},
+            {"2", "医生不太耐烦，说话比较冲。"},
+            {"1", "非常不满意，误诊了病情，耽误了治疗。"},
+            {"4", "医生不错，但候诊大厅太吵了，影响休息。"},
+            {"3", "医生诊断准确，但医院厕所卫生状况不佳。"},
+            {"2", "医生态度可以，但停车场车位太少，停车困难。"},
+            {"3", "诊疗过程顺利，但医院网络信号太差，无法使用手机。"}
+        };
+        int num_feedback = sizeof(feedback_dict) / sizeof(feedback_dict[0]);
+        const char* diag_dict[] = {"急性上呼吸道感染", "原发性高血压", "急性胃肠炎", "过敏性鼻炎", "轻度支气管炎"};
+        const char* adv_dict[] = {"注意休息，按时服药，多饮水", "低盐低脂饮食，定期监测血压", "清淡饮食，避免辛辣", "远离过敏原，外出佩戴口罩", "注意保暖，避免受凉"};
+
+        // 检查项目字典 (编号、名称、科室、结果)
+        const char* check_items[][4] = {
+            {"C-010", "血常规", "检验科", "白细胞略高，其余各项指标均在正常参考值范围内"},
+            {"C-011", "生化全项", "检验科", "肝肾功能正常，血糖偏高，需控制饮食"},
+            {"C-012", "肝功能", "检验科", "谷丙转氨酶略高，建议清淡饮食一周后复查"},
+            {"C-014", "血糖检测", "检验科", "空腹血糖6.8mmol/L偏高，需进一步检查"},
+            {"C-006", "腹部B超", "超声科", "肝胆脾胰未见明显异常"},
+            {"C-007", "心脏彩超", "超声科", "心脏结构及功能未见明显异常"},
+            {"C-018", "心电图", "心电图室", "窦性心律，心电图大致正常"},
+            {"C-002", "CT扫描", "放射科", "胸部CT未见明显异常"}
+        };
+        int num_check_items = sizeof(check_items) / sizeof(check_items[0]);
+
+        for (i = 1; i <= 40; i++) {
+            char p_id[32], d_id[32], appt_id[32], consult_id[32], check_id[32], date_str[32];
+            sprintf(p_id, "P-1%03d", i);
+            sprintf(d_id, "D-2%02d", (i % 60) + 1);
+            sprintf(appt_id, "A-202603%02d-%04d", (i % 28) + 1, i);
+            sprintf(consult_id, "CR-%04d", i);
+            sprintf(check_id, "CHK-%04d", i);
+            sprintf(date_str, "2026-03-%02d", (i % 28) + 1);
+
+            AppointmentNode* appt = create_appointment_node(appt_id, p_id, date_str, (i % 2 == 0) ? "上午" : "下午", d_id, (char*)all_depts[i % 8], 3);
+            if (appt) {
+                appt->reg_fee = 15.0;
+                appt->fee_paid = 1;
+                insert_appointment_tail(g_appointment_list, appt);
+            }
+
+            ConsultRecordNode* consult = create_consult_record_node(consult_id, p_id, d_id, appt_id, date_str,
+                (char*)diag_dict[i % 5], (char*)adv_dict[i % 5], 2, 0, 0);
+            if (consult) {
+                int fb_idx = i % num_feedback;
+                consult->star_rating = atoi(feedback_dict[fb_idx][0]);
+                strcpy(consult->feedback, feedback_dict[fb_idx][1]);
+                insert_consult_record_tail(g_consult_record_list, consult);
+            }
+
+            int check_idx = i % num_check_items;
+            CheckRecordNode* check = create_check_record_node(check_id, p_id,
+                (char*)check_items[check_idx][0], (char*)check_items[check_idx][1], (char*)check_items[check_idx][2], date_str,
+                (char*)check_items[check_idx][3], 1, 1);
+            if (check) insert_check_record_tail(g_check_record_list, check);
+        }
+
+        // 投诉字典 (目标类型、目标ID、目标名称、投诉内容、回复)
+        // target_type: 1=医生, 2=护士/前台, 3=药师
+        const char* complaints_dict[][5] = {
+            {"1", "D-201", "李建国", "医生看诊时间太短，态度不够耐心。", "已与该医生沟通，要求加强与患者的沟通交流。"},
+            {"2", "nurse", "护士", "护士扎针技术不熟练，扎了两次才成功。", "已对当班护士进行技术培训，提升操作水平。"},
+            {"3", "pharm", "药剂师", "药师没有解释用药注意事项就直接发药。", "已加强药房人员的用药指导培训。"},
+            {"1", "D-205", "吴子轩", "医生开的药方剂量过大，担心有副作用。", "已联系该医生核实用药剂量，确认符合规范。"},
+            {"2", "nurse", "护士", "护士值班时不在岗位，等了很久才找到人。", "已要求护士站加强值班管理，确保在岗在位。"},
+            {"1", "D-210", "郑宇轩", "医生诊断不够仔细，没有找出真正的病因。", "已安排该患者进行复诊，并优化诊断流程。"},
+            {"3", "pharm", "药剂师", "等了半小时才拿到药，窗口排队时间过长。", "已增加药房工作人员，缩短患者取药等待时间。"},
+            {"1", "D-215", "刘建国", "医生服务态度很差，说话语气很冲。", "已对该医生进行医德医风教育，要求改进服务态度。"}
+        };
+        int num_complaints = sizeof(complaints_dict) / sizeof(complaints_dict[0]);
+
+        // 7. 生成多条医患投诉记录
+        for (i = 1; i <= 8; i++) {
+            char p_id[32], comp_id[32];
+            sprintf(p_id, "P-1%03d", i + 40);
+            sprintf(comp_id, "CP-%04d", i);
+            int comp_idx = (i - 1) % num_complaints;
+            ComplaintNode* comp = create_complaint_node(comp_id, p_id,
+                atoi(complaints_dict[comp_idx][0]),  // target_type
+                (char*)complaints_dict[comp_idx][1],  // target_id
+                (char*)complaints_dict[comp_idx][2],  // target_name
+                (char*)complaints_dict[comp_idx][3],  // content
+                1,
+                (char*)complaints_dict[comp_idx][4],  // response
+                "2026-04-01");
+            if (comp) insert_complaint_tail(g_complaint_list, comp);
+        }
+
+        printf("✅ 批量测试数据注入完毕！(包含150患者, 40住院, 120医生, 30药品, 50病床)\n");
+        
+        // 8. 模拟黑名单患者触发安全预警（让alerts.txt有数据）
+        printf("\n📝 正在模拟黑名单患者行为，生成安全预警数据...\n");
+        
+        // 模拟永久黑名单患者（李逃单）试图挂号 - 触发拦截预警
+        PatientNode* blacklisted_patient1 = find_patient_by_id(g_patient_list, "P-1001");
+        if (blacklisted_patient1 != NULL) {
+            char alert_msg[256];
+            snprintf(alert_msg, sizeof(alert_msg), 
+                "⛔ 恶意挂号被拦截：患者 %s（永久黑名单）试图挂号，已拦截！", 
+                blacklisted_patient1->name);
+            push_system_alert(alert_msg);
+            printf("   -> 永久黑名单患者 %s 挂号拦截预警已生成\n", blacklisted_patient1->name);
+        }
+        
+        // 模拟临时黑名单患者（王爽约）试图挂号 - 触发拦截预警
+        PatientNode* blacklisted_patient2 = find_patient_by_id(g_patient_list, "P-1002");
+        if (blacklisted_patient2 != NULL) {
+            char alert_msg[256];
+            snprintf(alert_msg, sizeof(alert_msg), 
+                "⛔ 爽约黑名单拦截：患者 %s（爽约3次）在惩罚期内试图挂号，已拦截！", 
+                blacklisted_patient2->name);
+            push_system_alert(alert_msg);
+            printf("   -> 爽约黑名单患者 %s 挂号拦截预警已生成\n", blacklisted_patient2->name);
+        }
+        
+        // 模拟黑名单患者突发急诊 - 触发强制放行预警
+        PatientNode* blacklisted_patient3 = find_patient_by_id(g_patient_list, "P-1003");
+        if (blacklisted_patient3 != NULL) {
+            char alert_msg[256];
+            snprintf(alert_msg, sizeof(alert_msg), 
+                "🚨 急诊强制放行：患者 %s（黑名单人员）突发危重急症，已强制放行，请相关部门跟进！", 
+                blacklisted_patient3->name);
+            push_system_alert(alert_msg);
+            printf("   -> 黑名单患者 %s 急诊强制放行预警已生成\n", blacklisted_patient3->name);
+        }
+        
+        printf("✅ 安全预警数据生成完毕！\n");
     }
     else
     {
         printf("📂 成功从本地加载了存档数据！\n");
     }
+    
     // 🚀 时停魔法：按任意键后才清屏进入菜单！
-    system(
-"pause"
-);
+    system("pause");
+    
+    // 进入主菜单循环
     int running = 1; // 控制系统运行状态的标志位
 
     while (running) 
