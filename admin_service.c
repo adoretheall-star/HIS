@@ -9,6 +9,60 @@
 #include "pharmacy_service.h"
 #include "utils.h"
 
+// 解析日期字符串为 tm 结构
+static int parse_date_string(const char* date_str, struct tm* tm_out)
+{
+    if (date_str == NULL || tm_out == NULL)
+    {
+        return 0;
+    }
+
+    int year, month, day;
+    if (sscanf(date_str, "%d-%d-%d", &year, &month, &day) != 3)
+    {
+        return 0;
+    }
+
+    if (month < 1 || month > 12 || day < 1 || day > 31)
+    {
+        return 0;
+    }
+
+    memset(tm_out, 0, sizeof(struct tm));
+    tm_out->tm_year = year - 1900;
+    tm_out->tm_mon = month - 1;
+    tm_out->tm_mday = day;
+    tm_out->tm_hour = 12; // 避免夏令时问题
+
+    return 1;
+}
+
+// 计算两个日期之间的天数差
+static int days_between_dates(const char* start_date, const char* end_date)
+{
+    struct tm start_tm;
+    struct tm end_tm;
+    time_t start_time;
+    time_t end_time;
+    double seconds;
+
+    if (!parse_date_string(start_date, &start_tm) ||
+        !parse_date_string(end_date, &end_tm))
+    {
+        return 999999;
+    }
+
+    start_time = mktime(&start_tm);
+    end_time = mktime(&end_tm);
+    if (start_time == (time_t)-1 || end_time == (time_t)-1)
+    {
+        return 999999;
+    }
+
+    seconds = difftime(end_time, start_time);
+    return (int)(seconds / (60 * 60 * 24));
+}
+
 // 查看所有员工账号
 void show_all_accounts(void)
 {
@@ -593,6 +647,45 @@ void show_resource_warnings(void)
         if (!found)
         {
             printf("当前无低库存药品预警\n");
+            printf("------------------------------------------------------\n");
+        }
+    }
+    else
+    {
+        printf("当前无药品数据\n");
+        printf("------------------------------------------------------\n");
+    }
+
+    // 显示临期药品预警明细
+    printf("【临期药品预警明细】\n");
+    printf("------------------------------------------------------\n");
+    if (g_medicine_list != NULL && g_medicine_list->next != NULL)
+    {
+        medicine_curr = g_medicine_list->next;
+        found = 0;
+        time_t now = time(NULL);
+        struct tm* tm_now = localtime(&now);
+        char today_str[11];
+        sprintf(today_str, "%04d-%02d-%02d", tm_now->tm_year + 1900, tm_now->tm_mon + 1, tm_now->tm_mday);
+        
+        while (medicine_curr != NULL)
+        {
+            // 检查效期是否在30天内
+            int diff_days = days_between_dates(today_str, medicine_curr->expiry_date);
+            if (diff_days >= 0 && diff_days <= 30)
+            {
+                printf("药品编号：%s\n", medicine_curr->id);
+                printf("商品名：%s\n", medicine_curr->name);
+                printf("效期：%s\n", medicine_curr->expiry_date);
+                printf("距离过期：%d天\n", diff_days);
+                printf("------------------------------------------------------\n");
+                found = 1;
+            }
+            medicine_curr = medicine_curr->next;
+        }
+        if (!found)
+        {
+            printf("当前无临期药品预警\n");
             printf("------------------------------------------------------\n");
         }
     }
