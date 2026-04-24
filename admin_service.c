@@ -353,18 +353,19 @@ void show_all_doctors_with_duty_status(void)
         return;
     }
 
-    printf("\n==============================================================\n");
+    printf("\n========================================================================\n");
     printf("                    医生值班状态\n");
-    printf("==============================================================\n");
-    printf("医生工号            姓名            科室            值班状态\n");
-    printf("--------------------------------------------------------------\n");
+    printf("========================================================================\n");
+    printf("医生工号            姓名            性别    科室            值班状态\n");
+    printf("------------------------------------------------------------------------\n");
 
     curr = g_doctor_list->next;
     while (curr != NULL)
     {
-        printf("%-18s %-14s %-16s %-8s\n", 
+        printf("%-18s %-12s %-4s    %-14s %-8s\n", 
             curr->id, 
             curr->name, 
+            strlen(curr->gender) > 0 ? curr->gender : "-",
             curr->department, 
             curr->is_on_duty ? "值班中" : "未值班");
         count++;
@@ -1316,17 +1317,18 @@ void show_load_monitoring(void)
 
     // 显示各医生负载明细
     printf("【各医生负载明细】\n");
-    printf("------------------------------------------------------\n");
-    printf("医生工号            姓名            科室            当前排队人数    值班状态\n");
-    printf("------------------------------------------------------\n");
+    printf("--------------------------------------------------------------\n");
+    printf("医生工号            姓名            性别    科室            当前排队人数    值班状态\n");
+    printf("--------------------------------------------------------------\n");
     if (g_doctor_list != NULL && g_doctor_list->next != NULL)
     {
         doctor_curr = g_doctor_list->next;
         while (doctor_curr != NULL)
         {
-            printf("%-18s %-14s %-16s %-16d %-8s\n", 
+            printf("%-18s %-12s %-4s    %-14s %-16d %-8s\n", 
                 doctor_curr->id, 
                 doctor_curr->name, 
+                strlen(doctor_curr->gender) > 0 ? doctor_curr->gender : "-",
                 doctor_curr->department, 
                 doctor_curr->queue_length, 
                 doctor_curr->is_on_duty ? "值班中" : "未值班");

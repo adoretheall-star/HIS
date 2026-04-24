@@ -940,7 +940,6 @@ void show_deposit_warnings()
 {
     InpatientRecord* curr = NULL;
     PatientNode* patient = NULL;
-    double daily_rate = 0.0;
     int warning_count = 0;
 
     if (g_inpatient_list == NULL || g_inpatient_list->next == NULL)

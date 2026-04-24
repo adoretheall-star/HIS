@@ -67,6 +67,10 @@ PatientNode* create_patient_node(const char* id, const char* name, int age, cons
 
     strncpy(new_node->name, name, MAX_NAME_LEN - 1);
     new_node->name[MAX_NAME_LEN - 1] = '\0';
+    
+    // 初始化性别为空字符串
+    new_node->gender[0] = '\0';
+    
     new_node->age = age;
     
     strncpy(new_node->id_card, id_card, MAX_ID_LEN - 1);
@@ -225,6 +229,10 @@ DoctorNode* create_doctor_node(const char* id, const char* name, const char* dep
     new_node->id[MAX_ID_LEN - 1] = '\0';
     strncpy(new_node->name, name, MAX_NAME_LEN - 1);
     new_node->name[MAX_NAME_LEN - 1] = '\0';
+    
+    // 初始化性别为空字符串
+    new_node->gender[0] = '\0';
+    
     strncpy(new_node->department, dept, MAX_NAME_LEN - 1);
     new_node->department[MAX_NAME_LEN - 1] = '\0';
     new_node->queue_length = 0; // 初始排队人数为0
@@ -397,6 +405,10 @@ AccountNode* create_account_node(const char* username, const char* pwd, const ch
     new_node->password[MAX_ID_LEN - 1] = '\0';
     strncpy(new_node->real_name, real_name, MAX_NAME_LEN - 1);
     new_node->real_name[MAX_NAME_LEN - 1] = '\0';
+    
+    // 初始化性别为空字符串
+    new_node->gender[0] = '\0';
+    
     new_node->role = role;
     new_node->is_on_duty = 1; // 初始值班中
     new_node->error_count = 0;
