@@ -477,8 +477,8 @@ void show_waiting_patients_by_doctor(const char* doctor_id)
     }
 
     printf("\n================ 医生待诊列表 ================\n");
-    printf("医生编号: %s  医生姓名: %s  科室: %s\n",
-        doctor->id, doctor->name, doctor->department);
+    printf("医生编号: %s  医生姓名: %s  性别: %s  科室: %s\n",
+        doctor->id, doctor->name, strlen(doctor->gender) > 0 ? doctor->gender : "未设置", doctor->department);
 
     // 使用 get_waiting_patients_by_doctor 获取排序后的待诊患者链表
     waiting_list = get_waiting_patients_by_doctor(doctor_id);

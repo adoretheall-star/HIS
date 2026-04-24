@@ -138,6 +138,7 @@ typedef struct PatientNode
     //静态基础信息
     char id[MAX_ID_LEN];       //患者唯一编号    
     char name[MAX_NAME_LEN];   //患者姓名      
+    char gender[8];            //性别（男/女）
     int age;                   //患者年龄
     char id_card[MAX_ID_LEN];  //身份证号
     MedicareType m_type;       //个人医保类型
@@ -194,6 +195,7 @@ typedef struct DoctorNode
 {
     char id[MAX_ID_LEN];      //医生工号     
     char name[MAX_NAME_LEN];  //医生姓名      
+    char gender[8];           //性别（男/女）
     char department[MAX_NAME_LEN]; //所属科室  
     int queue_length;      //当前医生门诊排队患者人数
     int is_on_duty;        // 1 值班中，0 未值班
@@ -253,6 +255,7 @@ typedef struct AccountNode {
     char username[MAX_ID_LEN];     // 登录账号 (工号)
     char password[MAX_ID_LEN];     // 登录密码 (阶段一可以先存明文，阶段二再加异或加密)
     char real_name[MAX_NAME_LEN];  // 真实姓名
+    char gender[8];                // 性别（男/女）
     RoleType role;                 
 // 核心！决定了他登录后能看到哪个菜单
     int error_count;             // 连续输错密码的次数

@@ -170,9 +170,9 @@ int display_doctors_by_dept(const char* dept_name)
     }
     
     printf("\n🏥 【%s】科室医生列表：\n", dept_name);
-    printf("--------------------------------------------------\n");
-    printf("  编号\t姓名\t\t排队人数\n");
-    printf("--------------------------------------------------\n");
+    printf("--------------------------------------------------------\n");
+    printf("  编号\t姓名\t\t性别\t排队人数\n");
+    printf("--------------------------------------------------------\n");
     
     DoctorNode* curr = g_doctor_list->next;
     while (curr != NULL)
@@ -181,9 +181,10 @@ int display_doctors_by_dept(const char* dept_name)
         if (curr->is_on_duty == 1 && strcmp(curr->department, dept_name) == 0)
         {
             count++;
-            printf("  %s\t%s\t\t%d\n", 
+            printf("  %s\t%s\t\t%s\t%d\n", 
                    curr->id, 
                    curr->name, 
+                   strlen(curr->gender) > 0 ? curr->gender : "-",
                    curr->queue_length);
         }
         curr = curr->next;

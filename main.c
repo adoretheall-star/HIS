@@ -588,7 +588,6 @@ static void handle_doctor_consultation()
     CheckRecordNode* temp_check_record_list = NULL;
     int decision;
     int count;
-    int choice;
     int consult_success = 0;
     int estimated_days = 0;
     int condition_level = 0;
@@ -3442,7 +3441,7 @@ int main()
         };
         int num_depts = sizeof(all_depts) / sizeof(all_depts[0]);
         
-        char temp_id[32], temp_name[128], temp_room[64], temp_generic[256], temp_alias[128 ];
+        char temp_id[32], temp_name[128], temp_room[64];
         int  i;
         
         // ==========================================
@@ -4066,7 +4065,7 @@ static void inpatient_menu()
                                         printf("患者姓名: %s\n", patient->name);
                                         printf("身份证号: %s\n", masked_id_card);
                                         printf("年龄: %d\n", patient->age);
-                                        printf("医保类型: %s\n", patient->m_type == 1 ? "城镇职工医保" : (patient->m_type == 2 ? "城镇居民医保" : (patient->m_type == 3 ? "新农合" : "自费")));
+                                        printf("医保类型: %s\n", patient->m_type == 0 ? "无医保" : (patient->m_type == 1 ? "甲类医保" : (patient->m_type == 2 ? "乙类医保" : "未知")));
                                         printf("余额: %.2f\n", patient->balance);
                                         printf("症状: %s\n", patient->symptom);
                                         printf("目标科室: %s\n", patient->target_dept);

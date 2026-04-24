@@ -685,6 +685,7 @@ void display_patient_archive(const PatientNode* patient)
     printf("\n================ 患者档案信息 ================\n");
     printf("患者编号：%s\n", patient->id);
     printf("姓名：%s\n", patient->name);
+    printf("性别：%s\n", strlen(patient->gender) > 0 ? patient->gender : "未设置");
     printf("年龄：%d\n", patient->age);
     printf("脱敏身份证号：%s\n", masked_id);
     printf("症状：%s\n", get_display_text(patient->symptom));
@@ -985,6 +986,7 @@ void display_patient_visit_overview(const PatientNode* patient)
     printf("\n================ 患者就诊概览 ================\n");
     printf("患者编号：%s\n", patient->id);
     printf("姓名：%s\n", patient->name);
+    printf("性别：%s\n", strlen(patient->gender) > 0 ? patient->gender : "未设置");
     printf("年龄：%d\n", patient->age);
     
     // 脱敏身份证号
@@ -1762,7 +1764,8 @@ int submit_new_complaint(const char* patient_id)
             (target_type == 3 && curr->role == ROLE_PHARMACIST))
         {
             count++;
-            printf("[%d] 账号：%s | 姓名：%s\n", count, curr->username, curr->real_name);
+            printf("[%d] 账号：%s | 姓名：%s | 性别：%s\n", count, curr->username, curr->real_name, 
+                   strlen(curr->gender) > 0 ? curr->gender : "未设置");
         }
         curr = curr->next;
     }

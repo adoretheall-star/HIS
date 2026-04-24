@@ -44,16 +44,7 @@ static int split_line_by_delimiter(const char* line, char delimiter, char** fiel
     return count;
 }
 
-static int get_field_count(const char* line, char delimiter) {
-    if (line == NULL) return 0;
-    int count = 1;
-    const char* p = line;
-    while (*p) {
-        if (*p == delimiter) count++;
-        p++;
-    }
-    return count;
-}
+
 
 int save_patient_list(PatientNode* head) {
     if (head == NULL) return 0;
@@ -62,7 +53,7 @@ int save_patient_list(PatientNode* head) {
     if (fp == NULL) return 0;
 
     // 写入表头
-    fprintf(fp, "患者编号|姓名|年龄|身份证号|医保类型(0=无,1=职工,2=居民,3=新农合)|症状|目标科室|医生编号|就诊卡号|余额|状态(0=未就诊,1=已就诊,2=住院中)|诊断结果|治疗意见|处方|处方数量|爽约时间1|爽约时间2|爽约时间3|爽约次数|黑名单过期时间|是否黑名单(0=否,1=是)|是否急诊(0=否,1=是)|排队时间|呼叫次数|急诊欠费|欠费时间\n");
+    fprintf(fp, "患者编号|姓名|性别|年龄|身份证号|医保类型(0=无,1=甲类,2=乙类)|症状|目标科室|医生编号|就诊卡号|余额|状态(1=待诊,2=检查中,3=检查后待复诊,4=已看诊待缴费,5=已缴费待取药,6=住院中,7=就诊结束,8=过号作废)|诊断结果|治疗意见|处方|处方数量|爽约时间1|爽约时间2|爽约时间3|爽约次数|黑名单过期时间|是否黑名单(0=否,1=是)|是否急诊(0=否,1=是)|排队时间|呼叫次数|急诊欠费|欠费时间\n");
 
     PatientNode* curr = head->next;
     while (curr != NULL) {
@@ -83,8 +74,8 @@ int save_patient_list(PatientNode* head) {
             strcpy(prescription_str, "EMPTY");
         }
 
-        fprintf(fp, "%s|%s|%d|%s|%d|%s|%s|%s|%s|%.2f|%d|%s|%s|%s|%d|%ld|%ld|%ld|%d|%ld|%d|%d|%ld|%d|%.2f|%ld\n",
-            curr->id, curr->name, curr->age, curr->id_card, curr->m_type,
+        fprintf(fp, "%s|%s|%s|%d|%s|%d|%s|%s|%s|%s|%.2f|%d|%s|%s|%s|%d|%ld|%ld|%ld|%d|%ld|%d|%d|%ld|%d|%.2f|%ld\n",
+            curr->id, curr->name, curr->gender, curr->age, curr->id_card, curr->m_type,
             curr->symptom, curr->target_dept, curr->doctor_id, curr->card_id,
             curr->balance, curr->status, curr->diagnosis_text, curr->treatment_advice,
             prescription_str, curr->script_count,
@@ -115,10 +106,10 @@ int load_patient_list(PatientNode** head) {
         trim_newline(line);
         if (strlen(line) == 0) continue;
 
-        char id[MAX_ID_LEN], name[MAX_NAME_LEN], id_card[MAX_ID_LEN];
+        char id[MAX_ID_LEN], name[MAX_NAME_LEN], gender[8], id_card[MAX_ID_LEN];
         char symptom[MAX_SYMPTOM_LEN], target_dept[MAX_NAME_LEN], doctor_id[MAX_ID_LEN], card_id[MAX_NAME_LEN];
         char diagnosis_text[MAX_RECORD_LEN], treatment_advice[MAX_RECORD_LEN], prescription_str[2048];
-        int age, m_type, status, script_count;
+        int age, m_type, status;
         double balance;
         long missed_time_1, missed_time_2, missed_time_3, blacklist_expire, unpaid_time;
         int missed_count, is_blacklisted, is_emergency, call_count;
@@ -128,25 +119,25 @@ int load_patient_list(PatientNode** head) {
         char* fields[30];
         int field_count = split_line_by_delimiter(line, '|', fields, 30);
 
-        if (field_count < 26) {
+        if (field_count < 27) {
             continue;
         }
 
         strcpy(id, fields[0]);
         strcpy(name, fields[1]);
-        age = atoi(fields[2]);
-        strcpy(id_card, fields[3]);
-        m_type = atoi(fields[4]);
-        strcpy(symptom, fields[5]);
-        strcpy(target_dept, fields[6]);
-        strcpy(doctor_id, fields[7]);
-        strcpy(card_id, fields[8]);
-        balance = atof(fields[9]);
-        status = atoi(fields[10]);
-        strcpy(diagnosis_text, fields[11]);
-        strcpy(treatment_advice, fields[12]);
-        strcpy(prescription_str, fields[13]);
-        script_count = atoi(fields[14]);
+        strcpy(gender, fields[2]);
+        age = atoi(fields[3]);
+        strcpy(id_card, fields[4]);
+        m_type = atoi(fields[5]);
+        strcpy(symptom, fields[6]);
+        strcpy(target_dept, fields[7]);
+        strcpy(doctor_id, fields[8]);
+        strcpy(card_id, fields[9]);
+        balance = atof(fields[10]);
+        status = atoi(fields[11]);
+        strcpy(diagnosis_text, fields[12]);
+        strcpy(treatment_advice, fields[13]);
+        strcpy(prescription_str, fields[14]);
         missed_time_1 = atol(fields[15]);
         missed_time_2 = atol(fields[16]);
         missed_time_3 = atol(fields[17]);
@@ -157,10 +148,12 @@ int load_patient_list(PatientNode** head) {
         queue_time = atol(fields[22]);
         call_count = atol(fields[23]);
         emergency_debt = atof(fields[24]);
+        unpaid_time = atol(fields[25]);
 
         PatientNode* new_node = create_patient_node(id, name, age, id_card);
         if (new_node == NULL) continue;
 
+        strcpy(new_node->gender, gender);
         new_node->m_type = m_type;
         strcpy(new_node->symptom, symptom);
         strcpy(new_node->target_dept, target_dept);
@@ -280,12 +273,12 @@ int save_doctor_list(DoctorNode* head) {
     if (fp == NULL) return 0;
 
     // 写入表头
-    fprintf(fp, "医生编号|姓名|科室|排队长度|是否值班(0=否,1=是)\n");
+    fprintf(fp, "医生编号|姓名|性别|科室|排队长度|是否值班(0=否,1=是)\n");
 
     DoctorNode* curr = head->next;
     while (curr != NULL) {
-        fprintf(fp, "%s|%s|%s|%d|%d\n",
-            curr->id, curr->name, curr->department, curr->queue_length, curr->is_on_duty);
+        fprintf(fp, "%s|%s|%s|%s|%d|%d\n",
+            curr->id, curr->name, curr->gender, curr->department, curr->queue_length, curr->is_on_duty);
         curr = curr->next;
     }
     fclose(fp);
@@ -309,14 +302,25 @@ int load_doctor_list(DoctorNode** head) {
         trim_newline(line);
         if (strlen(line) == 0) continue;
 
-        char id[MAX_ID_LEN], name[MAX_NAME_LEN], department[MAX_NAME_LEN];
+        char id[MAX_ID_LEN], name[MAX_NAME_LEN], gender[8], department[MAX_NAME_LEN];
         int queue_length, is_on_duty;
 
-        sscanf(line, "%[^|]|%[^|]|%[^|]|%d|%d", id, name, department, &queue_length, &is_on_duty);
+        char* fields[10];
+        int field_count = split_line_by_delimiter(line, '|', fields, 10);
+        
+        if (field_count < 6) continue;
+        
+        strcpy(id, fields[0]);
+        strcpy(name, fields[1]);
+        strcpy(gender, fields[2]);
+        strcpy(department, fields[3]);
+        queue_length = atoi(fields[4]);
+        is_on_duty = atoi(fields[5]);
 
         DoctorNode* new_node = create_doctor_node(id, name, department);
         if (new_node == NULL) continue;
 
+        strcpy(new_node->gender, gender);
         new_node->queue_length = queue_length;
         new_node->is_on_duty = is_on_duty;
 
@@ -461,12 +465,12 @@ int save_account_list(AccountNode* head) {
     if (fp == NULL) return 0;
 
     // 写入表头
-    fprintf(fp, "用户名|密码|真实姓名|角色(0=管理员,1=医生,2=护士,3=药师)|错误次数|锁定时间|是否值班(0=否,1=是)\n");
+    fprintf(fp, "用户名|密码|真实姓名|性别|角色(0=管理员,1=医生,2=护士,3=药师)|错误次数|锁定时间|是否值班(0=否,1=是)\n");
 
     AccountNode* curr = head->next;
     while (curr != NULL) {
-        fprintf(fp, "%s|%s|%s|%d|%d|%ld|%d\n",
-            curr->username, curr->password, curr->real_name, curr->role,
+        fprintf(fp, "%s|%s|%s|%s|%d|%d|%ld|%d\n",
+            curr->username, curr->password, curr->real_name, curr->gender, curr->role,
             curr->error_count, (long)curr->lock_time, curr->is_on_duty);
         curr = curr->next;
     }
@@ -491,26 +495,28 @@ int load_account_list(AccountNode** head) {
         trim_newline(line);
         if (strlen(line) == 0) continue;
 
-        char username[MAX_ID_LEN], password[MAX_ID_LEN], real_name[MAX_NAME_LEN];
+        char username[MAX_ID_LEN], password[MAX_ID_LEN], real_name[MAX_NAME_LEN], gender[8];
         int role, error_count, is_on_duty;
         long lock_time;
 
         char* fields[10];
         int field_count = split_line_by_delimiter(line, '|', fields, 10);
         
-        if (field_count < 7) continue;
+        if (field_count < 8) continue;
         
         strcpy(username, fields[0]);
         strcpy(password, fields[1]);
         strcpy(real_name, fields[2]);
-        role = atoi(fields[3]);
-        error_count = atoi(fields[4]);
-        lock_time = atol(fields[5]);
-        is_on_duty = atoi(fields[6]);
+        strcpy(gender, fields[3]);
+        role = atoi(fields[4]);
+        error_count = atoi(fields[5]);
+        lock_time = atol(fields[6]);
+        is_on_duty = atoi(fields[7]);
 
         AccountNode* new_node = create_account_node(username, password, real_name, role);
         if (new_node == NULL) continue;
 
+        strcpy(new_node->gender, gender);
         new_node->error_count = error_count;
         new_node->lock_time = (time_t)lock_time;
         new_node->is_on_duty = is_on_duty;
