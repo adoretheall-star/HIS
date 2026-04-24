@@ -498,7 +498,6 @@ int load_account_list(AccountNode** head) {
         char username[MAX_ID_LEN], password[MAX_ID_LEN], real_name[MAX_NAME_LEN], gender[8];
         int role, error_count, is_on_duty;
         long lock_time;
-        char gender;
 
         char* fields[10];
         int field_count = split_line_by_delimiter(line, '|', fields, 10);

@@ -509,7 +509,7 @@ const char* get_patient_status_text(MedStatus status)
 PatientNode* register_patient(
     const char* name,
     int age,
-    char gender,
+    const char* gender,
     const char* id_card,
     const char* symptom,
     const char* target_dept
