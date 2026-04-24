@@ -57,7 +57,7 @@ PatientNode* init_patient_list()
 // ---------------------------------------------------------
 // 功能 2：在内存中捏造一个“干净”的患者节点
 // ---------------------------------------------------------
-PatientNode* create_patient_node(const char* id, const char* name, int age, char gender, const char* id_card) {
+PatientNode* create_patient_node(const char* id, const char* name, int age, const char* gender, const char* id_card) {
     PatientNode* new_node = (PatientNode*)malloc(sizeof(PatientNode));
     if (new_node == NULL) return NULL;
 
@@ -68,11 +68,15 @@ PatientNode* create_patient_node(const char* id, const char* name, int age, char
     strncpy(new_node->name, name, MAX_NAME_LEN - 1);
     new_node->name[MAX_NAME_LEN - 1] = '\0';
     
-    // 初始化性别为空字符串
-    new_node->gender[0] = '\0';
+    // 复制性别字符串
+    if (gender != NULL) {
+        strncpy(new_node->gender, gender, 7);
+        new_node->gender[7] = '\0';
+    } else {
+        new_node->gender[0] = '\0';
+    }
     
     new_node->age = age;
-    new_node->gender = gender;
     
     strncpy(new_node->id_card, id_card, MAX_ID_LEN - 1);
     new_node->id_card[MAX_ID_LEN - 1] = '\0';
@@ -222,7 +226,7 @@ DoctorNode* init_doctor_list()
     return head;
 }
 
-DoctorNode* create_doctor_node(const char* id, const char* name, char gender, const char* dept) {
+DoctorNode* create_doctor_node(const char* id, const char* name, const char* gender, const char* dept) {
     DoctorNode* new_node = (DoctorNode*)malloc(sizeof(DoctorNode));
     if (new_node == NULL) return NULL;
     strncpy(new_node->id, id, MAX_ID_LEN - 1);
@@ -230,8 +234,13 @@ DoctorNode* create_doctor_node(const char* id, const char* name, char gender, co
     strncpy(new_node->name, name, MAX_NAME_LEN - 1);
     new_node->name[MAX_NAME_LEN - 1] = '\0';
     
-    // 初始化性别为空字符串
-    new_node->gender[0] = '\0';
+    // 复制性别字符串
+    if (gender != NULL) {
+        strncpy(new_node->gender, gender, 7);
+        new_node->gender[7] = '\0';
+    } else {
+        new_node->gender[0] = '\0';
+    }
     
     strncpy(new_node->department, dept, MAX_NAME_LEN - 1);
     new_node->department[MAX_NAME_LEN - 1] = '\0';
@@ -395,7 +404,7 @@ AccountNode* init_account_list()
     return head;
 }
 
-AccountNode* create_account_node(const char* username, const char* pwd, const char* real_name, char gender, RoleType role) 
+AccountNode* create_account_node(const char* username, const char* pwd, const char* real_name, const char* gender, RoleType role) 
 {
     AccountNode* new_node = (AccountNode*)malloc(sizeof(AccountNode));
     if (new_node == NULL) return NULL;
@@ -406,8 +415,13 @@ AccountNode* create_account_node(const char* username, const char* pwd, const ch
     strncpy(new_node->real_name, real_name, MAX_NAME_LEN - 1);
     new_node->real_name[MAX_NAME_LEN - 1] = '\0';
     
-    // 初始化性别为空字符串
-    new_node->gender[0] = '\0';
+    // 复制性别字符串
+    if (gender != NULL) {
+        strncpy(new_node->gender, gender, 7);
+        new_node->gender[7] = '\0';
+    } else {
+        new_node->gender[0] = '\0';
+    }
     
     new_node->role = role;
     new_node->is_on_duty = 1; // 初始值班中

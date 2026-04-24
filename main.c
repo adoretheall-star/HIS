@@ -265,15 +265,14 @@ static void handle_admin_register_account()
     get_safe_string("请输入真实姓名: ", real_name, MAX_NAME_LEN);
     
     // 输入性别
+    char gender_str[8];
     while (1) {
-        printf("请输入性别 (M/F): ");
-        scanf(" %c", &gender);
-        if (gender == 'M' || gender == 'F' || gender == 'm' || gender == 'f') {
-            gender = toupper(gender); // 转换为大写
+        printf("请输入性别 (男/女): ");
+        get_safe_string(gender_str, gender_str, 8);
+        if (strcmp(gender_str, "男") == 0 || strcmp(gender_str, "女") == 0) {
             break;
         }
-        printf("⚠️ 无效的性别输入，请输入 M 或 F。\n");
-        while (getchar() != '\n'); // 清空输入缓冲区
+        printf("⚠️ 无效的性别输入，请输入 男 或 女。\n");
     }
 
     role = prompt_admin_staff_role();
@@ -304,14 +303,14 @@ static void handle_admin_register_account()
         }
     }
 
-    if (!register_account(username, password, real_name, gender, role))
+    if (!register_account(username, password, real_name, gender_str, role))
     {
         return;
     }
 
     if (role == ROLE_DOCTOR)
     {
-        DoctorNode* new_doctor = create_doctor_node(username, real_name, gender, department);
+        DoctorNode* new_doctor = create_doctor_node(username, real_name, gender_str, department);
         if (new_doctor == NULL)
         {
             delete_account_by_username(g_account_list, username);
@@ -1873,14 +1872,15 @@ static void handle_internal_patient_register()
     }
     
     // 输入性别并验证
+    char gender_str[8];
     while (1)
     {
-        printf("请输入患者性别 (M/F): ");
-        scanf(" %c", &gender);
-        if (gender == 'M' || gender == 'F')
+        printf("请输入患者性别 (男/女): ");
+        get_safe_string(gender_str, gender_str, 8);
+        if (strcmp(gender_str, "男") == 0 || strcmp(gender_str, "女") == 0) {
             break;
-        printf("⚠️ 性别输入无效，请输入 M 或 F！\n");
-        while (getchar() != '\n'); // 清空输入缓冲区
+        }
+        printf("⚠️ 性别输入无效，请输入 男 或 女！\n");
     }
     
     // 输入身份证号并验证
@@ -1911,7 +1911,7 @@ static void handle_internal_patient_register()
     // 输入目标科室（可选）
     get_safe_string("请输入目标科室(可选): ", target_dept, MAX_NAME_LEN);
 
-    register_patient(name, age, gender, id_card, symptom, target_dept);
+    register_patient(name, age, gender_str, id_card, symptom, target_dept);
     system("pause");
 }
 static void handle_internal_appointment_register()
@@ -2394,21 +2394,22 @@ static void handle_patient_self_first_visit()
     age = get_safe_int("请输入您的年龄: ");
     
     // 输入性别并验证
+    char gender_str[8];
     while (1)
     {
-        printf("请输入您的性别 (M/F): ");
-        scanf(" %c", &gender);
-        if (gender == 'M' || gender == 'F')
+        printf("请输入您的性别 (男/女): ");
+        get_safe_string(gender_str, gender_str, 8);
+        if (strcmp(gender_str, "男") == 0 || strcmp(gender_str, "女") == 0) {
             break;
-        printf("⚠️ 性别输入无效，请输入 M 或 F！\n");
-        while (getchar() != '\n'); // 清空输入缓冲区
+        }
+        printf("⚠️ 性别输入无效，请输入 男 或 女！\n");
     }
     
     get_safe_string("请输入您的症状描述: ", symptom, MAX_SYMPTOM_LEN);
     get_safe_string("请输入您要就诊的科室: ", target_dept, MAX_NAME_LEN);
     
     // 调用建档函数
-    PatientNode* new_patient = register_patient(name, age, gender, id_card, symptom, target_dept);
+    PatientNode* new_patient = register_patient(name, age, gender_str, id_card, symptom, target_dept);
     
     if (new_patient != NULL)
     {
@@ -3410,7 +3411,7 @@ int main()
 
         // 2. 注入一组极端测试数据
         insert_patient_tail(g_patient_list, create_patient_node(
-"P-001", "张三", 19, 'M', "110101199001011234"
+"P-001", "张三", 19, "男", "110101199001011234"
 ));
 
         
@@ -3423,11 +3424,13 @@ int main()
 "W-101", "B-101", WARD_TYPE_GENERAL
 ));
         insert_account_tail(g_account_list, create_account_node(
-"admin", "123456", "超级管理员", 'M', ROLE_ADMIN));
+"admin", "123456", "超级管理员", "男", ROLE_ADMIN));
+
         insert_account_tail(g_account_list, create_account_node(
-"nurse", "123456", "护士", 'F', ROLE_NURSE));
+"nurse", "123456", "护士", "女", ROLE_NURSE));
+
         insert_account_tail(g_account_list, create_account_node(
-"pharm", "123456", "药剂师", 'F', ROLE_PHARMACIST));
+"pharm", "123456", "药剂师", "女", ROLE_PHARMACIST));
 
 
 
@@ -3490,7 +3493,7 @@ int main()
             sprintf(temp_id, "D-2%02d", doc_id++);
             sprintf(temp_name, "李建国");
             char* dept = (char*)all_depts[j % num_depts];
-            char temp_gender = (j % 2 == 0) ? 'M' : 'F'; // 交替性别
+            char* temp_gender = (j % 2 == 0) ? "男" : "女"; // 交替性别
             insert_doctor_tail(g_doctor_list, create_doctor_node(temp_id, temp_name, temp_gender, dept));
             // 为医生账号添加科室信息
             char doctor_full_name[128];
@@ -3520,7 +3523,7 @@ int main()
                 int surname_idx = (doctor_count * 7) % (sizeof(surnames)/sizeof(surnames[0]));
                 int given_name_idx = (doctor_count * 11) % (sizeof(given_names)/sizeof(given_names[0]));
                 sprintf(temp_name, "%s%s", surnames[surname_idx], given_names[given_name_idx]);
-                char temp_gender = (doctor_count % 2 == 0) ? 'M' : 'F';
+                char* temp_gender = (doctor_count % 2 == 0) ? "男" : "女";
                 insert_doctor_tail(g_doctor_list, create_doctor_node(temp_id, temp_name, temp_gender, dept));
                 // 为医生账号添加科室信息
                 char doctor_full_name[128];
@@ -3671,7 +3674,7 @@ int main()
             
             char temp_id_card[32];
             sprintf(temp_id_card, "1101051990%02d%02d123%d", (i%12)+1, (i%28)+1, i%10);
-            char temp_gender = (i % 2 == 0) ? 'M' : 'F';
+            char* temp_gender = (i % 2 == 0) ? "男" : "女";
             
             PatientNode* p = create_patient_node(temp_id, temp_name, 20 + (i%50), temp_gender, temp_id_card);
             if (p != NULL) {

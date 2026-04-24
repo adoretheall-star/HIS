@@ -140,7 +140,6 @@ typedef struct PatientNode
     char name[MAX_NAME_LEN];   //患者姓名      
     char gender[8];            //性别（男/女）
     int age;                   //患者年龄
-    char gender;               //患者性别 (M/F)
     char id_card[MAX_ID_LEN];  //身份证号
     MedicareType m_type;       //个人医保类型
     //高级业务字段 
