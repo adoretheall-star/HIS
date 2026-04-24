@@ -2,13 +2,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <errno.h>
 #include <math.h> // 用于 isnan, isinf 函数
 #include "admin_service.h"
 #include "list_ops.h"
 #include "medicine_service.h"
 #include "pharmacy_service.h"
+#include "data_io.h"
+#include "patient_service.h"
 #include "utils.h"
+
+// 外部函数声明
+extern void query_patient_complaints(const char* patient_id);
 
 // 解析日期字符串为 tm 结构
 static int parse_date_string(const char* date_str, struct tm* tm_out);
@@ -219,7 +223,7 @@ void show_all_accounts(void)
 }
 
 // 注册新员工账号
-int register_account(const char* username, const char* password, const char* real_name, RoleType role)
+int register_account(const char* username, const char* password, const char* real_name, char gender, RoleType role)
 {
     if (username == NULL || password == NULL || real_name == NULL)
     {
@@ -282,6 +286,8 @@ int verify_account(const char* username, const char* password, int* role)
     }
 
     if (strcmp(account->password, password) != 0)
+    new_account = create_account_node(username, password, real_name, gender, role);
+    if (new_account == NULL)
     {
         return 0;
     }

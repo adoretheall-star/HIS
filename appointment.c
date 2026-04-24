@@ -742,3 +742,73 @@ int mark_appointment_missed(const char* appointment_id)
     
     return 1;
 }
+
+void query_appointment_and_patient(const char* appointment_id)
+{
+    AppointmentNode* appointment = NULL;
+    PatientNode* patient = NULL;
+    
+    if (g_appointment_list == NULL)
+    {
+        printf("⚠️ 预约链表尚未初始化！\n");
+        return;
+    }
+    
+    if (appointment_id == NULL || strlen(appointment_id) == 0)
+    {
+        printf("⚠️ 预约编号不能为空！\n");
+        return;
+    }
+    
+    appointment = find_appointment_by_id(g_appointment_list, appointment_id);
+    if (appointment == NULL)
+    {
+        printf("⚠️ 未找到对应预约记录！\n");
+        return;
+    }
+    
+    printf("\n========== 预约信息 ==========\n");
+    print_appointment_info(appointment);
+    
+    patient = find_patient_by_id(g_patient_list, appointment->patient_id);
+    if (patient != NULL)
+    {
+        printf("\n========== 患者信息 ==========\n");
+        printf("患者编号：%s\n", patient->id);
+        printf("患者姓名：%s\n", patient->name);
+        printf("患者年龄：%d\n", patient->age);
+        // 身份证号脱敏处理
+        char masked_id_card[MAX_ID_LEN] = {0};
+        if (strlen(patient->id_card) >= 10)
+        {
+            strncpy(masked_id_card, patient->id_card, 3);
+            strcat(masked_id_card, "********");
+            strcat(masked_id_card, patient->id_card + strlen(patient->id_card) - 3);
+        } else {
+            strcpy(masked_id_card, patient->id_card);
+        }
+        printf("身份证号：%s\n", masked_id_card);
+        printf("医保类型：%d\n", patient->m_type);
+        printf("就诊卡号：%s\n", patient->card_id);
+        printf("账户余额：%.2f 元\n", patient->balance);
+        printf("就医状态：%s\n", get_patient_status_text(patient->status));
+        printf("症状描述：%s\n", patient->symptom);
+        printf("目标科室：%s\n", patient->target_dept);
+        // 显示医生姓名
+        DoctorNode* doctor = find_doctor_by_id(g_doctor_list, patient->doctor_id);
+        if (doctor != NULL)
+        {
+            printf("接诊医生：%s（%s）\n", doctor->name, patient->doctor_id);
+        } else {
+            printf("接诊医生：%s\n", patient->doctor_id);
+        }
+        printf("诊断结果：%s\n", patient->diagnosis_text);
+        printf("治疗建议：%s\n", patient->treatment_advice);
+        printf("是否急诊：%s\n", patient->is_emergency ? "是" : "否");
+        printf("是否黑名单：%s\n", patient->is_blacklisted ? "是" : "否");
+    }
+    else
+    {
+        printf("\n⚠️ 未找到对应患者信息！\n");
+    }
+}

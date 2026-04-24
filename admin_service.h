@@ -7,7 +7,7 @@
 void show_all_accounts(void);
 
 // 注册新员工账号
-int register_account(const char* username, const char* password, const char* real_name, RoleType role);
+int register_account(const char* username, const char* password, const char* real_name, char gender, RoleType role);
 
 // 更新员工资料
 int update_account_basic_info(
@@ -55,12 +55,23 @@ void init_log_list(void);
 void add_log(const char* operation, const char* target, const char* description);
 void show_logs(void);
 
-// 药品相关函数
+// 投诉管理相关函数
+void admin_complaint_menu(void);
+void show_all_complaints(void);
+void handle_complaint_response(void);
+void query_patient_complaints_by_id(void);
+void query_complaint_by_id(void);
+
+// 评价管理相关函数
+void admin_evaluation_menu(void);
+void show_all_evaluations(void);
+void show_evaluation_statistics(void);
+
+// 药品管理相关处理函数
 void handle_medicine_register(void);
 void handle_medicine_basic_info_update(void);
 void handle_medicine_stock_update(void);
 void handle_expiring_medicine_check(void);
-void handle_medicine_dispense(void);
 void handle_medicine_remove(void);
 
 #endif // ADMIN_SERVICE_H

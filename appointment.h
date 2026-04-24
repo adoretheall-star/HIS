@@ -17,7 +17,9 @@ AppointmentNode* register_appointment(
 void query_appointments_by_patient_id(const char* patient_id);
 // 3. 按身份证号查询预约
 void query_appointments_by_id_card(const char* id_card);
-// 4. 预约取消
+// 4. 按预约编号查询预约及患者信息
+void query_appointment_and_patient(const char* appointment_id);
+// 5. 预约取消
 int cancel_appointment(const char* appointment_id);
 // 5. 预约签到转挂号
 int check_in_appointment(const char* appointment_id);

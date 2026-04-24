@@ -91,6 +91,8 @@ static double get_ward_rate(WardType ward_type)
 // 1. 病房/床位查询函数
 // ==========================================
 
+// 使用 list_ops.h 中已定义的 find_patient_by_id 函数
+
 void show_all_beds()
 {
     WardNode* curr = NULL;
@@ -106,7 +108,7 @@ void show_all_beds()
     printf("\n======================================================\n");
     printf("                   全部床位信息\n");
     printf("======================================================\n");
-    printf("病房编号       床位编号       类型         状态       患者编号\n");
+    printf("病房编号       床位编号       类型         状态       患者编号       患者姓名       身份证号\n");
     printf("------------------------------------------------------\n");
 
     curr = g_ward_list->next;
@@ -118,12 +120,45 @@ void show_all_beds()
             occupied++;
         }
 
-        printf("%-13s %-13s %-12s %-10s %s\n",
-            curr->room_id,
-            curr->bed_id,
-            curr->ward_type == WARD_TYPE_ICU ? "ICU" : (curr->ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (curr->ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房")),
-            curr->is_occupied ? "占用" : "空闲",
-            curr->is_occupied ? curr->patient_id : "-");
+        if (curr->is_occupied)
+        {
+            PatientNode* patient = find_patient_by_id(g_patient_list, curr->patient_id);
+            if (patient != NULL)
+            {
+                char masked_id_card[20];
+                mask_id_card(patient->id_card, masked_id_card);
+                printf("%-13s %-13s %-12s %-10s %-13s %-13s %s\n",
+                    curr->room_id,
+                    curr->bed_id,
+                    curr->ward_type == WARD_TYPE_ICU ? "ICU" : (curr->ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (curr->ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房")),
+                    "占用",
+                    curr->patient_id,
+                    patient->name,
+                    masked_id_card);
+            }
+            else
+            {
+                printf("%-13s %-13s %-12s %-10s %-13s %-13s %s\n",
+                    curr->room_id,
+                    curr->bed_id,
+                    curr->ward_type == WARD_TYPE_ICU ? "ICU" : (curr->ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (curr->ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房")),
+                    "占用",
+                    curr->patient_id,
+                    "未知",
+                    "未知");
+            }
+        }
+        else
+        {
+            printf("%-13s %-13s %-12s %-10s %-13s %-13s %s\n",
+                curr->room_id,
+                curr->bed_id,
+                curr->ward_type == WARD_TYPE_ICU ? "ICU" : (curr->ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (curr->ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房")),
+                "空闲",
+                "-",
+                "-",
+                "-");
+        }
 
         curr = curr->next;
     }

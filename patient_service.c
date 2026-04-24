@@ -509,6 +509,7 @@ const char* get_patient_status_text(MedStatus status)
 PatientNode* register_patient(
     const char* name,
     int age,
+    char gender,
     const char* id_card,
     const char* symptom,
     const char* target_dept
@@ -629,7 +630,7 @@ PatientNode* register_patient(
     generate_patient_id(new_id);
     
     // 创建患者节点
-    new_patient = create_patient_node(new_id, name, age, id_card);
+    new_patient = create_patient_node(new_id, name, age, gender, id_card);
     if (new_patient == NULL)
     {
         printf("⚠️ 患者节点创建失败！\n");
