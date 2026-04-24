@@ -150,7 +150,7 @@ int load_patient_list(PatientNode** head) {
         emergency_debt = atof(fields[24]);
         unpaid_time = atol(fields[25]);
 
-        PatientNode* new_node = create_patient_node(id, name, age, id_card);
+        PatientNode* new_node = create_patient_node(id, name, age, gender, id_card);
         if (new_node == NULL) continue;
 
         strcpy(new_node->gender, gender);
@@ -317,7 +317,7 @@ int load_doctor_list(DoctorNode** head) {
         queue_length = atoi(fields[4]);
         is_on_duty = atoi(fields[5]);
 
-        DoctorNode* new_node = create_doctor_node(id, name, department);
+        DoctorNode* new_node = create_doctor_node(id, name, gender, department);
         if (new_node == NULL) continue;
 
         strcpy(new_node->gender, gender);
@@ -498,6 +498,7 @@ int load_account_list(AccountNode** head) {
         char username[MAX_ID_LEN], password[MAX_ID_LEN], real_name[MAX_NAME_LEN], gender[8];
         int role, error_count, is_on_duty;
         long lock_time;
+        char gender;
 
         char* fields[10];
         int field_count = split_line_by_delimiter(line, '|', fields, 10);
@@ -513,7 +514,7 @@ int load_account_list(AccountNode** head) {
         lock_time = atol(fields[6]);
         is_on_duty = atoi(fields[7]);
 
-        AccountNode* new_node = create_account_node(username, password, real_name, role);
+        AccountNode* new_node = create_account_node(username, password, real_name, gender, role);
         if (new_node == NULL) continue;
 
         strcpy(new_node->gender, gender);
