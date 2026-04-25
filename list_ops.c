@@ -1442,3 +1442,67 @@ void destroy_all_lists() {
     destroy_inpatient_list();
 }
 
+// 日志链表操作
+LogNode* create_log_list() {
+    LogNode* head = (LogNode*)malloc(sizeof(LogNode));
+    if (head == NULL) return NULL;
+    
+    // 初始化头节点
+    head->timestamp[0] = '\0';
+    head->operation[0] = '\0';
+    head->target[0] = '\0';
+    head->description[0] = '\0';
+    head->next = NULL;
+    
+    return head;
+}
+
+LogNode* create_log_node(const char* timestamp, const char* operation, const char* target, const char* description) {
+    LogNode* new_node = (LogNode*)malloc(sizeof(LogNode));
+    if (new_node == NULL) return NULL;
+    
+    // 复制数据
+    if (timestamp != NULL) {
+        strncpy(new_node->timestamp, timestamp, 19);
+        new_node->timestamp[19] = '\0';
+    } else {
+        new_node->timestamp[0] = '\0';
+    }
+    
+    if (operation != NULL) {
+        strncpy(new_node->operation, operation, 49);
+        new_node->operation[49] = '\0';
+    } else {
+        new_node->operation[0] = '\0';
+    }
+    
+    if (target != NULL) {
+        strncpy(new_node->target, target, 49);
+        new_node->target[49] = '\0';
+    } else {
+        new_node->target[0] = '\0';
+    }
+    
+    if (description != NULL) {
+        strncpy(new_node->description, description, 199);
+        new_node->description[199] = '\0';
+    } else {
+        new_node->description[0] = '\0';
+    }
+    
+    new_node->next = NULL;
+    
+    return new_node;
+}
+
+void insert_log_tail(LogNode* head, LogNode* new_node) {
+    if (head == NULL || new_node == NULL) return;
+    
+    LogNode* curr = head;
+    while (curr->next != NULL) {
+        curr = curr->next;
+    }
+    
+    curr->next = new_node;
+}
+
