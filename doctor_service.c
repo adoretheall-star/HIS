@@ -1452,5 +1452,26 @@ int doctor_update_check_result(const char* doctor_id, const char* record_id, con
     return 0;
 }
 
+// 显示医生信息
+void show_doctor_info(DoctorNode* doctor)
+{
+    if (doctor == NULL)
+    {
+        printf("⚠️ 医生信息不存在！\n");
+        return;
+    }
+    
+    printf("\n======================================================\n");
+    printf("                  👨‍⚕️ 医生信息\n");
+    printf("======================================================\n");
+    printf("工号: %s\n", doctor->id);
+    printf("姓名: %s\n", doctor->name);
+    printf("性别: %s\n", doctor->gender);
+    printf("科室: %s\n", doctor->department);
+    printf("值班状态: %s\n", doctor->is_on_duty ? "值班中" : "未值班");
+    printf("当前排队人数: %d\n", doctor->queue_length);
+    printf("======================================================\n");
+}
+
 
 

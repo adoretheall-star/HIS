@@ -9,6 +9,9 @@ void show_all_accounts(void);
 // 注册新员工账号
 int register_account(const char* username, const char* password, const char* real_name, const char* gender, RoleType role);
 
+// 验证账号密码
+int verify_account(const char* username, const char* password, int* role);
+
 // 更新员工资料
 int update_account_basic_info(
     const char* username,
