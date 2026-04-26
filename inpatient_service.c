@@ -12,6 +12,8 @@
 #include "list_ops.h"
 #include "utils.h"
 #include "admin_service.h"
+#include "doctor_service.h"
+#include "data_io.h"
 #include "inpatient_service.h"
 
 // 押金预警阈值常量
@@ -46,7 +48,7 @@ static void generate_inpatient_id(char* new_id)
 
     if (g_inpatient_list == NULL || g_inpatient_list->next == NULL)
     {
-        snprintf(new_id, MAX_ID_LEN, "I-001");
+        snprintf(new_id, MAX_ID_LEN, "IP-0001");
         return;
     }
 
@@ -54,7 +56,7 @@ static void generate_inpatient_id(char* new_id)
     while (curr != NULL)
     {
         int no = 0;
-        if (sscanf(curr->inpatient_id, "I-%d", &no) == 1)
+        if (sscanf(curr->inpatient_id, "IP-%d", &no) == 1 || sscanf(curr->inpatient_id, "I-%d", &no) == 1)
         {
             if (no > max_no)
             {
@@ -64,7 +66,7 @@ static void generate_inpatient_id(char* new_id)
         curr = curr->next;
     }
 
-    snprintf(new_id, MAX_ID_LEN, "I-%03d", max_no + 1);
+    snprintf(new_id, MAX_ID_LEN, "IP-%04d", max_no + 1);
 }
 
 /**
@@ -1132,3 +1134,94 @@ int bed_is_available(const char* bed_id)
     WardNode* bed = find_bed_by_id(bed_id);
     return (bed != NULL && !bed->is_occupied);
 }
+
+// ==========================================
+// 6. 日结功能
+// ==========================================
+
+/**
+ * @brief 执行住院患者日结
+ * @return 成功返回1，失败返回0
+ */
+int perform_daily_settlement()
+{
+    InpatientRecord* curr = NULL;
+    time_t current_time = time(NULL);
+    int settled_count = 0;
+
+    if (g_inpatient_list == NULL || g_inpatient_list->next == NULL)
+    {
+        printf("无住院患者需要日结\n");
+        return 0;
+    }
+
+    printf("开始执行住院患者日结...\n");
+
+    curr = g_inpatient_list->next;
+    while (curr != NULL)
+    {
+        if (curr->is_active)
+        {
+            // 计算日结费用（根据病房类型）
+            double daily_cost = get_ward_rate(curr->ward_type);
+            
+            // 更新押金余额
+            curr->deposit_balance -= daily_cost;
+            
+            // 更新已住天数
+            curr->days_stayed += 1;
+            
+            // 更新最近一次日结时间戳
+            curr->last_settlement_time = (long)current_time;
+            
+            // 打印日结信息
+            printf("患者 %s (ID: %s) 日结成功\n", get_patient_name_by_id(curr->patient_id), curr->patient_id);
+            printf("  病房类型: %d, 日费用: %.2f, 押金余额: %.2f\n", curr->ward_type, daily_cost, curr->deposit_balance);
+            
+            settled_count++;
+        }
+        curr = curr->next;
+    }
+
+    // 保存更新后的住院记录
+    if (save_inpatient_list(g_inpatient_list) == 1)
+    {
+        printf("日结完成，共处理 %d 名患者\n", settled_count);
+        return 1;
+    }
+    else
+    {
+        printf("日结失败：保存数据失败\n");
+        return 0;
+    }
+}
+
+/**
+ * @brief 显示住院患者的日结状态
+ * @param patient_id 患者编号
+ */
+void show_patient_settlement_status(const char* patient_id)
+{
+    InpatientRecord* record = find_active_inpatient_by_patient_id(patient_id);
+    if (record == NULL)
+    {
+        printf("未找到该患者的住院记录\n");
+        return;
+    }
+
+    printf("患者 %s 的日结状态\n", get_patient_name_by_id(patient_id));
+    printf("  住院记录编号: %s\n", record->inpatient_id);
+    
+    // 显示最近一次日结时间
+    if (record->last_settlement_time > 0) {
+        time_t settlement_time = (time_t)record->last_settlement_time;
+        printf("  最近一次日结时间: %s", ctime(&settlement_time));
+    } else {
+        printf("  最近一次日结时间: 未日结\n");
+    }
+    
+    printf("  押金余额: %.2f\n", record->deposit_balance);
+    printf("  已住天数: %d\n", record->days_stayed);
+    printf("  预计总天数: %d\n", record->estimated_days);
+}
+

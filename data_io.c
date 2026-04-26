@@ -112,7 +112,7 @@ int load_patient_list(PatientNode** head) {
         int age, m_type, status;
         double balance;
         long missed_time_1, missed_time_2, missed_time_3, blacklist_expire, unpaid_time;
-        int missed_count, is_blacklisted, is_emergency, call_count;
+        int missed_count, is_blacklisted, is_emergency, call_count, script_count;
         double emergency_debt;
         long queue_time;
 
@@ -138,17 +138,18 @@ int load_patient_list(PatientNode** head) {
         strcpy(diagnosis_text, fields[12]);
         strcpy(treatment_advice, fields[13]);
         strcpy(prescription_str, fields[14]);
-        missed_time_1 = atol(fields[15]);
-        missed_time_2 = atol(fields[16]);
-        missed_time_3 = atol(fields[17]);
-        missed_count = atoi(fields[18]);
-        blacklist_expire = atol(fields[19]);
-        is_blacklisted = atoi(fields[20]);
-        is_emergency = atoi(fields[21]);
-        queue_time = atol(fields[22]);
-        call_count = atol(fields[23]);
-        emergency_debt = atof(fields[24]);
-        unpaid_time = atol(fields[25]);
+        script_count = atoi(fields[15]);
+        missed_time_1 = atol(fields[16]);
+        missed_time_2 = atol(fields[17]);
+        missed_time_3 = atol(fields[18]);
+        missed_count = atoi(fields[19]);
+        blacklist_expire = atol(fields[20]);
+        is_blacklisted = atoi(fields[21]);
+        is_emergency = atoi(fields[22]);
+        queue_time = atol(fields[23]);
+        call_count = atol(fields[24]);
+        emergency_debt = atof(fields[25]);
+        unpaid_time = atol(fields[26]);
 
         PatientNode* new_node = create_patient_node(id, name, age, gender, id_card);
         if (new_node == NULL) continue;
@@ -756,13 +757,13 @@ int save_alert_list(AlertNode* head) {
 int load_alert_list(AlertNode** head) {
     ensure_data_dir();
     FILE* fp = fopen(DATA_DIR "alerts.txt", "r");
-    if (fp == NULL) return 1;
+    if (fp == NULL) return 0;
 
     // 跳过表头
     char header_buffer[512];
     if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
         fclose(fp);
-        return 1;
+        return 0;
     }
 
     char line[512];
@@ -837,13 +838,13 @@ int save_complaint_list(ComplaintNode* head) {
 int load_complaint_list(ComplaintNode** head) {
     ensure_data_dir();
     FILE* fp = fopen(DATA_DIR "complaints.txt", "r");
-    if (fp == NULL) return 1;
+    if (fp == NULL) return 0;
 
     // 跳过表头
     char header_buffer[512];
     if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
         fclose(fp);
-        return 1;
+        return 0;
     }
 
     char line[1024];
@@ -892,13 +893,13 @@ int save_log_list(LogNode* head) {
 int load_log_list(LogNode** head) {
     ensure_data_dir();
     FILE* fp = fopen(DATA_DIR "logs.txt", "r");
-    if (fp == NULL) return 1;
+    if (fp == NULL) return 0;
 
     // 跳过表头
     char header_buffer[512];
     if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
         fclose(fp);
-        return 1;
+        return 0;
     }
 
     char line[512];
@@ -942,15 +943,22 @@ int save_inpatient_list(InpatientRecord* head) {
     if (fp == NULL) return 0;
 
     // 写入表头
-    fprintf(fp, "住院记录编号|患者编号|床位号|病房类型(1=普通,2=ICU,3=隔离病房,4=单人病房)|推荐病房类型(1=普通,2=ICU,3=隔离病房,4=单人病房)|预计天数|已住天数|押金余额|是否活跃(0=否,1=是)\n");
+    fprintf(fp, "住院记录编号|患者编号|床位号|病房类型(1=普通,2=ICU,3=隔离病房,4=单人病房)|推荐病房类型(1=普通,2=ICU,3=隔离病房,4=单人病房)|预计天数|已住天数|押金余额|是否活跃(0=否,1=是)|最近一次日结时间戳\n");
 
     InpatientRecord* curr = head->next;
     while (curr != NULL) {
-        fprintf(fp, "%s|%s|%s|%d|%d|%d|%d|%.2f|%d|%ld\n",
+        char time_str[30] = "";
+        if (curr->last_settlement_time > 0) {
+            time_t settlement_time = (time_t)curr->last_settlement_time;
+            strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", localtime(&settlement_time));
+        } else {
+            strcpy(time_str, "未日结");
+        }
+        fprintf(fp, "%s|%s|%s|%d|%d|%d|%d|%.2f|%d|%s\n",
             curr->inpatient_id, curr->patient_id, curr->bed_id,
             curr->ward_type, curr->recommended_ward_type, curr->estimated_days,
             curr->days_stayed, curr->deposit_balance, curr->is_active,
-            (long)curr->last_settlement_time);
+            time_str);
         curr = curr->next;
     }
     fclose(fp);
@@ -960,13 +968,13 @@ int save_inpatient_list(InpatientRecord* head) {
 int load_inpatient_list(InpatientRecord** head) {
     ensure_data_dir();
     FILE* fp = fopen(DATA_DIR "inpatients.txt", "r");
-    if (fp == NULL) return 1;
+    if (fp == NULL) return 0;
 
     // 跳过表头
     char header_buffer[512];
     if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
         fclose(fp);
-        return 1;
+        return 0;
     }
 
     char line[512];
@@ -977,7 +985,7 @@ int load_inpatient_list(InpatientRecord** head) {
         char inpatient_id[MAX_ID_LEN], patient_id[MAX_ID_LEN], bed_id[MAX_ID_LEN];
         int ward_type, recommended_ward_type, estimated_days, days_stayed, is_active;
         double deposit_balance;
-        long last_settlement_time;
+        long last_settlement_time = 0;
 
         char* fields[15];
         int field_count = split_line_by_delimiter(line, '|', fields, 15);
@@ -993,7 +1001,23 @@ int load_inpatient_list(InpatientRecord** head) {
         days_stayed = atoi(fields[6]);
         deposit_balance = atof(fields[7]);
         is_active = atoi(fields[8]);
-        last_settlement_time = atol(fields[9]);
+        
+        // 解析时间戳
+        if (strcmp(fields[9], "未日结") != 0) {
+            // 尝试解析时间字符串 "YYYY-MM-DD HH:MM:SS"
+            int year, month, day, hour, minute, second;
+            if (sscanf(fields[9], "%d-%d-%d %d:%d:%d", &year, &month, &day, &hour, &minute, &second) == 6) {
+                struct tm tm_time;
+                tm_time.tm_year = year - 1900;  // 年份从1900开始
+                tm_time.tm_mon = month - 1;      // 月份从0开始
+                tm_time.tm_mday = day;
+                tm_time.tm_hour = hour;
+                tm_time.tm_min = minute;
+                tm_time.tm_sec = second;
+                tm_time.tm_isdst = -1;  // 自动检测夏令时
+                last_settlement_time = (long)mktime(&tm_time);
+            }
+        }
 
         InpatientRecord* new_node = create_inpatient_record_node(
             inpatient_id, patient_id, bed_id, ward_type, recommended_ward_type,

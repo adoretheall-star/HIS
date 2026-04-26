@@ -13,6 +13,7 @@
 #include "list_ops.h"
 #include "appointment.h"
 #include "utils.h"
+#include "data_io.h"
 #include "patient_service.h"
 
 // 智能分诊权重规则结构体
@@ -197,6 +198,24 @@ PatientNode* find_patient_by_id_card(const char* id_card)
         curr = curr->next;
     }
     return NULL;
+}
+
+/**
+ * @brief 根据患者编号查找检查记录
+ * @param head 检查记录链表头指针
+ * @param patient_id 患者编号
+ * @return 找到返回检查记录节点指针，未找到返回NULL
+ */
+CheckRecordNode* find_check_records_by_patient_id(CheckRecordNode* head, const char* patient_id)
+{
+    if (head == NULL || patient_id == NULL) return NULL;
+    CheckRecordNode* curr = head->next; // 跳过头结点
+    while (curr != NULL && curr != head) // 循环遍历链表
+    {
+        if (strcmp(curr->patient_id, patient_id) == 0) return curr; // 找到匹配的检查记录
+        curr = curr->next;
+    }
+    return NULL; // 没有找到匹配的检查记录
 }
 
 /**
@@ -869,6 +888,7 @@ int query_basic_patient_record(const char* patient_id, const char* id_card)
     printf("患者编号：%s\n", patient->id);
     printf("姓名：%s\n", patient->name);
     printf("年龄：%d\n", patient->age);
+    printf("性别：%s\n", patient->gender);
     printf("症状描述: %s\n", get_display_text(patient->symptom));
     printf("目标科室: %s\n", get_display_text(patient->target_dept));
     printf("当前就诊状态: %s\n", get_patient_status_text(patient->status));
@@ -1079,6 +1099,13 @@ int query_patient_visit_overview_by_id(const char* patient_id)
         return 0;
     }
     
+    // 检查患者编号格式是否合法
+    if (!validate_patient_id(patient_id))
+    {
+        printf("⚠️ 患者编号格式不合法，正确格式为 P-1001，请检查后重试！\n");
+        return 0;
+    }
+    
     // 根据患者编号查找患者
     patient = find_patient_by_id(g_patient_list, patient_id);
     if (patient == NULL)
@@ -1244,31 +1271,31 @@ void check_and_void_expired_orders(PatientNode* patient)
  */
 int query_patient_consult_history_verified(const char* patient_id, const char* id_card)
 {
-    // 第一步：身份核验
+    PatientNode* patient = NULL;
+    
+    // 第一步：非空校验（防止空指针）
     if (patient_id == NULL || strlen(patient_id) == 0 || id_card == NULL || strlen(id_card) == 0)
     {
         printf("⚠️ 患者编号或身份证号不能为空！\n");
         return 0;
     }
     
-    // 根据身份证号查找患者
-    PatientNode* patient = find_patient_by_id_card(id_card);
+    // 第二步：根据身份证号查找患者
+    patient = find_patient_by_id_card(id_card);
     if (patient == NULL)
     {
-        printf("⚠️ 身份核验失败，未找到对应患者！\n");
+        printf("⚠️ 未找到对应患者，请检查身份证号是否正确！\n");
         return 0;
     }
     
-    // 检查患者编号是否匹配
+    // 第三步：检查患者编号是否匹配
     if (strcmp(patient->id, patient_id) != 0)
     {
-        printf("⚠️ 身份核验失败，患者编号与身份证号不匹配！\n");
+        printf("⚠️ 患者编号与身份证号不匹配，请检查后重试！\n");
         return 0;
     }
     
-    // 检查并作废过期的待缴费订单
-    check_and_void_expired_orders(patient);
-    
+    // 身份核验通过，显示信息
     printf("\n==============================================\n");
     printf("          历史就诊记录查询\n");
     printf("==============================================\n");
@@ -1276,7 +1303,13 @@ int query_patient_consult_history_verified(const char* patient_id, const char* i
     printf("患者编号: %s\n", patient->id);
     printf("==============================================\n\n");
     
-    // 第二步：遍历现有接诊记录链表（最新在前）
+    // 检查并作废过期的待缴费订单
+    check_and_void_expired_orders(patient);
+    
+    // 保存患者数据更改
+    save_patient_list(g_patient_list);
+    
+    // 第五步：遍历现有接诊记录链表（最新在前）
     ConsultRecordNode* head = g_consult_record_list;
     
     // 判断空链表：头结点为空 或 没有真实节点
@@ -1314,10 +1347,12 @@ int query_patient_consult_history_verified(const char* patient_id, const char* i
             if (doctor != NULL)
             {
                 printf("接诊医生: %s（%s）\n", doctor->name, temp->doctor_id);
+                printf("所属科室: %s\n", doctor->department);
             }
             else
             {
                 printf("接诊医生: 未知医生（%s）\n", temp->doctor_id);
+                printf("所属科室: 未知\n");
             }
             
             printf("诊断结论: %s\n", temp->diagnosis_text);
@@ -1336,8 +1371,19 @@ int query_patient_consult_history_verified(const char* patient_id, const char* i
                 printf("预约编号: 无\n");
             }
             
-            // 检查结果（当前系统暂不支持单独检查结果记录，简化处理）
-            printf("检查结果: 暂无检查结果（课设简化版）\n");
+            // 检查结果
+            // 查找对应患者的检查记录
+            printf("检查结果: ");
+            CheckRecordNode* check_record = find_check_records_by_patient_id(g_check_record_list, patient_id);
+            if (check_record != NULL)
+            {
+                // 显示第一条检查记录的结果
+                printf("%s\n", check_record->result);
+            }
+            else
+            {
+                printf("暂无检查结果\n");
+            }
             
             printf("--------------------------------------------------\n\n");
         }
@@ -1363,69 +1409,101 @@ int query_patient_consult_history_verified(const char* patient_id, const char* i
  * @param patient_id 患者编号
  * @return 成功返回1，失败返回0
  */
-int handle_emergency_escape(const char* patient_id)
-{
+int handle_emergency_escape(const char* patient_id_input) {
     PatientNode* patient = NULL;
+    char patient_id[MAX_ID_LEN];
     
     // 检查患者链表是否初始化
-    if (g_patient_list == NULL)
-    {
+    if (g_patient_list == NULL) {
         printf("⚠️ 患者链表尚未初始化，无法处理急诊逃单！\n");
         return 0;
     }
     
-    // 检查患者编号是否为空
-    if (patient_id == NULL || strlen(patient_id) == 0)
-    {
-        printf("⚠️ 患者编号不能为空！\n");
-        return 0;
+    // 提示信息
+    printf("\n提示：输入 '0' 可以回退上一步，输入 '00' 可以退出操作\n");
+    
+    // 复制患者编号输入
+    if (patient_id_input != NULL) {
+        strncpy(patient_id, patient_id_input, MAX_ID_LEN - 1);
+        patient_id[MAX_ID_LEN - 1] = '\0';
+    } else {
+        // 输入患者编号
+        while (1) {
+            printf("请输入患者编号: ");
+            char patient_id_input[MAX_ID_LEN];
+            get_safe_string("", patient_id_input, MAX_ID_LEN);
+            strncpy(patient_id, patient_id_input, MAX_ID_LEN - 1);
+            patient_id[MAX_ID_LEN - 1] = '\0';
+            
+            // 检查回退或退出
+            if (strcmp(patient_id, "0") == 0) {
+                printf("已回退到上一步\n");
+                return 0;
+            } else if (strcmp(patient_id, "00") == 0) {
+                printf("已退出操作\n");
+                return 0;
+            }
+            
+            // 检查患者编号格式是否合法
+            if (validate_patient_id(patient_id)) {
+                // 查找患者
+                patient = find_patient_by_id(g_patient_list, patient_id);
+                if (patient != NULL) {
+                    // 检查是否为急诊患者且处于待缴费状态
+                    if (patient->is_emergency == 1 && patient->status == STATUS_UNPAID) {
+                        break;
+                    } else {
+                        if (patient->is_emergency != 1) {
+                            printf("⚠️ 该患者不是急诊绿色通道患者，无法执行急诊逃单处理！\n");
+                        } else if (patient->status != STATUS_UNPAID) {
+                            printf("⚠️ 该患者当前状态不是待缴费，无法执行急诊逃单处理！\n");
+                        }
+                        printf("请重新输入符合条件的患者编号，或输入 '0' 回退，'00' 退出\n");
+                    }
+                } else {
+                    printf("⚠️ 查无此人！未找到对应患者！\n");
+                    printf("请重新输入患者编号，或输入 '0' 回退，'00' 退出\n");
+                }
+            } else {
+                printf("⚠️ 患者编号格式不合法，正确格式为 P-1001，请检查后重试！\n");
+                printf("请重新输入患者编号，或输入 '0' 回退，'00' 退出\n");
+            }
+        }
     }
     
-    // 查找患者
-    patient = find_patient_by_id(g_patient_list, patient_id);
-    if (patient == NULL)
-    {
-        printf("⚠️ 未找到对应患者！\n");
-        return 0;
-    }
-    
-    // 检查是否为急诊患者且处于待缴费状态
-    if (patient->is_emergency == 1 && patient->status == STATUS_UNPAID)
-    {
-        // 要求输入逃单金额
-        double debt_amount;
+    // 输入逃单金额
+    double debt_amount;
+    while (1) {
         printf("请输入该患者的急诊欠费金额: ");
-        scanf("%lf", &debt_amount);
-        while (getchar() != '\n'); // 清空输入缓冲区
+        char input[50];
+        get_safe_string("", input, 50);
         
-        if (debt_amount <= 0)
-        {
-            printf("⚠️ 欠费金额必须大于0！\n");
+        // 检查回退或退出
+        if (strcmp(input, "0") == 0) {
+            printf("已回退到上一步\n");
+            return 0;
+        } else if (strcmp(input, "00") == 0) {
+            printf("已退出操作\n");
             return 0;
         }
         
-        // 记录欠费金额并执行永久拉黑
-        patient->emergency_debt = debt_amount;
-        patient->is_blacklisted = 2;
-        printf("⛔ [最高级别警报] 该患者利用急诊绿色通道逃单，已列入永久黑名单！\n");
-        printf("⛔ 逃单金额: %.2f 元\n", debt_amount);
-        printf("⛔ 该患者将永久被禁止挂号和预约服务，除非补缴欠费！\n");
-        return 1;
-    }
-    else
-    {
-        if (patient->is_emergency != 1)
-        {
-            printf("⚠️ 该患者不是急诊绿色通道患者，无法执行急诊逃单处理！\n");
+        // 转换为数字
+        if (sscanf(input, "%lf", &debt_amount) == 1 && debt_amount > 0) {
+            break;
+        } else {
+            printf("⚠️ 欠费金额必须大于0，请重新输入！\n");
+            printf("请重新输入欠费金额，或输入 '0' 回退，'00' 退出\n");
         }
-        else if (patient->status != STATUS_UNPAID)
-        {
-            printf("⚠️ 该患者当前状态不是待缴费，无法执行急诊逃单处理！\n");
-        }
-        return 0;
     }
+    
+    // 记录欠费金额并执行永久拉黑
+    patient->emergency_debt = debt_amount;
+    patient->is_blacklisted = 2;
+    printf("⛔ [最高级别警报] 该患者利用急诊绿色通道逃单，已列入永久黑名单！\n");
+    printf("⛔ 逃单金额: %.2f 元\n", debt_amount);
+    printf("⛔ 该患者将永久被禁止挂号和预约服务，除非补缴欠费！\n");
+    return 1;
 }
-
 /**
  * @brief 补缴欠费并核销黑名单
  * @param patient_id 患者编号
@@ -1434,7 +1512,6 @@ int handle_emergency_escape(const char* patient_id)
 int settle_blacklisted_debt(const char* patient_id)
 {
     PatientNode* patient = NULL;
-    char confirm[10];
     
     // 检查患者链表是否初始化
     if (g_patient_list == NULL)
@@ -1450,11 +1527,18 @@ int settle_blacklisted_debt(const char* patient_id)
         return 0;
     }
     
+    // 检查患者编号格式是否合法
+    if (!validate_patient_id(patient_id))
+    {
+        printf("⚠️ 患者编号格式不合法，正确格式为 P-1001，请检查后重试！\n");
+        return 0;
+    }
+    
     // 查找患者
     patient = find_patient_by_id(g_patient_list, patient_id);
     if (patient == NULL)
     {
-        printf("⚠️ 未找到对应患者！\n");
+        printf("⚠️ 查无此人！未找到对应患者！\n");
         return 0;
     }
     
@@ -1474,17 +1558,38 @@ int settle_blacklisted_debt(const char* patient_id)
     printf("身份证号: %s\n", patient->id_card);
     printf("欠费金额: %.2f 元\n", patient->emergency_debt);
     printf("------------------------------------------------------\n");
-    printf("确认该患者已补缴全部欠费？(y/n): ");
     
-    // 读取确认输入
-    fgets(confirm, sizeof(confirm), stdin);
-    // 移除换行符
-    confirm[strcspn(confirm, "\n")] = 0;
-    
-    // 检查确认输入
-    if (strcmp(confirm, "y") != 0 && strcmp(confirm, "Y") != 0)
+    // 输入实际缴费金额
+    double actual_payment;
+    while (1)
     {
-        printf("⚠️ 核销操作已取消！\n");
+        printf("请输入该患者实际缴纳的金额（元）: ");
+        char input[50];
+        get_safe_string("", input, 50);
+        
+        // 检查回退或退出
+        if (strcmp(input, "0") == 0)
+        {
+            printf("已取消操作！\n");
+            return 0;
+        }
+        
+        // 转换为数字
+        if (sscanf(input, "%lf", &actual_payment) == 1 && actual_payment >= 0)
+        {
+            break;
+        }
+        else
+        {
+            printf("⚠️ 请输入有效的金额（数字）！\n");
+        }
+    }
+    
+    // 比对缴费金额与欠费金额
+    if (actual_payment < patient->emergency_debt)
+    {
+        printf("⚠️ 实际缴费金额（%.2f 元）小于欠费金额（%.2f 元），核销失败！\n", actual_payment, patient->emergency_debt);
+        printf("请提醒患者补齐欠款后再来办理！\n");
         return 0;
     }
     
@@ -1494,7 +1599,8 @@ int settle_blacklisted_debt(const char* patient_id)
     patient->status = STATUS_COMPLETED; // 重置状态为就诊结束
     
     // 打印成功提示
-    printf("✅ 信用修复成功！该患者已移出黑名单，恢复正常就医权限。\n");
+    printf("✅ 核销成功！该患者已移出黑名单，恢复正常就医权限。\n");
+    printf("实际缴费金额: %.2f 元\n", actual_payment);
     printf("======================================================\n");
     
     return 1;
@@ -1662,12 +1768,12 @@ int submit_patient_evaluation(const char* patient_id)
         return 0;
     }
 
-    // 查找最后一条已完成的就诊记录
+    // 查找最后一条已完成且未评价的就诊记录
     ConsultRecordNode* last_completed_record = NULL;
     ConsultRecordNode* curr = g_consult_record_list->next;
     while (curr != NULL)
     {
-        if (strcmp(curr->patient_id, patient_id) == 0 && curr->post_status == STATUS_COMPLETED)
+        if (strcmp(curr->patient_id, patient_id) == 0 && curr->post_status == STATUS_COMPLETED && curr->star_rating == 0)
         {
             last_completed_record = curr;
         }
@@ -1676,14 +1782,27 @@ int submit_patient_evaluation(const char* patient_id)
 
     if (last_completed_record == NULL)
     {
-        printf("⚠️ 您当前没有已完成的就诊记录，无法进行评价！\n");
-        return 0;
-    }
-
-    // 检查是否已评价
-    if (last_completed_record->star_rating > 0)
-    {
-        printf("⚠️ 您已对本次就诊（记录编号：%s）进行过评价，不能重复评价！\n", last_completed_record->record_id);
+        // 检查是否有已完成但已评价的记录
+        int has_completed_record = 0;
+        curr = g_consult_record_list->next;
+        while (curr != NULL)
+        {
+            if (strcmp(curr->patient_id, patient_id) == 0 && curr->post_status == STATUS_COMPLETED)
+            {
+                has_completed_record = 1;
+                break;
+            }
+            curr = curr->next;
+        }
+        
+        if (has_completed_record)
+        {
+            printf("⚠️ 您的所有已完成就诊记录都已评价，不能重复评价！\n");
+        }
+        else
+        {
+            printf("⚠️ 您当前没有已完成的就诊记录，无法进行评价！\n");
+        }
         return 0;
     }
 
@@ -1697,18 +1816,87 @@ int submit_patient_evaluation(const char* patient_id)
 
     // 输入星级评价（1-5）
     int star_rating;
-    do
+    while (1)
     {
-        star_rating = get_safe_int("请输入满意度星级 (1-5): ");
-        if (star_rating < 1 || star_rating > 5)
+        char star_input[10];
+        get_safe_string("请输入满意度星级 (1-5，输入 0 回退，输入 00 退出): ", star_input, sizeof(star_input));
+        
+        // 检查是否退出
+        if (strcmp(star_input, "00") == 0)
+        {
+            printf("操作取消！\n");
+            return 0;
+        }
+        
+        // 检查是否回退
+        if (strcmp(star_input, "0") == 0)
+        {
+            return 0; // 回退到上一步
+        }
+        
+        // 转换为整数
+        star_rating = atoi(star_input);
+        if (star_rating >= 1 && star_rating <= 5)
+        {
+            break; // 格式正确，退出循环
+        }
+        else
         {
             printf("⚠️ 星级评价必须在 1-5 之间，请重新输入！\n");
         }
-    } while (star_rating < 1 || star_rating > 5);
+    }
 
     // 输入文字评价
     char feedback[MAX_RECORD_LEN];
-    get_safe_string("请输入文字评价（选填）: ", feedback, MAX_RECORD_LEN);
+    while (1)
+    {
+        get_safe_string("请输入文字评价（选填，输入 0 回退，输入 00 退出）: ", feedback, MAX_RECORD_LEN);
+        
+        // 检查是否退出
+        if (strcmp(feedback, "00") == 0)
+        {
+            printf("操作取消！\n");
+            return 0;
+        }
+        
+        // 检查是否回退
+        if (strcmp(feedback, "0") == 0)
+        {
+            // 重新输入星级评价
+            while (1)
+            {
+                char star_input[10];
+                get_safe_string("请输入满意度星级 (1-5，输入 0 回退，输入 00 退出): ", star_input, sizeof(star_input));
+                
+                // 检查是否退出
+                if (strcmp(star_input, "00") == 0)
+                {
+                    printf("操作取消！\n");
+                    return 0;
+                }
+                
+                // 检查是否回退
+                if (strcmp(star_input, "0") == 0)
+                {
+                    return 0; // 回退到上一步
+                }
+                
+                // 转换为整数
+                star_rating = atoi(star_input);
+                if (star_rating >= 1 && star_rating <= 5)
+                {
+                    break; // 格式正确，退出循环
+                }
+                else
+                {
+                    printf("⚠️ 星级评价必须在 1-5 之间，请重新输入！\n");
+                }
+            }
+            continue; // 回到文字评价输入循环
+        }
+        
+        break; // 输入完成，退出循环
+    }
 
     // 保存评价数据
     last_completed_record->star_rating = star_rating;
@@ -1741,18 +1929,42 @@ int submit_new_complaint(const char* patient_id)
 
     // 让患者选择投诉类型
     int target_type;
-    do
+    while (1)
     {
         printf("\n请选择投诉类型：\n");
         printf("  [1] 对医生\n");
         printf("  [2] 对护士/前台\n");
         printf("  [3] 对药师\n");
-        target_type = get_safe_int("👉 请输入选择: ");
-        if (target_type < 1 || target_type > 3)
+        printf("  [0] 回退\n");
+        printf("  [00] 退出\n");
+        
+        char type_input[10];
+        get_safe_string("👉 请输入选择: ", type_input, sizeof(type_input));
+        
+        // 检查是否退出
+        if (strcmp(type_input, "00") == 0)
+        {
+            printf("操作取消！\n");
+            return 0;
+        }
+        
+        // 检查是否回退
+        if (strcmp(type_input, "0") == 0)
+        {
+            return 0; // 回退到上一步
+        }
+        
+        // 转换为整数
+        target_type = atoi(type_input);
+        if (target_type >= 1 && target_type <= 3)
+        {
+            break; // 格式正确，退出循环
+        }
+        else
         {
             printf("⚠️ 无效的选择，请重新输入！\n");
         }
-    } while (target_type < 1 || target_type > 3);
+    }
 
     // 遍历全局账号链表，打印对应角色的员工
     printf("\n================ 可投诉人员列表 ================\n");
@@ -1782,11 +1994,86 @@ int submit_new_complaint(const char* patient_id)
     int valid_target = 0;
     char target_name[MAX_NAME_LEN];
     
-    do
+    while (1)
     {
-        get_safe_string("请输入被投诉人的账号: ", target_id, MAX_ID_LEN);
+        get_safe_string("请输入被投诉人的账号（输入 0 回退，输入 00 退出）: ", target_id, MAX_ID_LEN);
+        
+        // 检查是否退出
+        if (strcmp(target_id, "00") == 0)
+        {
+            printf("操作取消！\n");
+            return 0;
+        }
+        
+        // 检查是否回退
+        if (strcmp(target_id, "0") == 0)
+        {
+            // 重新选择投诉类型
+            while (1)
+            {
+                printf("\n请选择投诉类型：\n");
+                printf("  [1] 对医生\n");
+                printf("  [2] 对护士/前台\n");
+                printf("  [3] 对药师\n");
+                printf("  [0] 回退\n");
+                printf("  [00] 退出\n");
+                
+                char type_input[10];
+                get_safe_string("👉 请输入选择: ", type_input, sizeof(type_input));
+                
+                // 检查是否退出
+                if (strcmp(type_input, "00") == 0)
+                {
+                    printf("操作取消！\n");
+                    return 0;
+                }
+                
+                // 检查是否回退
+                if (strcmp(type_input, "0") == 0)
+                {
+                    return 0; // 回退到上一步
+                }
+                
+                // 转换为整数
+                target_type = atoi(type_input);
+                if (target_type >= 1 && target_type <= 3)
+                {
+                    break; // 格式正确，退出循环
+                }
+                else
+                {
+                    printf("⚠️ 无效的选择，请重新输入！\n");
+                }
+            }
+            
+            // 重新打印可投诉人员列表
+            printf("\n================ 可投诉人员列表 ================\n");
+            curr = g_account_list->next;
+            count = 0;
+            while (curr != NULL)
+            {
+                if ((target_type == 1 && curr->role == ROLE_DOCTOR) ||
+                    (target_type == 2 && curr->role == ROLE_NURSE) ||
+                    (target_type == 3 && curr->role == ROLE_PHARMACIST))
+                {
+                    count++;
+                    printf("[%d] 账号：%s | 姓名：%s | 性别：%s\n", count, curr->username, curr->real_name, 
+                           strlen(curr->gender) > 0 ? curr->gender : "未设置");
+                }
+                curr = curr->next;
+            }
+            
+            if (count == 0)
+            {
+                printf("⚠️ 当前没有可投诉的相关人员！\n");
+                return 0;
+            }
+            
+            continue; // 回到被投诉人账号输入循环
+        }
         
         // 校验被投诉人是否存在
+        valid_target = 0;
         curr = g_account_list->next;
         while (curr != NULL)
         {
@@ -1802,15 +2089,152 @@ int submit_new_complaint(const char* patient_id)
             curr = curr->next;
         }
         
-        if (!valid_target)
+        if (valid_target)
+        {
+            break; // 被投诉人有效，退出循环
+        }
+        else
         {
             printf("⚠️ 输入的账号不存在或不属于所选投诉类型，请重新输入！\n");
         }
-    } while (!valid_target);
+    }
 
     // 录入文字投诉内容
     char content[MAX_RECORD_LEN];
-    get_safe_string("请输入投诉内容: ", content, MAX_RECORD_LEN);
+    while (1)
+    {
+        get_safe_string("请输入投诉内容（输入 0 回退，输入 00 退出）: ", content, MAX_RECORD_LEN);
+        
+        // 检查是否退出
+        if (strcmp(content, "00") == 0)
+        {
+            printf("操作取消！\n");
+            return 0;
+        }
+        
+        // 检查是否回退
+        if (strcmp(content, "0") == 0)
+        {
+            // 重新输入被投诉人账号
+            valid_target = 0;
+            while (1)
+            {
+                get_safe_string("请输入被投诉人的账号（输入 0 回退，输入 00 退出）: ", target_id, MAX_ID_LEN);
+                
+                // 检查是否退出
+                if (strcmp(target_id, "00") == 0)
+                {
+                    printf("操作取消！\n");
+                    return 0;
+                }
+                
+                // 检查是否回退
+                if (strcmp(target_id, "0") == 0)
+                {
+                    // 重新选择投诉类型
+                    while (1)
+                    {
+                        printf("\n请选择投诉类型：\n");
+                        printf("  [1] 对医生\n");
+                        printf("  [2] 对护士/前台\n");
+                        printf("  [3] 对药师\n");
+                        printf("  [0] 回退\n");
+                        printf("  [00] 退出\n");
+                        
+                        char type_input[10];
+                        get_safe_string("👉 请输入选择: ", type_input, sizeof(type_input));
+                        
+                        // 检查是否退出
+                        if (strcmp(type_input, "00") == 0)
+                        {
+                            printf("操作取消！\n");
+                            return 0;
+                        }
+                        
+                        // 检查是否回退
+                        if (strcmp(type_input, "0") == 0)
+                        {
+                            return 0; // 回退到上一步
+                        }
+                        
+                        // 转换为整数
+                        target_type = atoi(type_input);
+                        if (target_type >= 1 && target_type <= 3)
+                        {
+                            break; // 格式正确，退出循环
+                        }
+                        else
+                        {
+                            printf("⚠️ 无效的选择，请重新输入！\n");
+                        }
+                    }
+                    
+                    // 重新打印可投诉人员列表
+                    printf("\n================ 可投诉人员列表 ================\n");
+                    curr = g_account_list->next;
+                    count = 0;
+                    while (curr != NULL)
+                    {
+                        if ((target_type == 1 && curr->role == ROLE_DOCTOR) ||
+                            (target_type == 2 && curr->role == ROLE_NURSE) ||
+                            (target_type == 3 && curr->role == ROLE_PHARMACIST))
+                        {
+                            count++;
+                            printf("[%d] 账号：%s | 姓名：%s | 性别：%s\n", count, curr->username, curr->real_name, 
+                                   strlen(curr->gender) > 0 ? curr->gender : "未设置");
+                        }
+                        curr = curr->next;
+                    }
+                    
+                    if (count == 0)
+                    {
+                        printf("⚠️ 当前没有可投诉的相关人员！\n");
+                        return 0;
+                    }
+                    
+                    continue; // 回到被投诉人账号输入循环
+                }
+                
+                // 校验被投诉人是否存在
+                valid_target = 0;
+                curr = g_account_list->next;
+                while (curr != NULL)
+                {
+                    if (strcmp(curr->username, target_id) == 0 &&
+                        ((target_type == 1 && curr->role == ROLE_DOCTOR) ||
+                         (target_type == 2 && curr->role == ROLE_NURSE) ||
+                         (target_type == 3 && curr->role == ROLE_PHARMACIST)))
+                    {
+                        valid_target = 1;
+                        strcpy(target_name, curr->real_name);
+                        break;
+                    }
+                    curr = curr->next;
+                }
+                
+                if (valid_target)
+                {
+                    break; // 被投诉人有效，退出循环
+                }
+                else
+                {
+                    printf("⚠️ 输入的账号不存在或不属于所选投诉类型，请重新输入！\n");
+                }
+            }
+            
+            continue; // 回到投诉内容输入循环
+        }
+        
+        // 检查投诉内容是否为空
+        if (strlen(content) > 0)
+        {
+            break; // 投诉内容不为空，退出循环
+        }
+        else
+        {
+            printf("⚠️ 投诉内容不能为空，请重新输入！\n");
+        }
+    }
 
     // 自动生成工单编号
     char complaint_id[MAX_ID_LEN];
