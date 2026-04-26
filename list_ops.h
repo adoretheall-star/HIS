@@ -105,8 +105,10 @@ CheckRecordNode* create_check_record_node(
 void insert_check_record_tail(CheckRecordNode* head, CheckRecordNode* new_node);
 CheckRecordPtrNode* get_check_records_by_patient(CheckRecordNode* head, const char* patient_id);
 void free_check_record_ptr_list(CheckRecordPtrNode* head);
+CheckRecordNode* find_check_record_by_id(CheckRecordNode* head, const char* target_record_id);
 CheckItemPtrNode* find_check_items_by_dept(CheckItemNode* head, const char* dept);
 void free_check_item_ptr_list(CheckItemPtrNode* head);
+int delete_check_item_by_id(CheckItemNode* head, const char* target_id);
 
 // ==========================================
 // 九、安全预警队列操作

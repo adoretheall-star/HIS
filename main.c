@@ -88,6 +88,7 @@ static int is_check_department(const char* dept)
 static void internal_login_menu();
 static void admin_menu();
 static void admin_medicine_menu();
+static void admin_check_item_menu();
 static void nurse_menu();
 static void doctor_menu();
 static void pharmacist_menu();
@@ -95,6 +96,7 @@ static void check_dept_doctor_menu();
 static void handle_view_waiting_patients();
 static void handle_doctor_consultation();
 static void handle_doctor_view_patient_overview();
+static void handle_query_check_records();
 static int is_check_department(const char* dept);
 static RoleType prompt_admin_staff_role();
 static void handle_admin_register_account();
@@ -141,6 +143,8 @@ static void admin_menu()
         printf("  [16] 投诉管理\n");
         printf("  [17] 评价管理\n");
         printf("  [18] 患者档案管理\n");
+        printf("  [19] 检查项目管理\n");
+        printf("  [20] 查询检查记录\n");
         printf("  [0] 退出登录\n");
         printf("------------------------------------------------------\n");
 
@@ -216,6 +220,14 @@ static void admin_menu()
                 break;
             case 18:
                 patient_archive_menu();
+                system("pause");
+                break;
+            case 19:
+                admin_check_item_menu();
+                system("pause");
+                break;
+            case 20:
+                handle_query_check_records();
                 system("pause");
                 break;
             case 0:
@@ -789,6 +801,59 @@ static void admin_medicine_menu()
     }
 }
 
+static void admin_check_item_menu()
+{
+    int running = 1;
+    char keyword[MAX_NAME_LEN];
+
+    while (running)
+    {
+        system("cls");
+        printf("\n======================================================\n");
+        printf("               检查项目管理\n");
+        printf("======================================================\n");
+        printf("  [1] 查看全部检查项目\n");
+        printf("  [2] 查询检查项目\n");
+        printf("  [3] 新增检查项目\n");
+        printf("  [4] 修改检查项目\n");
+        printf("  [5] 下架检查项目\n");
+        printf("  [0] 返回上一级\n");
+        printf("------------------------------------------------------\n");
+
+        switch (get_safe_int("👉 请输入操作编号: "))
+        {
+            case 1:
+                show_all_check_items();
+                system("pause");
+                break;
+            case 2:
+                get_safe_string("请输入查询关键词: ", keyword, MAX_NAME_LEN);
+                search_check_item_by_keyword(keyword);
+                system("pause");
+                break;
+            case 3:
+                handle_check_item_register();
+                system("pause");
+                break;
+            case 4:
+                handle_check_item_update();
+                system("pause");
+                break;
+            case 5:
+                handle_check_item_remove();
+                system("pause");
+                break;
+            case 0:
+                running = 0;
+                break;
+            default:
+                printf("\n⚠️ 无效的选项，请重新输入！\n");
+                system("pause");
+                break;
+        }
+    }
+}
+
 static void handle_view_waiting_patients()
 {
     printf("\n================ 查看待诊患者 ================\n");
@@ -880,6 +945,11 @@ static void handle_doctor_consultation()
 
         if (!has_completed_reports)
         {
+            printf("------------------------------------------\n");
+            printf("ℹ️ 该复诊患者暂无已完成的检查报告。\n");
+        }
+
+        {
             int continue_consult = get_safe_int("是否继续接诊？(1=继续, 0=取消): ");
             if (continue_consult == 0)
             {
@@ -891,14 +961,25 @@ static void handle_doctor_consultation()
     }
 
     printf("========================================\n");
-    
-    get_safe_string("请输入诊断结论(叫号未到或特殊情况可直接回车留空): ", diagnosis_text, MAX_RECORD_LEN);
-    get_safe_string("请输入处理意见(叫号未到或特殊情况可直接回车留空): ", treatment_advice, MAX_RECORD_LEN);
+
+enter_diagnosis:
+    get_safe_string("请输入诊断结论(输入 B 取消本次接诊，可直接回车留空): ", diagnosis_text, MAX_RECORD_LEN);
+    if (strcmp(diagnosis_text, "B") == 0 || strcmp(diagnosis_text, "b") == 0)
+    {
+        free_patient_ptr_list(waiting_list);
+        system("pause");
+        return;
+    }
+
+enter_treatment:
+    get_safe_string("请输入处理意见(输入 B 回退修改诊断，叫号未到或可直接回车留空): ", treatment_advice, MAX_RECORD_LEN);
+    if (strcmp(treatment_advice, "B") == 0 || strcmp(treatment_advice, "b") == 0)
+        goto enter_diagnosis;
 
     // 保存患者原始状态，用于回退时恢复
     MedStatus original_status = patient->status;
 
-    back_to_decision:
+back_to_decision:
     // 清空临时处方链表
     while (temp_prescription_list != NULL)
     {
@@ -922,6 +1003,7 @@ static void handle_doctor_consultation()
     printf("  [3] 开检查\n");
     printf("  [4] 办理住院\n");
     printf("  [5] 叫号未到 (过号顺延3位)\n");
+    printf("  [0] 返回修改诊断/意见\n");
 
     if (patient->status == STATUS_RECHECK_PENDING)
     {
@@ -934,6 +1016,9 @@ static void handle_doctor_consultation()
     }
 
     decision = get_safe_int("👉 请输入操作编号: ");
+
+    if (decision == 0)
+        goto enter_diagnosis;
 
     if (decision == 2)
     {
@@ -1002,6 +1087,10 @@ static void handle_doctor_consultation()
 
     if (decision == 5)
     {
+        int confirm_no_show = get_safe_int("确定该患者叫号未到？(1=确定, 0=返回决策): ");
+        if (confirm_no_show != 1)
+            goto back_to_decision;
+
         patient->call_count++;
 
         if (patient->call_count >= 3)
@@ -1082,6 +1171,12 @@ static void handle_doctor_consultation()
 
     if (decision != 2 && decision != 3 && decision != 4)
     {
+        if (decision == 1)
+        {
+            int confirm_end = get_safe_int("确定结束本次就诊？(1=确定, 0=返回决策): ");
+            if (confirm_end != 1)
+                goto back_to_decision;
+        }
         consult_success = doctor_consult_patient(
             g_current_doctor->id,
             patient->id,
@@ -1595,6 +1690,71 @@ static void handle_doctor_view_consult_history()
     system("pause");
 }
 
+static void handle_query_check_records()
+{
+    char query_str[MAX_ID_LEN];
+
+    printf("\n================ 查询检查记录 ================\n");
+    printf("支持：患者编号（P-1001）| 检查记录编号（CR-001）\n");
+
+    while (1)
+    {
+        get_safe_string("请输入编号（输入 B 返回上一级）: ", query_str, MAX_ID_LEN);
+        if (strcmp(query_str, "B") == 0 || strcmp(query_str, "b") == 0) return;
+        if (is_blank_string(query_str))
+        {
+            printf("编号不能为空，请重新输入\n");
+            continue;
+        }
+        if (strncmp(query_str, "P-", 2) == 0)
+        {
+            if (!validate_patient_id(query_str))
+            {
+                printf("⚠️ 患者编号格式不合法（应为 P-4位数字，如 P-1001），请重新输入！\n");
+                continue;
+            }
+            show_check_records_by_patient_id(query_str);
+            break;
+        }
+        else if (strncmp(query_str, "CRK-", 4) == 0)
+        {
+            int len = strlen(query_str);
+            int valid = (len == 8);
+            for (int i = 4; valid && i < 8; i++)
+                if (!isdigit((unsigned char)query_str[i])) valid = 0;
+            if (!valid)
+            {
+                printf("⚠️ 检查记录编号格式不合法（应为 CRK-4位数字，如 CRK-0001），请重新输入！\n");
+                continue;
+            }
+            show_check_record_by_id(query_str);
+            break;
+        }
+        else if (strncmp(query_str, "CR-", 3) == 0)
+        {
+            int len = strlen(query_str);
+            int valid = (len == 6);
+            for (int i = 3; valid && i < 6; i++)
+                if (!isdigit((unsigned char)query_str[i])) valid = 0;
+            if (!valid)
+            {
+                printf("⚠️ 检查记录编号格式不合法（应为 CR-3位数字，如 CR-001），请重新输入！\n");
+                continue;
+            }
+            show_check_record_by_id(query_str);
+            break;
+        }
+        else
+        {
+            printf("⚠️ 编号格式不合法（患者 P-xxxx / 记录 CR-xxx / CRK-xxxx），请重新输入！\n");
+            continue;
+        }
+        break;
+    }
+
+    system("pause");
+}
+
 static void doctor_menu()
 {
     int running = 1;
@@ -1612,6 +1772,7 @@ static void doctor_menu()
         printf("  [2] 查看患者接诊前信息\n");
         printf("  [3] 接诊并做诊疗决策\n");
         printf("  [4] 查看已处理患者详情\n");
+        printf("  [5] 查询检查记录\n");
         printf("  [0] 退出登录\n");
         printf("------------------------------------------------------\n");
 
@@ -1628,6 +1789,9 @@ static void doctor_menu()
                 break;
             case 4:
                 handle_doctor_view_processed_patient_detail();
+                break;
+            case 5:
+                handle_query_check_records();
                 break;
             case 0:
                 running = 0;
@@ -1661,6 +1825,7 @@ static void check_dept_doctor_menu()
         printf("  [1] 查看待检查列表\n");
         printf("  [2] 录入检查结果\n");
         printf("  [3] 查看检查记录详情\n");
+        printf("  [4] 按患者查询检查记录\n");
         printf("  [0] 退出登录\n");
         printf("------------------------------------------------------\n");
 
@@ -1797,6 +1962,9 @@ static void check_dept_doctor_menu()
                 // 显示选中的检查记录详情
                 show_check_record_detail(selected_check);
                 system("pause");
+                break;
+            case 4:
+                handle_query_check_records();
                 break;
             case 0:
                 running = 0;

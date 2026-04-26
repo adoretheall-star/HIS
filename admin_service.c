@@ -2300,3 +2300,360 @@ void handle_expiring_medicine_check(void)
 {
     handle_medicine_expiring();
 }
+
+// 显示所有检查项目字典
+void show_all_check_items(void)
+{
+    CheckItemNode* curr = NULL;
+    int count = 0;
+
+    if (g_check_item_list == NULL || g_check_item_list->next == NULL)
+    {
+        printf("当前暂无检查项目数据\n");
+        return;
+    }
+
+    printf("\n==============================================================\n");
+    printf("                    检查项目字典\n");
+    printf("==============================================================\n");
+    printf("%-10s %-20s %-12s %10s %8s\n",
+           "项目编号", "项目名称", "所属科室", "价格(元)", "医保类型");
+    printf("--------------------------------------------------------------\n");
+
+    curr = g_check_item_list->next;
+    while (curr != NULL)
+    {
+        const char* m_type_name = NULL;
+        switch (curr->m_type)
+        {
+            case MEDICARE_CLASS_A:
+                m_type_name = "甲类";
+                break;
+            case MEDICARE_CLASS_B:
+                m_type_name = "乙类";
+                break;
+            case MEDICARE_NONE:
+                m_type_name = "自费";
+                break;
+            default:
+                m_type_name = "未知";
+                break;
+        }
+        printf("%-10s %-20s %-12s %10.2f %8s\n",
+               curr->item_id,
+               curr->item_name,
+               curr->dept,
+               curr->price,
+               m_type_name);
+        count++;
+        curr = curr->next;
+    }
+
+    printf("--------------------------------------------------------------\n");
+    printf("检查项目总数：%d\n", count);
+    printf("==============================================================\n");
+}
+
+static void generate_check_item_id(char* new_id)
+{
+    int max_no = 0;
+    int current_no = 0;
+    CheckItemNode* curr = NULL;
+
+    if (new_id == NULL) return;
+
+    if (g_check_item_list != NULL)
+    {
+        curr = g_check_item_list->next;
+        while (curr != NULL)
+        {
+            if (strncmp(curr->item_id, "C-", 2) == 0)
+            {
+                current_no = atoi(curr->item_id + 2);
+                if (current_no > max_no) max_no = current_no;
+            }
+            curr = curr->next;
+        }
+    }
+
+    snprintf(new_id, MAX_ID_LEN, "C-%03d", max_no + 1);
+}
+
+static int is_check_item_referenced_by_active_record(const char* item_id)
+{
+    if (is_blank_string(item_id) || g_check_record_list == NULL) return 0;
+
+    CheckRecordNode* curr = g_check_record_list->next;
+    while (curr != NULL)
+    {
+        if (curr->is_completed == 0 && strcmp(curr->item_id, item_id) == 0)
+            return 1;
+        curr = curr->next;
+    }
+    return 0;
+}
+
+void search_check_item_by_keyword(const char* keyword)
+{
+    int found = 0;
+    CheckItemNode* curr = NULL;
+
+    if (is_blank_string(keyword))
+    {
+        printf("提示：查询关键字不能为空。\n");
+        return;
+    }
+
+    if (g_check_item_list == NULL || g_check_item_list->next == NULL)
+    {
+        printf("未找到匹配检查项目\n");
+        return;
+    }
+
+    printf("\n================ 检查项目查询结果 ================\n");
+    printf("%-10s %-20s %-12s %10s %8s\n",
+           "项目编号", "项目名称", "所属科室", "价格(元)", "医保类型");
+    printf("------------------------------------------\n");
+
+    curr = g_check_item_list->next;
+    while (curr != NULL)
+    {
+        if (strstr(curr->item_id, keyword) != NULL ||
+            strstr(curr->item_name, keyword) != NULL ||
+            strstr(curr->dept, keyword) != NULL)
+        {
+            const char* m_type_name = NULL;
+            switch (curr->m_type)
+            {
+                case MEDICARE_CLASS_A: m_type_name = "甲类"; break;
+                case MEDICARE_CLASS_B: m_type_name = "乙类"; break;
+                case MEDICARE_NONE:    m_type_name = "自费"; break;
+                default:               m_type_name = "未知"; break;
+            }
+            printf("%-10s %-20s %-12s %10.2f %8s\n",
+                   curr->item_id, curr->item_name, curr->dept,
+                   curr->price, m_type_name);
+            found = 1;
+        }
+        curr = curr->next;
+    }
+
+    if (!found) printf("未找到匹配检查项目\n");
+}
+
+void handle_check_item_register(void)
+{
+    char item_name[MAX_NAME_LEN];
+    char dept[MAX_NAME_LEN];
+    double price;
+    int medicare_type;
+    char new_id[MAX_ID_LEN];
+
+    printf("\n================ 新增检查项目 ===============-\n");
+    printf("提示：任意输入项输入 'B' 可返回上一级菜单\n\n");
+
+    while (1)
+    {
+        if (!get_form_string("请输入检查项目名称（输入 B 返回上一级）: ", item_name, MAX_NAME_LEN))
+            return;
+        if (is_blank_string(item_name))
+        {
+            printf("检查项目名称不能为空，请重新输入\n");
+            continue;
+        }
+        break;
+    }
+
+    while (1)
+    {
+        if (!get_form_string("请输入所属科室（输入 B 返回上一级）: ", dept, MAX_NAME_LEN))
+            return;
+        if (is_blank_string(dept))
+        {
+            printf("所属科室不能为空，请重新输入\n");
+            continue;
+        }
+        break;
+    }
+
+    while (1)
+    {
+        if (!get_form_double("请输入检查费用（输入 B 返回上一级）: ", &price, 0, "检查费用必须大于 0，请重新输入\n"))
+            return;
+        break;
+    }
+
+    printf("医保类型：0=自费 1=甲类 2=乙类\n");
+    while (1)
+    {
+        if (!get_form_int("请输入医保类型编号（输入 B 返回上一级）: ", &medicare_type, 0, 2, "医保类型输入非法，请重新输入\n"))
+            return;
+        break;
+    }
+
+    if (g_check_item_list == NULL)
+    {
+        printf("提示：检查项目链表尚未初始化，无法新增。\n");
+        return;
+    }
+
+    generate_check_item_id(new_id);
+    CheckItemNode* new_node = create_check_item_node(new_id, item_name, dept, price, (MedicareType)medicare_type);
+    if (new_node == NULL)
+    {
+        printf("提示：检查项目节点创建失败。\n");
+        return;
+    }
+
+    insert_check_item_tail(g_check_item_list, new_node);
+    printf("检查项目新增成功！\n");
+    printf("项目编号：%s\n", new_node->item_id);
+    printf("项目名称：%s\n", new_node->item_name);
+    printf("所属科室：%s\n", new_node->dept);
+    printf("检查费用：%.2f\n", new_node->price);
+    printf("医保类型：%s\n",
+           new_node->m_type == MEDICARE_CLASS_A ? "甲类" :
+           new_node->m_type == MEDICARE_CLASS_B ? "乙类" : "自费");
+}
+
+void handle_check_item_update(void)
+{
+    char item_id[MAX_ID_LEN];
+    char new_name[MAX_NAME_LEN];
+    char new_dept[MAX_NAME_LEN];
+    double new_price = -1.0;
+    int new_m_type = -1;
+
+    printf("\n================ 修改检查项目信息 ===============-\n");
+
+    CheckItemNode* target = NULL;
+    while (1)
+    {
+        get_safe_string("请输入检查项目编号（输入 B 返回上一级）: ", item_id, MAX_ID_LEN);
+        if (strcmp(item_id, "B") == 0 || strcmp(item_id, "b") == 0) return;
+        if (is_blank_string(item_id))
+        {
+            printf("检查项目编号不能为空，请重新输入\n");
+            continue;
+        }
+        target = find_check_item_by_id(g_check_item_list, item_id);
+        if (target == NULL)
+        {
+            printf("未找到编号为 %s 的检查项目，修改流程结束\n", item_id);
+            return;
+        }
+        break;
+    }
+
+    printf("\n------------- 当前检查项目信息 ------------\n");
+    printf("项目编号：%s\n", target->item_id);
+    printf("项目名称：%s\n", target->item_name);
+    printf("所属科室：%s\n", target->dept);
+    printf("检查费用：%.2f\n", target->price);
+    switch (target->m_type)
+    {
+        case MEDICARE_CLASS_A: printf("医保类型：甲类\n"); break;
+        case MEDICARE_CLASS_B: printf("医保类型：乙类\n"); break;
+        case MEDICARE_NONE:    printf("医保类型：自费\n"); break;
+    }
+    printf("----------------------------------------\n");
+
+    get_safe_string("请输入新项目名称（留空不修改，输入 B 返回上一级）: ", new_name, MAX_NAME_LEN);
+    if (strcmp(new_name, "B") == 0 || strcmp(new_name, "b") == 0) return;
+
+    get_safe_string("请输入新所属科室（留空不修改，输入 B 返回上一级）: ", new_dept, MAX_NAME_LEN);
+    if (strcmp(new_dept, "B") == 0 || strcmp(new_dept, "b") == 0) return;
+
+    while (1)
+    {
+        char price_str[32];
+        get_safe_string("请输入新检查费用（留空不修改，输入 B 返回上一级）: ", price_str, sizeof(price_str));
+        if (strcmp(price_str, "B") == 0 || strcmp(price_str, "b") == 0) return;
+        if (is_blank_string(price_str)) break;
+        char* endptr = NULL;
+        new_price = strtod(price_str, &endptr);
+        if (endptr == price_str || *endptr != '\0' || new_price <= 0)
+        {
+            printf("检查费用必须为大于 0 的数字，请重新输入\n");
+            continue;
+        }
+        break;
+    }
+
+    printf("医保类型：0=自费 1=甲类 2=乙类（-1 不修改）\n");
+    while (1)
+    {
+        char type_str[32];
+        get_safe_string("请输入新医保类型（留空不修改，输入 B 返回上一级）: ", type_str, sizeof(type_str));
+        if (strcmp(type_str, "B") == 0 || strcmp(type_str, "b") == 0) return;
+        if (is_blank_string(type_str)) break;
+        char* endptr = NULL;
+        new_m_type = (int)strtol(type_str, &endptr, 10);
+        if (endptr == type_str || *endptr != '\0' || new_m_type < 0 || new_m_type > 2)
+        {
+            printf("医保类型必须为 0/1/2，请重新输入\n");
+            continue;
+        }
+        break;
+    }
+
+    if (!is_blank_string(new_name)) strncpy(target->item_name, new_name, MAX_NAME_LEN - 1);
+    if (!is_blank_string(new_dept)) strncpy(target->dept, new_dept, MAX_NAME_LEN - 1);
+    if (new_price > 0) target->price = new_price;
+    if (new_m_type >= 0) target->m_type = (MedicareType)new_m_type;
+
+    printf("\n提示：检查项目信息修改成功。\n");
+}
+
+void handle_check_item_remove(void)
+{
+    char item_id[MAX_ID_LEN];
+    CheckItemNode* target = NULL;
+    int confirm;
+
+    printf("\n================ 下架检查项目 ===============-\n");
+    get_safe_string("请输入要下架的检查项目编号: ", item_id, MAX_ID_LEN);
+
+    target = find_check_item_by_id(g_check_item_list, item_id);
+    if (target == NULL)
+    {
+        printf("提示：未找到对应检查项目，下架失败。\n");
+        return;
+    }
+
+    printf("\n当前检查项目信息：\n");
+    printf("项目编号：%s\n", target->item_id);
+    printf("项目名称：%s\n", target->item_name);
+    printf("所属科室：%s\n", target->dept);
+    printf("检查费用：%.2f\n", target->price);
+    switch (target->m_type)
+    {
+        case MEDICARE_CLASS_A: printf("医保类型：甲类\n"); break;
+        case MEDICARE_CLASS_B: printf("医保类型：乙类\n"); break;
+        case MEDICARE_NONE:    printf("医保类型：自费\n"); break;
+    }
+    printf("----------------------------------------\n");
+
+    if (is_check_item_referenced_by_active_record(item_id))
+    {
+        printf("提示：当前检查项目仍被未完成检查记录引用，暂不能下架。\n");
+        printf("请先完成相关患者的检查流程后再重试。\n");
+        return;
+    }
+
+    printf("是否确定下架该检查项目？\n");
+    printf("[1] 确定下架\n");
+    printf("[0] 取消返回\n");
+    confirm = get_safe_int("请输入操作编号: ");
+
+    if (confirm != 1)
+    {
+        printf("提示：已取消下架操作。\n");
+        return;
+    }
+
+    if (delete_check_item_by_id(g_check_item_list, item_id))
+        printf("提示：检查项目下架成功。\n");
+    else
+        printf("提示：检查项目下架失败。\n");
+}
