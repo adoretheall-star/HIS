@@ -96,7 +96,33 @@ int validate_id_card(const char* id_card)
     }
     return 1;
 }
-//5.身份证号脱敏
+
+//5.患者编号格式校验
+int validate_patient_id(const char* patient_id)
+{
+    int i;
+    if (patient_id == NULL) return 0;
+    
+    // 检查长度：P-1001 格式，长度为 6
+    int len = strlen(patient_id);
+    if (len != 6) return 0;
+    
+    // 检查格式：P-数字
+    if (patient_id[0] != 'P' || patient_id[1] != '-') return 0;
+    
+    // 检查后面的数字部分
+    for (i = 2; i < len; i++)
+    {
+        if (!isdigit((unsigned char)patient_id[i]))
+        {
+            return 0;
+        }
+    }
+    
+    return 1;
+}
+
+//6.身份证号脱敏
 void mask_id_card(const char* src, char* dest) 
 {
     int i;

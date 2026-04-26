@@ -92,6 +92,18 @@ int recharge_inpatient_deposit(const char* patient_id, double amount);
 int daily_settlement(const char* patient_id);
 
 /**
+ * @brief 执行所有住院患者的日结
+ * @return 成功返回1，失败返回0
+ */
+int perform_daily_settlement();
+
+/**
+ * @brief 显示住院患者的日结状态
+ * @param patient_id 患者编号
+ */
+void show_patient_settlement_status(const char* patient_id);
+
+/**
  * @brief 显示押金预警信息
  */
 void show_deposit_warnings();

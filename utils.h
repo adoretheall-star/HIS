@@ -18,7 +18,10 @@ void get_safe_string(const char* prompt, char* buffer, int max_len);
 // 4. 身份证基础格式校验
 int validate_id_card(const char* id_card);
 
-// 5. 身份证号脱敏
+// 5. 患者编号格式校验
+int validate_patient_id(const char* patient_id);
+
+// 6. 身份证号脱敏
 void mask_id_card(const char* src, char* dest);
 
 // 6. 获取预约状态文本
