@@ -68,4 +68,11 @@ void handle_medicine_stock_update(void);
 void handle_expiring_medicine_check(void);
 void handle_medicine_remove(void);
 
+// 检查项目管理
+void show_all_check_items(void);
+void search_check_item_by_keyword(const char* keyword);
+void handle_check_item_register(void);
+void handle_check_item_update(void);
+void handle_check_item_remove(void);
+
 #endif // ADMIN_SERVICE_H

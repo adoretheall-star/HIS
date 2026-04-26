@@ -556,3 +556,30 @@ char get_single_char(const char* prompt)
     }
     return ' ';
 }
+
+int str_display_width(const char* str)
+{
+    int width = 0;
+    if (str == NULL) return 0;
+    while (*str)
+    {
+        unsigned char c = (unsigned char)*str;
+        if (c < 0x80)
+        {
+            width++;
+            str++;
+        }
+        else if ((c & 0xE0) == 0xC0) { width += 2; str += 2; }
+        else if ((c & 0xF0) == 0xE0) { width += 2; str += 3; }
+        else if ((c & 0xF8) == 0xF0) { width += 2; str += 4; }
+        else { width++; str++; }
+    }
+    return width;
+}
+
+void print_col(const char* str, int col_width)
+{
+    int w = str_display_width(str);
+    printf("%s", str);
+    for (int i = w; i < col_width; i++) printf(" ");
+}

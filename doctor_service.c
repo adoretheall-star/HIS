@@ -1605,5 +1605,110 @@ int doctor_update_check_result(const char* doctor_id, const char* record_id, con
     return 0;
 }
 
+void show_check_records_by_patient_id(const char* patient_id)
+{
+    if (is_blank_string(patient_id))
+    {
+        printf("提示：患者编号不能为空。\n");
+        return;
+    }
+
+    if (g_check_record_list == NULL || g_check_record_list->next == NULL)
+    {
+        printf("当前暂无可用的检查记录数据。\n");
+        return;
+    }
+
+    CheckRecordPtrNode* records = get_check_records_by_patient(g_check_record_list, patient_id);
+    if (records == NULL)
+    {
+        printf("\n⚠️ 患者 %s 暂无检查记录。\n", patient_id);
+        return;
+    }
+
+    const char* p_name = get_patient_name_by_id(patient_id);
+
+    printf("\n==============================================================\n");
+    printf("         患者检查记录查询\n");
+    printf("==============================================================\n");
+    printf("患者编号：%s\n", patient_id);
+    printf("患者姓名：%s\n", p_name ? p_name : "未知");
+    printf("--------------------------------------------------------------\n");
+    print_col("记录编号", 12);
+    print_col("检查项目", 20);
+    print_col("科室", 12);
+    print_col("完成时间", 22);
+    print_col("完成", 8);
+    print_col("缴费", 6);
+    printf("\n");
+    printf("--------------------------------------------------------------\n");
+
+    CheckRecordPtrNode* curr = records;
+    int count = 0;
+    while (curr != NULL)
+    {
+        CheckRecordNode* r = curr->record;
+        print_col(r->record_id, 12);
+        print_col(r->item_name, 20);
+        print_col(r->dept, 12);
+        print_col(r->is_completed ? r->check_time : "——", 22);
+        print_col(r->is_completed ? "✅" : "待查", 8);
+        print_col(r->is_paid ? "✅" : "未缴", 6);
+        printf("\n");
+        count++;
+        curr = curr->next;
+    }
+
+    printf("--------------------------------------------------------------\n");
+    printf("共 %d 条检查记录\n", count);
+
+    curr = records;
+    count = 0;
+    while (curr != NULL)
+    {
+        count++;
+        CheckRecordNode* r = curr->record;
+        printf("\n[记录 %d] %s\n", count, r->record_id);
+        printf("  检查项目：%s（%s）\n", r->item_name, r->item_id);
+        printf("  所属科室：%s\n", r->dept);
+        printf("  完成状态：%s\n", r->is_completed ? "已完成" : "待检查");
+        printf("  缴费状态：%s\n", r->is_paid ? "已缴费" : "未缴费");
+        if (r->is_completed)
+        {
+            printf("  检查时间：%s\n", r->check_time);
+            printf("  检查结果：%s\n", r->result);
+        }
+        curr = curr->next;
+    }
+
+    printf("\n==============================================================\n");
+
+    free_check_record_ptr_list(records);
+}
+
+void show_check_record_by_id(const char* record_id)
+{
+    if (is_blank_string(record_id))
+    {
+        printf("提示：检查记录编号不能为空。\n");
+        return;
+    }
+
+    if (g_check_record_list == NULL)
+    {
+        printf("提示：检查记录链表尚未初始化。\n");
+        return;
+    }
+
+    CheckRecordNode* record = find_check_record_by_id(g_check_record_list, record_id);
+    if (record == NULL)
+    {
+        printf("\n⚠️ 未找到检查记录 %s。\n", record_id);
+        return;
+    }
+
+    show_check_record_detail(record);
+}
+
 
 

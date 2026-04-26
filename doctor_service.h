@@ -61,5 +61,7 @@ void show_waiting_checks_by_dept(const char* doctor_id);
 int get_waiting_checks_by_dept(const char* doctor_id, CheckRecordNode** check_list);
 void show_check_record_detail(CheckRecordNode* record);
 int doctor_update_check_result(const char* doctor_id, const char* record_id, const char* result);
+void show_check_records_by_patient_id(const char* patient_id);
+void show_check_record_by_id(const char* record_id);
 
 #endif

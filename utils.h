@@ -63,4 +63,10 @@ int get_form_date(const char* prompt, char* buffer, int max_len);
 // 14. 检查日期是否为未来日期（晚于今天）
 int is_future_date(const char* date_str);
 
+// 15. 计算字符串在控制台中的显示宽度（中文=2，ASCII=1）
+int str_display_width(const char* str);
+
+// 16. 按显示宽度对齐打印字符串
+void print_col(const char* str, int col_width);
+
 #endif

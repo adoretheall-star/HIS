@@ -922,6 +922,16 @@ void free_check_item_ptr_list(CheckItemPtrNode* head)
         free(temp);
     }
 }
+
+int delete_check_item_by_id(CheckItemNode* head, const char* target_id)
+{
+    CheckItemNode* target = find_check_item_by_id(head, target_id);
+    if (!target) return 0;
+    if (target->prev) target->prev->next = target->next;
+    if (target->next) target->next->prev = target->prev;
+    free(target);
+    return 1;
+}
 // ==========================================
 // 八、检查记录链表操作
 // ==========================================
@@ -1050,6 +1060,18 @@ void free_check_record_ptr_list(CheckRecordPtrNode* head)
         curr = curr->next;
         free(temp);
     }
+}
+
+CheckRecordNode* find_check_record_by_id(CheckRecordNode* head, const char* target_record_id)
+{
+    if (head == NULL || target_record_id == NULL) return NULL;
+    CheckRecordNode* curr = head->next;
+    while (curr != NULL)
+    {
+        if (strcmp(curr->record_id, target_record_id) == 0) return curr;
+        curr = curr->next;
+    }
+    return NULL;
 }
 
 // 更新检查结果
