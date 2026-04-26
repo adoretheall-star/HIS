@@ -147,4 +147,9 @@ int patient_has_bed(const char* patient_id);
  */
 int bed_is_available(const char* bed_id);
 
+/**
+ * @brief 显示需要住院但未登记的患者列表
+ */
+void show_patients_need_hospitalize();
+
 #endif // INPATIENT_SERVICE_H

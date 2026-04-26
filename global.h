@@ -39,9 +39,10 @@ typedef enum //就医状态
     STATUS_RECHECK_PENDING = 3, // 检查后待复诊
     STATUS_UNPAID = 4,       // 已看诊待缴费
     STATUS_WAIT_MED = 5,     // 已缴费待取药
-    STATUS_HOSPITALIZED = 6, // 住院中
-    STATUS_COMPLETED = 7,    // 就诊结束
-    STATUS_NO_SHOW = 8       // 过号作废/本次挂号失效
+    STATUS_NEED_HOSPITALIZE = 6, // 需要住院（待登记）
+    STATUS_HOSPITALIZED = 7, // 住院中
+    STATUS_COMPLETED = 8,   // 就诊结束
+    STATUS_NO_SHOW = 9      // 过号作废/本次挂号失效
 } MedStatus;
 
 typedef enum //医保类型
