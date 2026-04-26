@@ -3561,22 +3561,38 @@ static void handle_patient_archive_update()
     char temp_input[MAX_SYMPTOM_LEN];
     int age = 0;
     PatientNode* patient = NULL;
+    double balance = 0;
 
     printf("\n================ 修改患者信息 ================\n");
+    printf("提示：输入 B 返回上一步，输入 Q 返回菜单页\n");
+    printf("提示：留空表示不修改该字段\n\n");
     
     // 患者编号输入环节
     input_patient_id:
-    get_safe_string("请输入患者编号(输入 0 回退上一步，输入 00 退出): ", patient_id, MAX_ID_LEN);
-    if (strcmp(patient_id, "00") == 0)
+    get_safe_string("请输入患者编号：", patient_id, MAX_ID_LEN);
+    if (strcmp(patient_id, "Q") == 0 || strcmp(patient_id, "q") == 0)
     {
-        printf("操作取消！\n");
+        printf("提示：已返回菜单页。\n");
         return;
+    }
+    if (strcmp(patient_id, "B") == 0 || strcmp(patient_id, "b") == 0)
+    {
+        printf("当前已是第一步，无法返回上一步\n");
+        goto input_patient_id;
     }
     // 患者编号校验（死循环）
     while (1)
     {
-        if (strcmp(patient_id, "0") == 0)
+        if (strcmp(patient_id, "Q") == 0 || strcmp(patient_id, "q") == 0)
+        {
+            printf("提示：已返回菜单页。\n");
+            return;
+        }
+        if (strcmp(patient_id, "B") == 0 || strcmp(patient_id, "b") == 0)
+        {
+            printf("当前已是第一步，无法返回上一步\n");
             goto input_patient_id;
+        }
         if (strlen(patient_id) == 0)
         {
             printf("患者编号不能为空，请重新输入：");
@@ -3593,18 +3609,18 @@ static void handle_patient_archive_update()
         break;
     }
     
-    printf("\n提示：患者编号不可修改。\n");
-    printf("提示：留空表示不修改该字段。\n\n");
+    printf("\n提示：患者编号不可修改。\n\n");
     
     // 输入新姓名环节
     input_name:
-    get_safe_string("请输入新姓名(输入 0 回退上一步，输入 00 退出): ", temp_input, MAX_NAME_LEN);
-    if (strcmp(temp_input, "00") == 0)
+    printf("当前姓名：%s\n", patient->name);
+    get_safe_string("请输入新姓名：", temp_input, MAX_NAME_LEN);
+    if (strcmp(temp_input, "Q") == 0 || strcmp(temp_input, "q") == 0)
     {
-        printf("操作取消！\n");
+        printf("提示：已返回菜单页。\n");
         return;
     }
-    if (strcmp(temp_input, "0") == 0)
+    if (strcmp(temp_input, "B") == 0 || strcmp(temp_input, "b") == 0)
         goto input_patient_id;
     if (strlen(temp_input) > 0)
         strcpy(name, temp_input);
@@ -3614,13 +3630,13 @@ static void handle_patient_archive_update()
     // 输入新年龄环节
     input_age:
     printf("当前年龄：%d\n", patient->age);
-    get_safe_string("请输入新年龄(输入 0 回退上一步，输入 00 退出): ", temp_input, MAX_SYMPTOM_LEN);
-    if (strcmp(temp_input, "00") == 0)
+    get_safe_string("请输入新年龄：", temp_input, MAX_SYMPTOM_LEN);
+    if (strcmp(temp_input, "Q") == 0 || strcmp(temp_input, "q") == 0)
     {
-        printf("操作取消！\n");
+        printf("提示：已返回菜单页。\n");
         return;
     }
-    if (strcmp(temp_input, "0") == 0)
+    if (strcmp(temp_input, "B") == 0 || strcmp(temp_input, "b") == 0)
         goto input_name;
     if (strlen(temp_input) > 0)
         age = atoi(temp_input);
@@ -3630,13 +3646,13 @@ static void handle_patient_archive_update()
     // 输入新症状环节
     input_symptom:
     printf("当前症状：%s\n", patient->symptom);
-    get_safe_string("请输入新症状描述(输入 0 回退上一步，输入 00 退出): ", temp_input, MAX_SYMPTOM_LEN);
-    if (strcmp(temp_input, "00") == 0)
+    get_safe_string("请输入新症状描述：", temp_input, MAX_SYMPTOM_LEN);
+    if (strcmp(temp_input, "Q") == 0 || strcmp(temp_input, "q") == 0)
     {
-        printf("操作取消！\n");
+        printf("提示：已返回菜单页。\n");
         return;
     }
-    if (strcmp(temp_input, "0") == 0)
+    if (strcmp(temp_input, "B") == 0 || strcmp(temp_input, "b") == 0)
         goto input_age;
     if (strlen(temp_input) > 0)
         strcpy(symptom, temp_input);
@@ -3646,13 +3662,13 @@ static void handle_patient_archive_update()
     // 输入新目标科室环节
     input_dept:
     printf("当前目标科室：%s\n", patient->target_dept);
-    get_safe_string("请输入新目标科室(输入 0 回退上一步，输入 00 退出): ", temp_input, MAX_NAME_LEN);
-    if (strcmp(temp_input, "00") == 0)
+    get_safe_string("请输入新目标科室：", temp_input, MAX_NAME_LEN);
+    if (strcmp(temp_input, "Q") == 0 || strcmp(temp_input, "q") == 0)
     {
-        printf("操作取消！\n");
+        printf("提示：已返回菜单页。\n");
         return;
     }
-    if (strcmp(temp_input, "0") == 0)
+    if (strcmp(temp_input, "B") == 0 || strcmp(temp_input, "b") == 0)
         goto input_symptom;
     if (strlen(temp_input) > 0)
         strcpy(target_dept, temp_input);
@@ -3660,14 +3676,15 @@ static void handle_patient_archive_update()
         strcpy(target_dept, patient->target_dept);
     
     // 输入新身份证号环节
+    input_id_card:
     printf("当前身份证号：%s\n", patient->id_card);
-    get_safe_string("请输入新身份证号(输入 0 回退上一步，输入 00 退出): ", temp_input, MAX_ID_LEN);
-    if (strcmp(temp_input, "00") == 0)
+    get_safe_string("请输入新身份证号：", temp_input, MAX_ID_LEN);
+    if (strcmp(temp_input, "Q") == 0 || strcmp(temp_input, "q") == 0)
     {
-        printf("操作取消！\n");
+        printf("提示：已返回菜单页。\n");
         return;
     }
-    if (strcmp(temp_input, "0") == 0)
+    if (strcmp(temp_input, "B") == 0 || strcmp(temp_input, "b") == 0)
         goto input_dept;
     // 身份证号校验（如果不为空则校验格式）
     while (1)
@@ -3681,12 +3698,12 @@ static void handle_patient_archive_update()
         {
             printf("身份证号格式不合法，请重新输入：");
             get_safe_string("", temp_input, MAX_ID_LEN);
-            if (strcmp(temp_input, "00") == 0)
+            if (strcmp(temp_input, "Q") == 0 || strcmp(temp_input, "q") == 0)
             {
-                printf("操作取消！\n");
+                printf("提示：已返回菜单页。\n");
                 return;
             }
-            if (strcmp(temp_input, "0") == 0)
+            if (strcmp(temp_input, "B") == 0 || strcmp(temp_input, "b") == 0)
                 goto input_dept;
             continue;
         }
@@ -3694,8 +3711,52 @@ static void handle_patient_archive_update()
         break;
     }
     
-    // 【安全管控】余额修改权限已彻底剥夺，不允许终端用户修改账户余额
-    double balance = patient->balance;
+    // 输入新余额环节
+    input_balance:
+    balance = patient->balance;
+    printf("当前余额：%.2f\n", balance);
+    get_safe_string("请输入新余额：", temp_input, MAX_SYMPTOM_LEN);
+    if (strcmp(temp_input, "Q") == 0 || strcmp(temp_input, "q") == 0)
+    {
+        printf("提示：已返回菜单页。\n");
+        return;
+    }
+    if (strcmp(temp_input, "B") == 0 || strcmp(temp_input, "b") == 0)
+        goto input_id_card;
+    // 余额校验
+    while (strlen(temp_input) > 0)
+    {
+        char *endptr = NULL;
+        double new_balance = strtod(temp_input, &endptr);
+        if (endptr == temp_input || *endptr != '\0')
+        {
+            printf("余额输入无效，请输入合法金额：");
+            get_safe_string("", temp_input, MAX_SYMPTOM_LEN);
+            if (strcmp(temp_input, "Q") == 0 || strcmp(temp_input, "q") == 0)
+            {
+                printf("提示：已返回菜单页。\n");
+                return;
+            }
+            if (strcmp(temp_input, "B") == 0 || strcmp(temp_input, "b") == 0)
+                goto input_id_card;
+            continue;
+        }
+        if (new_balance < 0)
+        {
+            printf("余额不能为负数，请重新输入：");
+            get_safe_string("", temp_input, MAX_SYMPTOM_LEN);
+            if (strcmp(temp_input, "Q") == 0 || strcmp(temp_input, "q") == 0)
+            {
+                printf("提示：已返回菜单页。\n");
+                return;
+            }
+            if (strcmp(temp_input, "B") == 0 || strcmp(temp_input, "b") == 0)
+                goto input_id_card;
+            continue;
+        }
+        balance = new_balance;
+        break;
+    }
 
     update_patient_archive(patient_id, name, age, symptom, target_dept, id_card, balance);
     system("pause");
