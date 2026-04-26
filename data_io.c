@@ -3,8 +3,34 @@
 #include <stdlib.h>
 #include <string.h>
 #include <direct.h>
+#include <time.h>
 #include "global.h"
 #include "list_ops.h"
+
+// 生成下一个预约编号
+static void generate_appointment_id(char* new_id)
+{
+    int max_no = 0;
+    AppointmentNode* curr = NULL;
+    if (new_id == NULL) return;
+    if (g_appointment_list != NULL)
+    {
+        curr = g_appointment_list->next;
+        while (curr != NULL)
+        {
+            if (strncmp(curr->appointment_id, "A-", 2) == 0)
+            {
+                int current_no = atoi(curr->appointment_id + 2);
+                if (current_no > max_no)
+                {
+                    max_no = current_no;
+                }
+            }
+            curr = curr->next;
+        }
+    }
+    snprintf(new_id, MAX_ID_LEN, "A-%03d", max_no + 1);
+}
 
 #define DATA_DIR "data/"
 
@@ -188,6 +214,42 @@ int load_patient_list(PatientNode** head) {
         }
 
         insert_patient_tail(*head, new_node);
+        
+        // 为导入的患者生成预约记录
+        if (g_appointment_list != NULL && strlen(target_dept) > 0) {
+            char appointment_id[MAX_ID_LEN];
+            generate_appointment_id(appointment_id);
+            
+            // 随机分配现场号和预约号（50%概率）
+            int is_walk_in = rand() % 2;
+            
+            // 获取当前日期
+            char current_date[MAX_NAME_LEN];
+            time_t now = time(NULL);
+            struct tm* tm_now = localtime(&now);
+            strftime(current_date, sizeof(current_date), "%Y-%m-%d", tm_now);
+            
+            // 随机分配上午或下午
+            const char* slot = (rand() % 2 == 0) ? "上午" : "下午";
+            
+            // 创建预约记录
+            AppointmentNode* new_appointment = create_appointment_node(
+                appointment_id,
+                id,
+                current_date,
+                slot,
+                doctor_id,
+                target_dept,
+                CHECKED_IN
+            );
+            
+            if (new_appointment != NULL) {
+                new_appointment->is_walk_in = is_walk_in;
+                new_appointment->reg_fee = is_walk_in ? 10.0 : 30.0; // 现场号10元，预约号30元
+                new_appointment->fee_paid = 1; // 假设已缴费
+                insert_appointment_tail(g_appointment_list, new_appointment);
+            }
+        }
     }
     fclose(fp);
     return 1;

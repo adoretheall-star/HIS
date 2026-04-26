@@ -13,6 +13,7 @@
 #include "utils.h"
 #include "admin_service.h"
 #include "doctor_service.h"
+#include "patient_service.h"
 #include "data_io.h"
 #include "inpatient_service.h"
 
@@ -537,9 +538,13 @@ int assign_bed_to_patient(const char* patient_id, const char* bed_id)
         int has_recommended_beds = 0;
         while (curr_bed != NULL)
         {
-            printf("  - %s (%s)\n", curr_bed->bed_id, 
-                curr_bed->ward_type == WARD_TYPE_ICU ? "ICU" : (curr_bed->ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (curr_bed->ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房")));
-            has_recommended_beds = 1;
+            if (!curr_bed->is_occupied && curr_bed->ward_type == inpatient_record->recommended_ward_type)
+            {
+                printf("  - %s (%s)\n", curr_bed->bed_id, 
+                    curr_bed->ward_type == WARD_TYPE_ICU ? "ICU" : (curr_bed->ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (curr_bed->ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房")));
+                has_recommended_beds = 1;
+            }
+            curr_bed = curr_bed->next;
         }
         if (!has_recommended_beds)
         {
@@ -1133,6 +1138,54 @@ int bed_is_available(const char* bed_id)
 {
     WardNode* bed = find_bed_by_id(bed_id);
     return (bed != NULL && !bed->is_occupied);
+}
+
+void show_patients_need_hospitalize()
+{
+    PatientNode* curr = NULL;
+    int count = 0;
+
+    if (g_patient_list == NULL || g_patient_list->next == NULL)
+    {
+        printf("⚠️ 患者链表尚未初始化或无患者数据！\n");
+        return;
+    }
+
+    printf("\n======================================================\n");
+    printf("               需要住院待登记患者\n");
+    printf("======================================================\n");
+    printf("患者编号     患者姓名   性别  年龄  身份证号          状态\n");
+    printf("------------------------------------------------------\n");
+
+    curr = g_patient_list->next;
+    while (curr != NULL)
+    {
+        if (curr->status == STATUS_NEED_HOSPITALIZE)
+        {
+            count++;
+            char masked_id_card[20];
+            mask_id_card(curr->id_card, masked_id_card);
+            printf("%-13s %-10s %-5s %-5d %s %s\n",
+                curr->id,
+                curr->name,
+                curr->gender,
+                curr->age,
+                masked_id_card,
+                get_patient_status_text(curr->status));
+        }
+        curr = curr->next;
+    }
+
+    printf("------------------------------------------------------\n");
+    if (count == 0)
+    {
+        printf("暂无需要住院的患者\n");
+    }
+    else
+    {
+        printf("总计：%d 位患者需要住院\n", count);
+    }
+    printf("======================================================\n");
 }
 
 // ==========================================

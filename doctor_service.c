@@ -1,4 +1,4 @@
-// ==========================================
+﻿// ==========================================
 // 文件名: doctor_service.c
 // 作用: 医生接诊相关业务层实现
 // ==========================================
@@ -158,6 +158,7 @@ static const char* get_med_status_text(MedStatus status)
         case STATUS_RECHECK_PENDING: return "检查后待复诊";
         case STATUS_UNPAID: return "已看诊待缴费";
         case STATUS_WAIT_MED: return "已缴费待取药";
+        case STATUS_NEED_HOSPITALIZE: return "需住院待登记";
         case STATUS_HOSPITALIZED: return "住院中";
         case STATUS_COMPLETED: return "就诊结束";
         case STATUS_NO_SHOW: return "过号作废";
@@ -342,10 +343,11 @@ PatientPtrNode* get_processed_patients_by_doctor(const char* doctor_id)
         if (strcmp(curr->doctor_id, doctor_id) == 0)
         {
             // 只把以下状态视为"已接诊患者/已处理患者"：
-            // STATUS_EXAMINING, STATUS_UNPAID, STATUS_WAIT_MED, STATUS_HOSPITALIZED, STATUS_COMPLETED
+            // STATUS_EXAMINING, STATUS_UNPAID, STATUS_WAIT_MED, STATUS_NEED_HOSPITALIZE, STATUS_HOSPITALIZED, STATUS_COMPLETED
             if (curr->status == STATUS_EXAMINING ||
                 curr->status == STATUS_UNPAID ||
                 curr->status == STATUS_WAIT_MED ||
+                curr->status == STATUS_NEED_HOSPITALIZE ||
                 curr->status == STATUS_HOSPITALIZED ||
                 curr->status == STATUS_COMPLETED)
             {
@@ -491,11 +493,12 @@ void show_waiting_patients_by_doctor(const char* doctor_id)
         {
             const char* brief_text = strlen(patient->symptom) > 0 ? patient->symptom : patient->target_dept;
             const char* visit_type = patient->status == STATUS_PENDING ? "[初诊]" : "[复诊]";
-            printf("[%d] %s 患者编号: %s | 姓名: %s | 年龄: %d | 症状/科室: %s | 状态: %s\n",
+            printf("[%d] %s 患者编号: %s | 姓名: %s | 性别: %s | 年龄: %d | 症状/科室: %s | 状态: %s\n",
                 index++,
                 visit_type,
                 patient->id,
                 patient->name,
+                patient->gender,
                 patient->age,
                 strlen(brief_text) > 0 ? brief_text : "暂无",
                 get_med_status_text(patient->status));
@@ -699,13 +702,31 @@ int doctor_consult_patient(
                     break;
             }
             
-            // 显示接诊成功提示
-            printf("\n✅ 接诊成功！\n");
+            // 根据是否现场挂号显示不同提示
+            if (matched_appointment->is_walk_in == 1)
+            {
+                printf("\n✅ 接诊成功！患者为现场挂号\n");
+            }
+            else
+            {
+                printf("\n✅ 接诊成功！患者为预约挂号\n");
+            }
         }
         else
         {
             // 没有找到匹配的预约，仍然允许接诊但不绑定预约
-            printf("\n⚠️ 未找到该患者的匹配预约记录，但允许继续接诊！\n");
+            if (patient->status == STATUS_RECHECK_PENDING)
+            {
+                printf("\nℹ️ 患者为检查后待复诊，已完成接诊\n");
+            }
+            else if (patient->is_emergency == 1)
+            {
+                printf("\nℹ️ 患者为急诊通道就诊，已完成接诊\n");
+            }
+            else
+            {
+                printf("\nℹ️ 患者无预约记录，已完成接诊\n");
+            }
         }
     }
 
@@ -787,6 +808,7 @@ void doctor_view_processed_patients(const char* doctor_id)
     {
         printf("\n[%d] 患者编号：%s\n", index++, curr->patient->id);
         printf("姓名：%s\n", curr->patient->name);
+        printf("性别：%s\n", curr->patient->gender);
         printf("年龄：%d\n", curr->patient->age);
         printf("当前状态：%s\n", get_med_status_text(curr->patient->status));
     
@@ -887,6 +909,7 @@ void doctor_view_processed_patient_detail(const char* doctor_id, const char* pat
     printf("\n================ 已处理患者详情 ================\n");
     printf("患者编号：%s\n", patient->id);
     printf("姓名：%s\n", patient->name);
+    printf("性别：%s\n", patient->gender);
     printf("年龄：%d\n", patient->age);
     
     // 脱敏身份证号
@@ -984,17 +1007,53 @@ void doctor_view_processed_patient_detail(const char* doctor_id, const char* pat
     {
         printf("暂无预约记录\n");
     }
-    printf("==============================================\n");
-}
-
-// 获取患者姓名
-const char* get_patient_name_by_id(const char* patient_id)
-{
-    if (patient_id == NULL || g_patient_list == NULL)
-        return "未知";
     
-    PatientNode* patient = find_patient_by_id(g_patient_list, patient_id);
-    return (patient != NULL) ? patient->name : "未知";
+    // 显示历史接诊记录
+    printf("\n【历史接诊记录】\n");
+    ConsultRecordNode* curr_record = NULL;
+    ConsultRecordNode* last_match = NULL;
+    int record_count = 0;
+    
+    if (g_consult_record_list != NULL)
+    {
+        // 先找到最后一条匹配的记录（最新的）
+        curr_record = g_consult_record_list->next;
+        while (curr_record != NULL)
+        {
+            if (strcmp(curr_record->patient_id, patient_id) == 0)
+            {
+                last_match = curr_record;
+            }
+            curr_record = curr_record->next;
+        }
+        
+        // 从最后一条匹配记录开始向前遍历（倒序显示）
+        curr_record = last_match;
+        while (curr_record != NULL && curr_record != g_consult_record_list)
+        {
+            if (strcmp(curr_record->patient_id, patient_id) == 0)
+            {
+                record_count++;
+                printf("\n记录 %d：%s\n", record_count, curr_record->record_id);
+                printf("接诊时间：%s\n", curr_record->consult_time);
+                // 直接查找医生姓名
+                DoctorNode* consult_doctor = find_doctor_by_id(g_doctor_list, curr_record->doctor_id);
+                printf("接诊医生：%s\n", consult_doctor != NULL ? consult_doctor->name : "未知");
+                printf("诊断结论：%s\n", curr_record->diagnosis_text[0] != '\0' ? curr_record->diagnosis_text : "暂无");
+                printf("处理意见：%s\n", curr_record->treatment_advice[0] != '\0' ? curr_record->treatment_advice : "暂无");
+                printf("诊疗决策：%s\n", get_decision_text(curr_record->decision));
+                printf("----------------------------------------------\n");
+            }
+            curr_record = curr_record->prev;
+        }
+    }
+    
+    if (record_count == 0)
+    {
+        printf("暂无历史接诊记录\n");
+    }
+    
+    printf("==============================================\n");
 }
 
 // 获取医生姓名（辅助函数）
@@ -1005,6 +1064,16 @@ static const char* get_doctor_name_by_id(const char* doctor_id)
     
     DoctorNode* doctor = find_doctor_by_id(g_doctor_list, doctor_id);
     return (doctor != NULL) ? doctor->name : "未知";
+}
+
+// 获取患者姓名
+const char* get_patient_name_by_id(const char* patient_id)
+{
+    if (patient_id == NULL || g_patient_list == NULL)
+        return "未知";
+    
+    PatientNode* patient = find_patient_by_id(g_patient_list, patient_id);
+    return (patient != NULL) ? patient->name : "未知";
 }
 
 // 查看历史接诊记录
@@ -1184,6 +1253,7 @@ void doctor_view_patient_overview(const char* doctor_id, const char* patient_id)
     printf("\n================ 患者接诊前概览 ================\n");
     printf("患者编号：%s\n", patient->id);
     printf("姓名：%s\n", patient->name);
+    printf("性别：%s\n", patient->gender);
     printf("年龄：%d\n", patient->age);
     
     // 症状描述
@@ -1269,6 +1339,36 @@ void doctor_view_patient_overview(const char* doctor_id, const char* patient_id)
     else
     {
         printf("暂无预约记录\n");
+    }
+    
+    // 显示检查记录
+    printf("\n【检查记录】\n");
+    CheckRecordNode* curr_check = g_check_record_list->next;
+    int check_count = 0;
+    
+    while (curr_check != NULL && curr_check != g_check_record_list)
+    {
+        if (strcmp(curr_check->patient_id, patient_id) == 0)
+        {
+            check_count++;
+            printf("\n检查记录 %d：%s\n", check_count, curr_check->record_id);
+            printf("检查项目：%s\n", curr_check->item_name);
+            printf("所属科室：%s\n", curr_check->dept);
+            printf("检查状态：%s\n", curr_check->is_completed == 1 ? "已完成" : "待检查");
+            printf("缴费状态：%s\n", curr_check->is_paid == 1 ? "已缴费" : "未缴费");
+            if (curr_check->is_completed == 1)
+            {
+                printf("检查时间：%s\n", curr_check->check_time);
+                printf("检查结果：%s\n", curr_check->result);
+            }
+            printf("----------------------------------------------\n");
+        }
+        curr_check = curr_check->next;
+    }
+    
+    if (check_count == 0)
+    {
+        printf("暂无检查记录\n");
     }
 }
 
@@ -1361,6 +1461,7 @@ void show_check_record_detail(CheckRecordNode* record)
     printf("检查项目编号：%s\n", record->item_id);
     printf("所属科室：%s\n", record->dept);
     printf("检查状态：%s\n", record->is_completed == 1 ? "已完成" : "待检查");
+    printf("缴费状态：%s\n", record->is_paid == 1 ? "已缴费" : "未缴费");
     if (record->is_completed == 1)
     {
         printf("检查时间：%s\n", record->check_time);
@@ -1434,6 +1535,58 @@ int doctor_update_check_result(const char* doctor_id, const char* record_id, con
             {
                 patient->status = STATUS_RECHECK_PENDING;
                 patient->queue_time = time(NULL) - 7200; // 拿CT/验血报告回来的复诊患者，虚拟时间前移2小时，优先看诊
+                
+                // 为检查后复诊的患者生成现场挂号记录
+                if (g_appointment_list != NULL && strlen(patient->target_dept) > 0) {
+                    char appointment_id[MAX_ID_LEN];
+                    // 生成预约编号
+                    int max_no = 0;
+                    AppointmentNode* appt_curr = NULL;
+                    if (g_appointment_list != NULL)
+                    {
+                        appt_curr = g_appointment_list->next;
+                        while (appt_curr != NULL)
+                        {
+                            if (strncmp(appt_curr->appointment_id, "A-", 2) == 0)
+                            {
+                                int current_no = atoi(appt_curr->appointment_id + 2);
+                                if (current_no > max_no)
+                                {
+                                    max_no = current_no;
+                                }
+                            }
+                            appt_curr = appt_curr->next;
+                        }
+                    }
+                    snprintf(appointment_id, MAX_ID_LEN, "A-%03d", max_no + 1);
+                    
+                    // 获取当前日期
+                    char current_date[MAX_NAME_LEN];
+                    time_t now = time(NULL);
+                    struct tm* tm_now = localtime(&now);
+                    strftime(current_date, sizeof(current_date), "%Y-%m-%d", tm_now);
+                    
+                    // 随机分配上午或下午
+                    const char* slot = (rand() % 2 == 0) ? "上午" : "下午";
+                    
+                    // 创建预约记录
+                    AppointmentNode* new_appointment = create_appointment_node(
+                        appointment_id,
+                        patient->id,
+                        current_date,
+                        slot,
+                        patient->doctor_id,
+                        patient->target_dept,
+                        CHECKED_IN
+                    );
+                    
+                    if (new_appointment != NULL) {
+                        new_appointment->is_walk_in = 1; // 检查后复诊视为现场挂号
+                        new_appointment->reg_fee = 10.0; // 现场号10元
+                        new_appointment->fee_paid = 1; // 假设已缴费
+                        insert_appointment_tail(g_appointment_list, new_appointment);
+                    }
+                }
             }
 
             printf("✅ 检查结果录入成功！\n");

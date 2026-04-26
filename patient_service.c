@@ -501,6 +501,8 @@ const char* get_patient_status_text(MedStatus status)
             return "已看诊待缴费";
         case STATUS_WAIT_MED:
             return "已缴费待取药";
+        case STATUS_NEED_HOSPITALIZE:
+            return "需住院待登记";
         case STATUS_HOSPITALIZED:
             return "住院中";
         case STATUS_COMPLETED:
@@ -669,6 +671,61 @@ PatientNode* register_patient(
     }
     // 将患者节点插入到链表尾部
     insert_patient_tail(g_patient_list, new_patient);
+    
+    // 为直接建档的患者生成挂号记录
+    if (g_appointment_list != NULL && strlen(actual_dept) > 0) {
+        char appointment_id[MAX_ID_LEN];
+        // 生成预约编号
+        int max_no = 0;
+        AppointmentNode* appt_curr = NULL;
+        if (g_appointment_list != NULL)
+        {
+            appt_curr = g_appointment_list->next;
+            while (appt_curr != NULL)
+            {
+                if (strncmp(appt_curr->appointment_id, "A-", 2) == 0)
+                {
+                    int current_no = atoi(appt_curr->appointment_id + 2);
+                    if (current_no > max_no)
+                    {
+                        max_no = current_no;
+                    }
+                }
+                appt_curr = appt_curr->next;
+            }
+        }
+        snprintf(appointment_id, MAX_ID_LEN, "A-%03d", max_no + 1);
+        
+        // 获取当前日期
+        char current_date[MAX_NAME_LEN];
+        time_t now = time(NULL);
+        struct tm* tm_now = localtime(&now);
+        strftime(current_date, sizeof(current_date), "%Y-%m-%d", tm_now);
+        
+        // 随机分配上午或下午
+        const char* slot = (rand() % 2 == 0) ? "上午" : "下午";
+        
+        // 随机分配现场号和预约号（50%概率）
+        int is_walk_in = rand() % 2;
+        
+        // 创建预约记录
+        AppointmentNode* new_appointment = create_appointment_node(
+            appointment_id,
+            new_id,
+            current_date,
+            slot,
+            "", // 直接建档时没有指定医生
+            actual_dept,
+            CHECKED_IN
+        );
+        
+        if (new_appointment != NULL) {
+            new_appointment->is_walk_in = is_walk_in;
+            new_appointment->reg_fee = is_walk_in ? 10.0 : 30.0; // 现场号10元，预约号30元
+            new_appointment->fee_paid = 1; // 假设已缴费
+            insert_appointment_tail(g_appointment_list, new_appointment);
+        }
+    }
 
     return new_patient;
 }
@@ -887,8 +944,8 @@ int query_basic_patient_record(const char* patient_id, const char* id_card)
     printf("\n================ 基础病历信息 ================\n");
     printf("患者编号：%s\n", patient->id);
     printf("姓名：%s\n", patient->name);
-    printf("年龄：%d\n", patient->age);
     printf("性别：%s\n", patient->gender);
+    printf("年龄：%d\n", patient->age);
     printf("症状描述: %s\n", get_display_text(patient->symptom));
     printf("目标科室: %s\n", get_display_text(patient->target_dept));
     printf("当前就诊状态: %s\n", get_patient_status_text(patient->status));
@@ -1050,27 +1107,28 @@ void display_patient_visit_overview(const PatientNode* patient)
     else
         printf("处理意见: 暂无处理意见\n");
     
-    // 最近一次预约信息
+    // 最近一次挂号信息
     AppointmentNode* latest_appointment = find_latest_appointment_by_patient_id(patient->id);
     if (latest_appointment != NULL)
     {
-        printf("\n最近预约信息:\n");
-        printf("  预约编号：%s\n", latest_appointment->appointment_id);
-        printf("  预约日期：%s\n", latest_appointment->appointment_date);
-        printf("  预约时段：%s\n", latest_appointment->appointment_slot);
+        printf("\n最近挂号信息:\n");
+        printf("  挂号编号：%s\n", latest_appointment->appointment_id);
+        printf("  挂号类型：%s\n", latest_appointment->is_walk_in ? "现场号" : "预约号");
+        printf("  挂号日期：%s\n", latest_appointment->appointment_date);
+        printf("  挂号时段：%s\n", latest_appointment->appointment_slot);
         
-        // 显示预约医生或科室
+        // 显示挂号医生或科室
         if (latest_appointment->appoint_doctor[0] != '\0')
-            printf("  预约医生：%s\n", latest_appointment->appoint_doctor);
+            printf("  挂号医生：%s\n", latest_appointment->appoint_doctor);
         else if (latest_appointment->appoint_dept[0] != '\0')
-            printf("  预约科室：%s\n", latest_appointment->appoint_dept);
+            printf("  挂号科室：%s\n", latest_appointment->appoint_dept);
         else
-            printf("  预约科室：暂无\n");
-        printf("  预约状态：%s\n", get_appointment_display_status(latest_appointment));
+            printf("  挂号科室：暂无\n");
+        printf("  挂号状态：%s\n", get_appointment_display_status(latest_appointment));
     }
     else
     {
-        printf("\n最近预约信息: 暂无预约记录\n");
+        printf("\n最近挂号信息: 暂无挂号记录\n");
     }
     
     printf("==============================================\n");

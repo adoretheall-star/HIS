@@ -43,9 +43,9 @@ const char* get_appointment_display_status(const AppointmentNode* appointment)
         return "未知状态";
     }
 
-    if (appointment->appointment_status == CHECKED_IN && appointment->is_walk_in)
+    if (appointment->appointment_status == CHECKED_IN)
     {
-        return "已挂号";
+        return appointment->is_walk_in ? "已挂号" : "已签到";
     }
 
     return get_appointment_status_text(appointment->appointment_status);
@@ -777,6 +777,7 @@ void query_appointment_and_patient(const char* appointment_id)
         printf("\n========== 患者信息 ==========\n");
         printf("患者编号：%s\n", patient->id);
         printf("患者姓名：%s\n", patient->name);
+        printf("患者性别：%s\n", patient->gender);
         printf("患者年龄：%d\n", patient->age);
         // 身份证号脱敏处理
         char masked_id_card[MAX_ID_LEN] = {0};
