@@ -20,6 +20,41 @@
 // 外部函数声明
 extern void query_patient_complaints(const char* patient_id);
 
+// 大小写不敏感的字符串比较函数
+int my_strcasecmp(const char* s1, const char* s2)
+{
+    if (s1 == NULL || s2 == NULL)
+    {
+        return s1 - s2;
+    }
+    
+    while (*s1 && *s2)
+    {
+        char c1 = *s1;
+        char c2 = *s2;
+        
+        // 转换为小写进行比较
+        if (c1 >= 'A' && c1 <= 'Z')
+        {
+            c1 += 'a' - 'A';
+        }
+        if (c2 >= 'A' && c2 <= 'Z')
+        {
+            c2 += 'a' - 'A';
+        }
+        
+        if (c1 != c2)
+        {
+            return c1 - c2;
+        }
+        
+        s1++;
+        s2++;
+    }
+    
+    return *s1 - *s2;
+}
+
 // 获取病房类型的费用
 static double get_ward_rate(WardType ward_type)
 {
@@ -2617,8 +2652,24 @@ void handle_medicine_search(void)
     char keyword[MAX_MED_NAME_LEN];
 
     printf("\n================ 查询药品 ===============-\n");
-    get_safe_string("请输入查询关键词: ", keyword, MAX_MED_NAME_LEN);
-    search_medicine_by_keyword(keyword);
+    printf("提示：输入 'Q' 退出查询，输入其他内容继续查询\n\n");
+    
+    while (1)
+    {
+        get_safe_string("请输入查询关键词: ", keyword, MAX_MED_NAME_LEN);
+        
+        // 检查是否退出
+        if (my_strcasecmp(keyword, "Q") == 0)
+        {
+            printf("\n已退出药品查询\n");
+            break;
+        }
+        
+        search_medicine_by_keyword(keyword);
+        printf("\n------------------------------------------\n");
+        printf("输入 'Q' 退出查询，输入其他内容继续查询\n");
+        printf("------------------------------------------\n");
+    }
 }
 
 void handle_medicine_show_all(void)
