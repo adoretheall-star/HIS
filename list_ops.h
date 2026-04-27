@@ -131,6 +131,13 @@ ComplaintNode* create_complaint_node(
 );
 void insert_complaint_tail(ComplaintNode* head, ComplaintNode* new_node);
 
+// ==========================================
+// 十一、日志链表操作
+// ==========================================
+LogNode* create_log_list();
+LogNode* create_log_node(const char* timestamp, const char* operation, const char* target, const char* description);
+void insert_log_tail(LogNode* head, LogNode* new_node);
+
 
 // ==========================================
 //六、住院记录链表操作

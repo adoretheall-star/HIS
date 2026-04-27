@@ -1,8 +1,6 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <time.h>
-#include <math.h> // 用于 isnan, isinf 函数
+#include <stdlib.h>
 #include "admin_service.h"
 #include "list_ops.h"
 #include "medicine_service.h"
@@ -132,6 +130,168 @@ static void print_padded_text(const char* str, int target_width)
             printf(" ");
         }
     }
+}
+
+// 前置声明
+static void show_expiring_medicine_warning(void);
+
+// 显示近效期药品预警
+static void show_expiring_medicine_warning(void)
+{
+    int count = 0;
+    
+    // 第一步：统计每一列的最大显示宽度
+    int id_width = get_display_width("药品编号");
+    int name_width = get_display_width("商品名");
+    int generic_name_width = get_display_width("通用名");
+    int stock_width = get_display_width("当前库存");
+    int price_width = get_display_width("单价");
+    int expiry_width = get_display_width("效期");
+    
+    // 获取当前日期
+    time_t now = time(NULL);
+    struct tm now_tm;
+    localtime_s(&now_tm, &now);
+    char current_date[11];
+    snprintf(current_date, sizeof(current_date), "%d-%02d-%02d", 
+             now_tm.tm_year + 1900, now_tm.tm_mon + 1, now_tm.tm_mday);
+    
+    // 统计近效期药品并计算列宽
+    if (g_medicine_list != NULL && g_medicine_list->next != NULL)
+    {
+        MedicineNode* curr = g_medicine_list->next;
+        while (curr != NULL)
+        {
+            if (strlen(curr->expiry_date) > 0)
+            {
+                int days_left = days_between_dates(current_date, curr->expiry_date);
+                if (days_left > 0 && days_left <= 30)
+                {
+                    count++;
+                    
+                    int current_id_width = get_display_width(curr->id);
+                    int current_name_width = get_display_width(curr->name);
+                    int current_generic_name_width = get_display_width(curr->generic_name);
+                    int current_expiry_width = get_display_width(curr->expiry_date);
+                    
+                    // 处理库存和单价的宽度
+                    char stock_str[20];
+                    char price_str[20];
+                    snprintf(stock_str, sizeof(stock_str), "%d", curr->stock);
+                    snprintf(price_str, sizeof(price_str), "%.2f", curr->price);
+                    int current_stock_width = get_display_width(stock_str);
+                    int current_price_width = get_display_width(price_str);
+                    
+                    if (current_id_width > id_width)
+                        id_width = current_id_width;
+                    if (current_name_width > name_width)
+                        name_width = current_name_width;
+                    if (current_generic_name_width > generic_name_width)
+                        generic_name_width = current_generic_name_width;
+                    if (current_stock_width > stock_width)
+                        stock_width = current_stock_width;
+                    if (current_price_width > price_width)
+                        price_width = current_price_width;
+                    if (current_expiry_width > expiry_width)
+                        expiry_width = current_expiry_width;
+                }
+            }
+            curr = curr->next;
+        }
+    }
+    
+    // 第二步：按动态列宽输出表格
+    printf("\n");
+    int total_width = id_width + name_width + generic_name_width + stock_width + price_width + expiry_width + 20; // 20是列间距总和
+    for (int i = 0; i < total_width; i++) printf("=");
+    printf("\n");
+    
+    // 输出标题
+    int title_width = get_display_width("近效期药品预警");
+    int title_padding = (total_width - title_width) / 2;
+    for (int i = 0; i < title_padding; i++) printf(" ");
+    printf("近效期药品预警");
+    for (int i = 0; i < total_width - title_width - title_padding; i++) printf(" ");
+    printf("\n");
+    
+    for (int i = 0; i < total_width; i++) printf("=");
+    printf("\n");
+    
+    if (count == 0)
+    {
+        printf("当前无近效期药品预警\n");
+    }
+    else
+    {
+        // 输出表头
+        print_padded_text("药品编号", id_width);
+        printf("    ");
+        print_padded_text("商品名", name_width);
+        printf("    ");
+        print_padded_text("通用名", generic_name_width);
+        printf("    ");
+        print_padded_text("当前库存", stock_width);
+        printf("    ");
+        print_padded_text("单价", price_width);
+        printf("    ");
+        print_padded_text("效期", expiry_width);
+        printf("\n");
+        
+        // 输出表头下横线
+        for (int i = 0; i < total_width; i++) printf("-");
+        printf("\n");
+        
+        // 输出数据行
+        if (g_medicine_list != NULL && g_medicine_list->next != NULL)
+        {
+            MedicineNode* curr = g_medicine_list->next;
+            while (curr != NULL)
+            {
+                if (strlen(curr->expiry_date) > 0)
+                {
+                    int days_left = days_between_dates(current_date, curr->expiry_date);
+                    if (days_left > 0 && days_left <= 30)
+                    {
+                        print_padded_text(curr->id, id_width);
+                        printf("    ");
+                        print_padded_text(curr->name, name_width);
+                        printf("    ");
+                        print_padded_text(curr->generic_name, generic_name_width);
+                        printf("    ");
+                        char stock_str[20];
+                        char price_str[20];
+                        snprintf(stock_str, sizeof(stock_str), "%d", curr->stock);
+                        snprintf(price_str, sizeof(price_str), "%.2f", curr->price);
+                        print_padded_text(stock_str, stock_width);
+                        printf("    ");
+                        print_padded_text(price_str, price_width);
+                        printf("    ");
+                        print_padded_text(curr->expiry_date, expiry_width);
+                        printf("\n");
+                    }
+                }
+                curr = curr->next;
+            }
+        }
+    }
+    
+    // 输出底部横线
+    for (int i = 0; i < total_width; i++) printf("-");
+    printf("\n");
+    
+    // 输出统计信息
+    char count_str[50];
+    snprintf(count_str, sizeof(count_str), "近效期药品数量：%d", count);
+    int count_width = get_display_width(count_str);
+    int count_padding = (total_width - count_width) / 2;
+    for (int i = 0; i < count_padding; i++) printf(" ");
+    printf("%s", count_str);
+    printf("\n");
+    
+    for (int i = 0; i < total_width; i++) printf("=");
+    printf("\n");
+    printf("按任意键返回...\n");
+    get_single_char("");
 }
 
 // 根据病房类型估算日费用
@@ -1471,22 +1631,82 @@ static void show_waiting_dispense_warning(void)
         }
     }
 
-    // 计算总宽度
-    total_width = id_width + name_width + age_width + status_width + dept_width + 12; // 12 是中间的空格
-
-    // 输出表头
-    printf("\n======================================================\n");
-    printf("                  待取药患者提醒\n");
-    printf("======================================================\n");
-    print_padded_text("患者编号", id_width);
-    printf("    ");
-    print_padded_text("姓名", name_width);
-    printf("    ");
-    print_padded_text("年龄", age_width);
-    printf("    ");
-    print_padded_text("当前状态", status_width);
-    printf("    ");
-    print_padded_text("就诊科室", dept_width);
+    // 第二步：按动态列宽输出表格
+    printf("\n");
+    int total_width = id_width + name_width + age_width + status_width + dept_width + 20; // 20是列间距总和
+    for (int i = 0; i < total_width; i++) printf("=");
+    printf("\n");
+    
+    // 输出标题
+    int title_width = get_display_width("待发药患者预警");
+    int title_padding = (total_width - title_width) / 2;
+    for (int i = 0; i < title_padding; i++) printf(" ");
+    printf("待发药患者预警");
+    for (int i = 0; i < total_width - title_width - title_padding; i++) printf(" ");
+    printf("\n");
+    
+    for (int i = 0; i < total_width; i++) printf("=");
+    printf("\n");
+    
+    if (count == 0)
+    {
+        printf("当前无待发药患者\n");
+    }
+    else
+    {
+        // 输出表头
+        print_padded_text("患者编号", id_width);
+        printf("    ");
+        print_padded_text("姓名", name_width);
+        printf("    ");
+        print_padded_text("年龄", age_width);
+        printf("    ");
+        print_padded_text("当前状态", status_width);
+        printf("    ");
+        print_padded_text("就诊科室", dept_width);
+        printf("\n");
+        
+        // 输出表头下横线
+        for (int i = 0; i < total_width; i++) printf("-");
+        printf("\n");
+        
+        // 输出数据行
+        if (g_patient_list != NULL && g_patient_list->next != NULL)
+        {
+            PatientNode* curr = g_patient_list->next;
+            while (curr != NULL)
+            {
+                if (curr->status == STATUS_WAIT_MED)
+                {
+                    const char* status_name = NULL;
+                    switch (curr->status)
+                    {
+                        case STATUS_WAIT_MED:
+                            status_name = "已缴费待取药";
+                            break;
+                        default:
+                            status_name = "未知";
+                            break;
+                    }
+                    
+                    print_padded_text(curr->id, id_width);
+                    printf("    ");
+                    print_padded_text(curr->name, name_width);
+                    printf("    ");
+                    printf("%d", curr->age);
+                    printf("    ");
+                    print_padded_text(status_name, status_width);
+                    printf("    ");
+                    print_padded_text(curr->target_dept, dept_width);
+                    printf("\n");
+                }
+                curr = curr->next;
+            }
+        }
+    }
+    
+    // 输出底部横线
+    for (int i = 0; i < total_width; i++) printf("-");
     printf("\n");
     
     // 输出表头下横线
@@ -1898,6 +2118,8 @@ static void show_arrears_warning(void)
     printf("按任意键返回...\n");
     get_single_char("");
 }
+// 显示负载监控
+
 
 // 显示公共状态统计摘要
 void show_public_status_statistics(void)
@@ -1974,6 +2196,26 @@ void show_infectious_disease_alerts(void)
     printf("                      传染病异常提醒\n");
     printf("==============================================================\n");
     printf("当前无传染病异常提醒\n");
+    printf("==============================================================\n");
+}
+
+// 投诉管理菜单
+void admin_complaint_menu(void)
+{
+    printf("\n==============================================================\n");
+    printf("                      投诉管理\n");
+    printf("==============================================================\n");
+    printf("当前无投诉管理功能\n");
+    printf("==============================================================\n");
+}
+
+// 评价管理菜单
+void admin_evaluation_menu(void)
+{
+    printf("\n==============================================================\n");
+    printf("                      评价管理\n");
+    printf("==============================================================\n");
+    printf("当前无评价管理功能\n");
     printf("==============================================================\n");
 }
 
@@ -2348,4 +2590,3 @@ void handle_medicine_remove(void)
 
     printf("==============================================================\n");
 }
-

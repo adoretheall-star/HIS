@@ -211,14 +211,22 @@ static void admin_menu()
                 system("pause");
                 break;
             case 16:
-                admin_complaint_menu();
+                admin_medicine_menu();
                 system("pause");
                 break;
             case 17:
-                admin_evaluation_menu();
+                inpatient_menu();
                 system("pause");
                 break;
             case 18:
+                admin_complaint_menu();
+                system("pause");
+                break;
+            case 19:
+                admin_evaluation_menu();
+                system("pause");
+                break;
+            case 20:
                 patient_archive_menu();
                 system("pause");
                 break;
@@ -663,16 +671,112 @@ static void handle_admin_update_doctor_duty()
     
     if (strcmp(input_buffer, "Q") == 0 || strcmp(input_buffer, "q") == 0)
     {
-        printf("已取消修改医生值班状态操作。\n");
-        return;
-    }
-    
-    strcpy(doctor_id, input_buffer);
-    doctor = find_doctor_by_id(g_doctor_list, doctor_id);
-    if (doctor == NULL)
-    {
-        printf("⚠️ 未找到对应医生，请重新输入。\n");
-        return;
+        switch (step)
+        {
+            case 0: // 第1步：输入医生工号
+                get_safe_string("请输入医生工号: ", input_buffer, 100);
+                
+                if (strcmp(input_buffer, "B") == 0)
+                {
+                    printf("当前已是第一步，无法再返回\n");
+                    continue;
+                }
+                else if (strcmp(input_buffer, "Q") == 0)
+                {
+                    printf("已取消修改医生值班状态操作。\n");
+                    return;
+                }
+                
+                strcpy(doctor_id, input_buffer);
+                doctor = find_doctor_by_id(g_doctor_list, doctor_id);
+                if (doctor == NULL)
+                {
+                    printf("⚠️ 未找到对应医生，请重新输入。\n");
+                    continue;
+                }
+                
+                // 第2步：显示当前医生信息
+                printf("\n当前状态：\n");
+                printf("医生工号：%s\n", doctor->id);
+                printf("医生姓名：%s\n", doctor->name);
+                printf("当前值班状态：%s\n", doctor->is_on_duty ? "值班中" : "未值班");
+                
+                step = 1;
+                break;
+                
+            case 1: // 第3步：输入新状态
+                get_safe_string("请输入新状态（1=值班中, 0=未值班）: ", input_buffer, 100);
+                
+                if (strcmp(input_buffer, "B") == 0)
+                {
+                    step = 0;
+                    continue;
+                }
+                else if (strcmp(input_buffer, "Q") == 0)
+                {
+                    printf("已取消修改医生值班状态操作。\n");
+                    return;
+                }
+                
+                // 验证输入是否为数字
+                if (!is_digit_string(input_buffer))
+                {
+                    printf("输入非法，请重新输入。值班状态只能是 0 或 1。\n");
+                    continue;
+                }
+                
+                new_status = atoi(input_buffer);
+                if (new_status != 0 && new_status != 1)
+                {
+                    printf("输入非法，请重新输入。值班状态只能是 0 或 1。\n");
+                    continue;
+                }
+                
+                // 检查状态是否相同
+                if (new_status == doctor->is_on_duty)
+                {
+                    printf("提示：新状态与当前状态相同，无需修改。\n");
+                    return;
+                }
+                
+                step = 2;
+                break;
+                
+            case 2: // 第4步：确认页
+                printf("\n================ 确认操作 ================\n");
+                printf("医生工号：%s\n", doctor->id);
+                printf("当前状态：%s\n", doctor->is_on_duty ? "值班中" : "未值班");
+                printf("即将修改为：%s\n", new_status == 1 ? "值班中" : "未值班");
+                printf("========================================\n");
+                
+                get_safe_string("是否确定修改值班状态？(Y=确认, N=取消, B=返回上一步, Q=返回菜单): ", input_buffer, 100);
+                
+                if (strcmp(input_buffer, "Y") == 0 || strcmp(input_buffer, "y") == 0)
+                {
+                    update_doctor_duty_status(doctor_id, new_status);
+                    return;
+                }
+                else if (strcmp(input_buffer, "N") == 0 || strcmp(input_buffer, "n") == 0)
+                {
+                    printf("已取消修改医生值班状态操作。\n");
+                    return;
+                }
+                else if (strcmp(input_buffer, "B") == 0 || strcmp(input_buffer, "b") == 0)
+                {
+                    step = 1;
+                    continue;
+                }
+                else if (strcmp(input_buffer, "Q") == 0 || strcmp(input_buffer, "q") == 0)
+                {
+                    printf("已取消修改医生值班状态操作。\n");
+                    return;
+                }
+                else
+                {
+                    printf("⚠️ 无效的选择，请重新输入。\n");
+                }
+                break;
+        }
     }
     
     // 显示当前医生信息
@@ -753,81 +857,6 @@ static void handle_admin_update_nurse_duty()
     if (strcmp(input_buffer, "Q") == 0 || strcmp(input_buffer, "q") == 0)
     {
         printf("已取消修改护士值班状态操作。\n");
-        return;
-    }
-    
-    strcpy(username, input_buffer);
-    account = find_account_by_username(g_account_list, username);
-    if (account == NULL)
-    {
-        printf("⚠️ 未找到对应护士账号，请重新输入。\n");
-        return;
-    }
-    
-    if (account->role != ROLE_NURSE)
-    {
-        printf("⚠️ 该账号不是护士角色，请重新输入。\n");
-        return;
-    }
-    
-    // 显示当前护士信息
-    printf("\n当前状态：\n");
-    printf("护士账号：%s\n", account->username);
-    printf("护士姓名：%s\n", account->real_name);
-    printf("当前值班状态：%s\n", account->is_on_duty ? "值班中" : "未值班");
-    
-    // 输入新状态
-    get_safe_string("请输入新状态（1=值班中, 0=未值班）: ", input_buffer, 100);
-    
-    if (strcmp(input_buffer, "Q") == 0 || strcmp(input_buffer, "q") == 0)
-    {
-        printf("已取消修改护士值班状态操作。\n");
-        return;
-    }
-    
-    // 验证输入是否为数字
-    if (!is_digit_string(input_buffer))
-    {
-        printf("输入非法，请重新输入。值班状态只能是 0 或 1。\n");
-        return;
-    }
-    
-    new_status = atoi(input_buffer);
-    if (new_status != 0 && new_status != 1)
-    {
-        printf("输入非法，请重新输入。值班状态只能是 0 或 1。\n");
-        return;
-    }
-    
-    // 检查状态是否相同
-    if (new_status == account->is_on_duty)
-    {
-        printf("提示：新状态与当前状态相同，无需修改。\n");
-        return;
-    }
-    
-    // 确认页
-    printf("\n================ 确认操作 ================\n");
-    printf("护士账号：%s\n", account->username);
-    printf("当前状态：%s\n", account->is_on_duty ? "值班中" : "未值班");
-    printf("即将修改为：%s\n", new_status == 1 ? "值班中" : "未值班");
-    printf("========================================\n");
-    
-    get_safe_string("是否确定修改值班状态？(Y=确认, N=取消): ", input_buffer, 100);
-    
-    if (strcmp(input_buffer, "Y") == 0 || strcmp(input_buffer, "y") == 0)
-    {
-        update_nurse_duty_status(username, new_status);
-        return;
-    }
-    else if (strcmp(input_buffer, "N") == 0 || strcmp(input_buffer, "n") == 0)
-    {
-        printf("已取消修改护士值班状态操作。\n");
-        return;
-    }
-    else
-    {
-        printf("⚠️ 无效的选择，请重新输入。\n");
         return;
     }
 }
