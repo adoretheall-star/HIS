@@ -135,10 +135,10 @@ int load_patient_list(PatientNode** head) {
         char id[MAX_ID_LEN], name[MAX_NAME_LEN], gender[8], id_card[MAX_ID_LEN];
         char symptom[MAX_SYMPTOM_LEN], target_dept[MAX_NAME_LEN], doctor_id[MAX_ID_LEN], card_id[MAX_NAME_LEN];
         char diagnosis_text[MAX_RECORD_LEN], treatment_advice[MAX_RECORD_LEN], prescription_str[2048];
-        int age, m_type, status;
+        int age, m_type, status, script_count;
         double balance;
         long missed_time_1, missed_time_2, missed_time_3, blacklist_expire, unpaid_time;
-        int missed_count, is_blacklisted, is_emergency, call_count, script_count;
+        int missed_count, is_blacklisted, is_emergency, call_count;
         double emergency_debt;
         long queue_time;
 
@@ -936,15 +936,14 @@ int load_complaint_list(ComplaintNode** head) {
 }
 
 int save_log_list(LogNode* head) {
-    if (head == NULL) return 1;
+    if (head == NULL) return 0;
     ensure_data_dir();
     FILE* fp = fopen(DATA_DIR "logs.txt", "w");
     if (fp == NULL) return 0;
 
-    // 写入表头
     fprintf(fp, "时间戳|操作|目标|描述\n");
 
-    LogNode* curr = head;
+    LogNode* curr = head->next;
     while (curr != NULL) {
         fprintf(fp, "%s|%s|%s|%s\n", curr->timestamp, curr->operation, curr->target, curr->description);
         curr = curr->next;
@@ -958,7 +957,10 @@ int load_log_list(LogNode** head) {
     FILE* fp = fopen(DATA_DIR "logs.txt", "r");
     if (fp == NULL) return 0;
 
-    // 跳过表头
+    *head = (LogNode*)malloc(sizeof(LogNode));
+    if (*head == NULL) return 0;
+    (*head)->next = NULL;
+
     char header_buffer[512];
     if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
         fclose(fp);
@@ -987,13 +989,9 @@ int load_log_list(LogNode** head) {
         new_node->description[199] = '\0';
         new_node->next = NULL;
 
-        if (*head == NULL) {
-            *head = new_node;
-        } else {
-            LogNode* curr = *head;
-            while (curr->next != NULL) curr = curr->next;
-            curr->next = new_node;
-        }
+        LogNode* curr = *head;
+        while (curr->next != NULL) curr = curr->next;
+        curr->next = new_node;
     }
     fclose(fp);
     return 1;

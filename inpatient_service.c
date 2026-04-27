@@ -14,7 +14,6 @@
 #include "admin_service.h"
 #include "doctor_service.h"
 #include "patient_service.h"
-#include "data_io.h"
 #include "inpatient_service.h"
 
 // 押金预警阈值常量
@@ -1151,8 +1150,6 @@ int daily_settlement(const char* patient_id)
         printf("⚠️ 押金已欠费，请及时催缴！\n");
     }
 
-    save_inpatient_list(g_inpatient_list);
-
     return 1;
 }
 
@@ -1466,17 +1463,8 @@ int perform_daily_settlement()
         curr = curr->next;
     }
 
-    // 保存更新后的住院记录
-    if (save_inpatient_list(g_inpatient_list) == 1)
-    {
-        printf("日结完成，共处理 %d 名患者\n", settled_count);
-        return 1;
-    }
-    else
-    {
-        printf("日结失败：保存数据失败\n");
-        return 0;
-    }
+    printf("日结完成，共处理 %d 名患者\n", settled_count);
+    return 1;
 }
 
 /**

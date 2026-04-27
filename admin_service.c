@@ -8,12 +8,33 @@
 #include "list_ops.h"
 #include "medicine_service.h"
 #include "pharmacy_service.h"
-#include "data_io.h"
 #include "patient_service.h"
 #include "utils.h"
 
+// 病房费率定义
+#define GENERAL_WARD_RATE 120.0  // 普通病房每天费用
+#define ICU_WARD_RATE 500.0      // ICU每天费用
+#define ISOLATION_WARD_RATE 300.0  // 隔离病房每天费用
+#define SINGLE_WARD_RATE 400.0    // 单人病房每天费用
+
 // 外部函数声明
 extern void query_patient_complaints(const char* patient_id);
+
+// 获取病房类型的费用
+static double get_ward_rate(WardType ward_type)
+{
+    switch (ward_type) {
+        case WARD_TYPE_ICU:
+            return ICU_WARD_RATE;
+        case WARD_TYPE_ISOLATION:
+            return ISOLATION_WARD_RATE;
+        case WARD_TYPE_SINGLE:
+            return SINGLE_WARD_RATE;
+        case WARD_TYPE_GENERAL:
+        default:
+            return GENERAL_WARD_RATE;
+    }
+}
 
 // 解析日期字符串为 tm 结构
 static int parse_date_string(const char* date_str, struct tm* tm_out)
@@ -758,6 +779,544 @@ void show_resource_warnings(void)
 }
 
 // ==========================================
+// 系统预警查看模块（整合所有7种预警类型）
+// ==========================================
+
+// 颜色定义
+#define RED "\033[31m"
+#define GREEN "\033[32m"
+#define YELLOW "\033[33m"
+#define BLUE "\033[34m"
+#define RESET "\033[0m"
+
+// 预警管理子菜单
+void admin_alert_menu()
+{
+    int running = 1;
+    
+    while (running)
+    {
+        system("cls");
+        printf("\n======================================================\n");
+        printf("                ⚠️  预警管理\n");
+        printf("======================================================\n");
+        printf("  [1] 查看事件预警（恶意挂号、爽约、急诊）\n");
+        printf("  [2] 查看药品预警（低库存、临期药）\n");
+        printf("  [3] 查看住院预警（押金不足、欠费）\n");
+        printf("  [4] 查看床位资源预警\n");
+        printf("  [5] 查看所有预警（整合视图）\n");
+        printf("  [0] 返回上一级\n");
+        printf("------------------------------------------------------\n");
+        
+        switch (get_safe_int("👉 请输入操作编号: "))
+        {
+            case 1:
+                show_event_alerts();
+                system("pause");
+                break;
+            case 2:
+                show_medicine_alerts();
+                system("pause");
+                break;
+            case 3:
+                show_inpatient_alerts();
+                system("pause");
+                break;
+            case 4:
+                show_bed_resource_alerts();
+                system("pause");
+                break;
+            case 5:
+                show_system_alerts();
+                system("pause");
+                break;
+            case 0:
+                running = 0;
+                break;
+            default:
+                printf("\n⚠️ 无效的选项，请重新输入！\n");
+                system("pause");
+                break;
+        }
+    }
+}
+
+// 显示床位资源预警
+void show_bed_resource_alerts(void)
+{
+    int total_beds = 0;
+    int occupied_beds = 0;
+    int free_beds = 0;
+    int general_occupied = 0, general_free = 0;
+    int special_occupied = 0, special_free = 0;
+    int icu_occupied = 0, icu_free = 0;
+    
+    printf("\n======================================================\n");
+    printf("                床位资源预警\n");
+    printf("======================================================\n");
+    
+    // 统计床位使用情况
+    if (g_ward_list != NULL && g_ward_list->next != NULL)
+    {
+        WardNode* ward_curr = g_ward_list->next;
+        while (ward_curr != NULL)
+        {
+            total_beds++;
+            if (ward_curr->is_occupied)
+            {
+                occupied_beds++;
+            }
+            
+            if (ward_curr->ward_type == WARD_TYPE_GENERAL)
+            {
+                if (ward_curr->is_occupied)
+                    general_occupied++;
+                else
+                    general_free++;
+            }
+            else if (ward_curr->ward_type == WARD_TYPE_SINGLE)
+            {
+                if (ward_curr->is_occupied)
+                    special_occupied++;
+                else
+                    special_free++;
+            }
+            else if (ward_curr->ward_type == WARD_TYPE_ICU)
+            {
+                if (ward_curr->is_occupied)
+                    icu_occupied++;
+                else
+                    icu_free++;
+            }
+            else if (ward_curr->ward_type == WARD_TYPE_ISOLATION)
+            {
+                // 传染病隔离病房单独统计
+                if (ward_curr->is_occupied)
+                    occupied_beds++;
+            }
+            
+            ward_curr = ward_curr->next;
+        }
+        
+        free_beds = total_beds - occupied_beds;
+        
+        // 显示床位资源预警摘要
+        printf("【床位资源预警摘要】\n");
+        printf("------------------------------------------------------\n");
+        printf("总床位数：%d\n", total_beds);
+        printf("已占用床位：%d\n", occupied_beds);
+        printf("空闲床位：" RED "%d" RESET "\n", free_beds);
+        printf("床位使用率：%.2f%%\n", total_beds > 0 ? (float)occupied_beds / total_beds * 100 : 0);
+        printf("------------------------------------------------------\n");
+        
+        // 显示各类型病房床位情况
+        printf("【各类型病房床位情况】\n");
+        printf("------------------------------------------------------\n");
+        printf("普通病房：已占用 %d, 空闲 " RED "%d" RESET "\n", general_occupied, general_free);
+        printf("特殊病房：已占用 %d, 空闲 " RED "%d" RESET "\n", special_occupied, special_free);
+        printf("ICU：已占用 %d, 空闲 " RED "%d" RESET "\n", icu_occupied, icu_free);
+        printf("------------------------------------------------------\n");
+        
+        // 显示床位资源预警
+        if (free_beds == 0)
+        {
+            printf("" RED "⚠️ 预警：所有床位已满，请及时处理！" RESET "\n");
+        }
+        else if (free_beds < 5)
+        {
+            printf("" RED "⚠️ 预警：床位紧张，仅剩 %d 个空闲床位！" RESET "\n", free_beds);
+        }
+        else
+        {
+            printf("✅ 床位资源充足\n");
+        }
+    }
+    else
+    {
+        printf("当前无病房数据\n");
+    }
+    
+    printf("======================================================\n");
+}
+
+// 显示事件预警（恶意挂号、爽约、急诊）
+void show_event_alerts(void)
+{
+    printf("\n======================================================\n");
+    printf("                事件预警查看\n");
+    printf("======================================================\n");
+    
+    if (g_alert_list != NULL && g_alert_list->next != NULL)
+    {
+        AlertNode* curr = g_alert_list->next;
+        int count = 0;
+        while (curr != NULL)
+        {
+            char time_str[20];
+            strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", localtime(&curr->time));
+            printf("[%s] " RED "%s" RESET "\n", time_str, curr->message);
+            curr = curr->next;
+            count++;
+        }
+        printf("共找到 %d 条事件预警\n", count);
+    }
+    else
+    {
+        printf("当前无事件预警\n");
+    }
+    
+    printf("======================================================\n");
+}
+
+// 显示药品预警（低库存、临期药）
+void show_medicine_alerts(void)
+{
+    int low_stock_count = 0;
+    int expiring_count = 0;
+    
+    printf("\n======================================================\n");
+    printf("                药品预警查看\n");
+    printf("======================================================\n");
+    
+    // 显示低库存药品预警
+    printf("【低库存药品预警】\n");
+    printf("------------------------------------------------------\n");
+    if (g_medicine_list != NULL && g_medicine_list->next != NULL)
+    {
+        MedicineNode* med_curr = g_medicine_list->next;
+        while (med_curr != NULL)
+        {
+            if (med_curr->stock < 5)
+            {
+                printf("药品编号：%s\n", med_curr->id);
+                printf("商品名：%s\n", med_curr->name);
+                printf("当前库存：" RED "%d" RESET "\n", med_curr->stock);
+                printf("效期：%s\n", med_curr->expiry_date);
+                printf("------------------------------------------------------\n");
+                low_stock_count++;
+            }
+            med_curr = med_curr->next;
+        }
+        if (low_stock_count == 0)
+        {
+            printf("当前无低库存药品预警\n");
+        }
+        printf("共找到 %d 种低库存药品\n", low_stock_count);
+    }
+    else
+    {
+        printf("当前无药品数据\n");
+    }
+    printf("------------------------------------------------------\n");
+    
+    // 显示临期药品预警
+    printf("【临期药品预警】\n");
+    printf("------------------------------------------------------\n");
+    if (g_medicine_list != NULL && g_medicine_list->next != NULL)
+    {
+        MedicineNode* med_curr = g_medicine_list->next;
+        time_t now = time(NULL);
+        struct tm* tm_now = localtime(&now);
+        char today_str[11];
+        sprintf(today_str, "%04d-%02d-%02d", tm_now->tm_year + 1900, tm_now->tm_mon + 1, tm_now->tm_mday);
+        
+        while (med_curr != NULL)
+        {
+            int diff_days = days_between_dates(today_str, med_curr->expiry_date);
+            if (diff_days >= 0 && diff_days <= 30)
+            {
+                printf("药品编号：%s\n", med_curr->id);
+                printf("商品名：%s\n", med_curr->name);
+                printf("效期：%s\n", med_curr->expiry_date);
+                printf("距离过期：" RED "%d天" RESET "\n", diff_days);
+                printf("------------------------------------------------------\n");
+                expiring_count++;
+            }
+            med_curr = med_curr->next;
+        }
+        if (expiring_count == 0)
+        {
+            printf("当前无临期药品预警\n");
+        }
+        printf("共找到 %d 种临期药品\n", expiring_count);
+    }
+    else
+    {
+        printf("当前无药品数据\n");
+    }
+    
+    printf("======================================================\n");
+}
+
+// 显示住院预警（押金不足、欠费）
+void show_inpatient_alerts(void)
+{
+    int deposit_warning_count = 0;
+    
+    printf("\n======================================================\n");
+    printf("                住院预警查看\n");
+    printf("======================================================\n");
+    
+    // 显示押金不足预警
+    printf("【押金不足预警】\n");
+    printf("------------------------------------------------------\n");
+    if (g_inpatient_list != NULL && g_inpatient_list->next != NULL)
+    {
+        InpatientRecord* inpatient_curr = g_inpatient_list->next;
+        PatientNode* patient = NULL;
+        
+        while (inpatient_curr != NULL)
+        {
+            if (inpatient_curr->is_active)
+            {
+                patient = find_patient_by_id(g_patient_list, inpatient_curr->patient_id);
+                if (patient != NULL)
+                {
+                    double daily_rate = 0.0;
+                    const char* warn_msg = "";
+                    int show_warn = 0;
+                    
+                    if (strlen(inpatient_curr->bed_id) > 0)
+                    {
+                        daily_rate = get_ward_rate(inpatient_curr->ward_type);
+                        if (inpatient_curr->deposit_balance < daily_rate * 3)
+                        {
+                            warn_msg = "押金不足";
+                            show_warn = 1;
+                        }
+                    }
+                    else if (strlen(inpatient_curr->bed_id) == 0)
+                    {
+                        double warning_threshold = get_ward_rate(inpatient_curr->recommended_ward_type) * 3;
+                        if (inpatient_curr->deposit_balance < warning_threshold)
+                        {
+                            warn_msg = "押金较少";
+                            show_warn = 1;
+                        }
+                    }
+                    
+                    if (show_warn)
+                    {
+                        printf("患者编号：%s\n", inpatient_curr->patient_id);
+                        printf("患者姓名：%s\n", patient->name);
+                        printf("押金余额：" RED "%.2f 元" RESET "\n", inpatient_curr->deposit_balance);
+                        printf("预警状态：" RED "%s" RESET "\n", warn_msg);
+                        printf("------------------------------------------------------\n");
+                        deposit_warning_count++;
+                    }
+                }
+            }
+            inpatient_curr = inpatient_curr->next;
+        }
+        if (deposit_warning_count == 0)
+        {
+            printf("当前无押金不足预警\n");
+        }
+        printf("共找到 %d 位患者押金不足\n", deposit_warning_count);
+    }
+    else
+    {
+        printf("当前无住院数据\n");
+    }
+    printf("------------------------------------------------------\n");
+    
+    // 显示欠费患者预警（待启用）
+    printf("【欠费患者预警】\n");
+    printf("------------------------------------------------------\n");
+    printf("当前版本欠费患者预警功能待收费/结算模块完全接入后启用。\n");
+    
+    printf("======================================================\n");
+}
+
+// 显示系统预警查看
+void show_system_alerts(void)
+{
+    int has_alerts = 0;
+    
+    printf("\n======================================================\n");
+    printf("                  系统预警查看\n");
+    printf("======================================================\n");
+    
+    // 1. 显示恶意挂号拦截、爽约拦截、急诊强制放行（来自预警队列）
+    printf("【事件预警】\n");
+    printf("------------------------------------------------------\n");
+    if (g_alert_list != NULL && g_alert_list->next != NULL)
+    {
+        AlertNode* curr = g_alert_list->next;
+        int count = 0;
+        while (curr != NULL)
+        {
+            char time_str[20];
+            strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", localtime(&curr->time));
+            printf("[%s] " RED "%s" RESET "\n", time_str, curr->message);
+            curr = curr->next;
+            count++;
+            has_alerts = 1;
+        }
+        printf("共找到 %d 条事件预警\n", count);
+    }
+    else
+    {
+        printf("当前无事件预警\n");
+    }
+    printf("------------------------------------------------------\n");
+    
+    // 2. 显示低库存药品预警
+    printf("【低库存药品预警】\n");
+    printf("------------------------------------------------------\n");
+    int low_stock_count = 0;
+    if (g_medicine_list != NULL && g_medicine_list->next != NULL)
+    {
+        MedicineNode* med_curr = g_medicine_list->next;
+        while (med_curr != NULL)
+        {
+            if (med_curr->stock < 5)
+            {
+                printf("药品编号：%s\n", med_curr->id);
+                printf("商品名：%s\n", med_curr->name);
+                printf("当前库存：" RED "%d" RESET "\n", med_curr->stock);
+                printf("效期：%s\n", med_curr->expiry_date);
+                printf("------------------------------------------------------\n");
+                low_stock_count++;
+                has_alerts = 1;
+            }
+            med_curr = med_curr->next;
+        }
+        if (low_stock_count == 0)
+        {
+            printf("当前无低库存药品预警\n");
+        }
+        printf("共找到 %d 种低库存药品\n", low_stock_count);
+    }
+    else
+    {
+        printf("当前无药品数据\n");
+    }
+    printf("------------------------------------------------------\n");
+    
+    // 3. 显示临期药品预警
+    printf("【临期药品预警】\n");
+    printf("------------------------------------------------------\n");
+    int expiring_count = 0;
+    if (g_medicine_list != NULL && g_medicine_list->next != NULL)
+    {
+        MedicineNode* med_curr = g_medicine_list->next;
+        time_t now = time(NULL);
+        struct tm* tm_now = localtime(&now);
+        char today_str[11];
+        sprintf(today_str, "%04d-%02d-%02d", tm_now->tm_year + 1900, tm_now->tm_mon + 1, tm_now->tm_mday);
+        
+        while (med_curr != NULL)
+        {
+            int diff_days = days_between_dates(today_str, med_curr->expiry_date);
+            if (diff_days >= 0 && diff_days <= 30)
+            {
+                printf("药品编号：%s\n", med_curr->id);
+                printf("商品名：%s\n", med_curr->name);
+                printf("效期：%s\n", med_curr->expiry_date);
+                printf("距离过期：" RED "%d天" RESET "\n", diff_days);
+                printf("------------------------------------------------------\n");
+                expiring_count++;
+                has_alerts = 1;
+            }
+            med_curr = med_curr->next;
+        }
+        if (expiring_count == 0)
+        {
+            printf("当前无临期药品预警\n");
+        }
+        printf("共找到 %d 种临期药品\n", expiring_count);
+    }
+    else
+    {
+        printf("当前无药品数据\n");
+    }
+    printf("------------------------------------------------------\n");
+    
+    // 4. 显示押金不足预警
+    printf("【押金不足预警】\n");
+    printf("------------------------------------------------------\n");
+    int deposit_warning_count = 0;
+    if (g_inpatient_list != NULL && g_inpatient_list->next != NULL)
+    {
+        InpatientRecord* inpatient_curr = g_inpatient_list->next;
+        PatientNode* patient = NULL;
+        
+        while (inpatient_curr != NULL)
+        {
+            if (inpatient_curr->is_active)
+            {
+                patient = find_patient_by_id(g_patient_list, inpatient_curr->patient_id);
+                if (patient != NULL)
+                {
+                    double daily_rate = 0.0;
+                    const char* warn_msg = "";
+                    int show_warn = 0;
+                    
+                    if (strlen(inpatient_curr->bed_id) > 0)
+                    {
+                        daily_rate = get_ward_rate(inpatient_curr->ward_type);
+                        if (inpatient_curr->deposit_balance < daily_rate * 3)
+                        {
+                            warn_msg = "押金不足";
+                            show_warn = 1;
+                        }
+                    }
+                    else if (strlen(inpatient_curr->bed_id) == 0)
+                    {
+                        double warning_threshold = get_ward_rate(inpatient_curr->recommended_ward_type) * 3;
+                        if (inpatient_curr->deposit_balance < warning_threshold)
+                        {
+                            warn_msg = "押金较少";
+                            show_warn = 1;
+                        }
+                    }
+                    
+                    if (show_warn)
+                    {
+                        printf("患者编号：%s\n", inpatient_curr->patient_id);
+                        printf("患者姓名：%s\n", patient->name);
+                        printf("押金余额：" RED "%.2f 元" RESET "\n", inpatient_curr->deposit_balance);
+                        printf("预警状态：" RED "%s" RESET "\n", warn_msg);
+                        printf("------------------------------------------------------\n");
+                        deposit_warning_count++;
+                        has_alerts = 1;
+                    }
+                }
+            }
+            inpatient_curr = inpatient_curr->next;
+        }
+        if (deposit_warning_count == 0)
+        {
+            printf("当前无押金不足预警\n");
+        }
+        printf("共找到 %d 位患者押金不足\n", deposit_warning_count);
+    }
+    else
+    {
+        printf("当前无住院数据\n");
+    }
+    printf("------------------------------------------------------\n");
+    
+    // 5. 显示欠费患者预警（待启用）
+    printf("【欠费患者预警】\n");
+    printf("------------------------------------------------------\n");
+    printf("当前版本欠费患者预警功能待收费/结算模块完全接入后启用。\n");
+    printf("------------------------------------------------------\n");
+    
+    printf("======================================================\n");
+    if (!has_alerts)
+    {
+        printf("✅ 当前无预警，系统运行正常\n");
+    }
+    else
+    {
+        printf("" RED "⚠️ 发现预警信息，请及时处理" RESET "\n");
+    }
+    printf("======================================================\n");
+}
+
+// ==========================================
 // 投诉管理模块
 // ==========================================
 
@@ -772,7 +1331,7 @@ void admin_complaint_menu()
         printf("\n======================================================\n");
         printf("               📝 投诉管理\n");
         printf("======================================================\n");
-        printf("  [1] 查看所有投诉\n");
+        printf("  [1] 查看已处理投诉\n");
         printf("  [2] 处理投诉\n");
         printf("  [3] 按患者编号查询投诉历史\n");
         printf("  [4] 按投诉编号查询投诉详情\n");
@@ -808,7 +1367,7 @@ void admin_complaint_menu()
     }
 }
 
-// 显示所有投诉
+// 显示已处理投诉
 void show_all_complaints()
 {
     if (g_complaint_list == NULL || g_complaint_list->next == NULL)
@@ -818,45 +1377,45 @@ void show_all_complaints()
     }
     
     printf("\n======================================================\n");
-    printf("                    投诉列表\n");
+    printf("                    已处理投诉列表\n");
     printf("======================================================\n");
     
     ComplaintNode* curr = g_complaint_list->next;
     int index = 1;
+    int has_processed = 0;
     
     while (curr != NULL)
     {
-        printf("\n【投诉工单 %d】\n", index++);
-        printf("工单编号：%s\n", curr->complaint_id);
-        printf("患者编号：%s\n", curr->patient_id);
-        printf("提交时间：%s\n", curr->submit_time);
-        
-        // 打印投诉类型
-        printf("投诉类型：");
-        switch (curr->target_type)
+        if (curr->status == 1)
         {
-            case 1: printf("对医生\n"); break;
-            case 2: printf("对护士/前台\n"); break;
-            case 3: printf("对药师\n"); break;
-            default: printf("未知\n"); break;
-        }
-        
-        printf("被投诉人：%s（账号：%s）\n", curr->target_name, curr->target_id);
-        printf("投诉内容：%s\n", curr->content);
-        
-        // 打印处理状态
-        printf("处理状态：");
-        if (curr->status == 0)
-        {
-            printf("待处理\n");
-        }
-        else
-        {
-            printf("已回复\n");
+            has_processed = 1;
+            printf("\n【投诉工单 %d】\n", index++);
+            printf("工单编号：%s\n", curr->complaint_id);
+            printf("患者编号：%s\n", curr->patient_id);
+            printf("提交时间：%s\n", curr->submit_time);
+            
+            printf("投诉类型：");
+            switch (curr->target_type)
+            {
+                case 1: printf("对医生\n"); break;
+                case 2: printf("对护士/前台\n"); break;
+                case 3: printf("对药师\n"); break;
+                default: printf("未知\n"); break;
+            }
+            
+            printf("被投诉人：%s（账号：%s）\n", curr->target_name, curr->target_id);
+            printf("投诉内容：%s\n", curr->content);
+            
+            printf("处理状态：已回复\n");
             printf("处理意见：%s\n", curr->response);
+            printf("------------------------------------------------------\n");
         }
-        printf("------------------------------------------------------\n");
         curr = curr->next;
+    }
+    
+    if (!has_processed)
+    {
+        printf("\n⚠️ 当前没有已处理的投诉！\n");
     }
     
     printf("======================================================\n");
@@ -947,9 +1506,6 @@ void handle_complaint_response()
     target_complaint->status = 1;
     strncpy(target_complaint->response, response, MAX_RECORD_LEN - 1);
     target_complaint->response[MAX_RECORD_LEN - 1] = '\0';
-    
-    // 保存到文件
-    save_complaint_list(g_complaint_list);
     
     printf("\n✅ 投诉处理成功！\n");
     printf("工单编号：%s\n", target_complaint->complaint_id);
@@ -1208,6 +1764,29 @@ void show_evaluation_statistics()
     printf("======================================================\n");
 }
 
+static int str_disp_width(const char* s)
+{
+    int width = 0;
+    while (*s)
+    {
+        unsigned char c = (unsigned char)*s;
+        if (c < 0x80)      { width += 1; s += 1; }
+        else if ((c & 0xE0) == 0xC0) { width += 2; s += 2; }
+        else if ((c & 0xF0) == 0xE0) { width += 2; s += 3; }
+        else if ((c & 0xF8) == 0xF0) { width += 2; s += 4; }
+        else                { s += 1; }
+    }
+    return width;
+}
+
+static void print_field(const char* s, int field_width)
+{
+    int dw = str_disp_width(s);
+    printf("%s", s);
+    int pad = field_width - dw;
+    if (pad > 0) printf("%*s", pad, "");
+}
+
 // 显示负载监控查看
 void show_load_monitoring(void)
 {
@@ -1216,6 +1795,10 @@ void show_load_monitoring(void)
     int recheck_count = 0;
     int completed_count = 0;
     int no_show_count = 0;
+    int wait_med_count = 0;
+    int occupied_beds = 0;
+    int total_beds = 0;
+    int free_beds = 0;
 
     DoctorNode* doctor_curr = NULL;
     PatientNode* patient_curr = NULL;
@@ -1295,6 +1878,9 @@ void show_load_monitoring(void)
                 case STATUS_COMPLETED:
                     completed_count++;
                     break;
+                case STATUS_WAIT_MED:
+                    wait_med_count++;
+                    break;
                 default:
                     break;
             }
@@ -1302,36 +1888,54 @@ void show_load_monitoring(void)
         }
     }
 
+    // 统计床位使用情况
+    if (g_ward_list != NULL && g_ward_list->next != NULL)
+    {
+        WardNode* ward_curr = g_ward_list->next;
+        while (ward_curr != NULL)
+        {
+            total_beds++;
+            if (ward_curr->is_occupied)
+                occupied_beds++;
+            ward_curr = ward_curr->next;
+        }
+        free_beds = total_beds - occupied_beds;
+    }
+
     // 显示总体负载摘要
-    printf("\n======================================================\n");
-    printf("                  负载监控查看\n");
-    printf("======================================================\n");
+    printf("\n================================================================================\n");
+    printf("                              负载监控查看\n");
+    printf("================================================================================\n");
     printf("【总体负载摘要】\n");
-    printf("------------------------------------------------------\n");
-    printf("医生总数：%d\n", doctor_count);
-    printf("总待诊患者数：%d\n", pending_count);
-    printf("总待复诊患者数：%d\n", recheck_count);
-    printf("总过号作废患者数：%d\n", no_show_count);
-    printf("总已完成患者数：%d\n", completed_count);
-    printf("======================================================\n");
+    printf("--------------------------------------------------------------------------------\n");
+    printf("%-20s %-10d\n", "医生总数：", doctor_count);
+    printf("%-20s %-10d\n", "总待诊患者数：", pending_count);
+    printf("%-20s %-10d\n", "总待复诊患者数：", recheck_count);
+    printf("%-20s %-10d\n", "总待发药患者数：", wait_med_count);
+    printf("%-20s %-10d\n", "总病床数：", total_beds);
+    printf("%-20s %-10d\n", "已占用病床数：", occupied_beds);
+    printf("%-20s %-10d\n", "空闲病床数：", free_beds);
+    printf("================================================================================\n");
 
     // 显示各医生负载明细
     printf("【各医生负载明细】\n");
-    printf("--------------------------------------------------------------\n");
-    printf("医生工号            姓名            性别    科室            当前排队人数    值班状态\n");
-    printf("--------------------------------------------------------------\n");
+    printf("--------------------------------------------------------------------------------\n");
+    print_field("医生工号", 10); print_field("姓名", 8); print_field("性别", 4); printf(" ");
+    print_field("科室", 16); printf("%-8s %-6s\n", "排队人数", "值班状态");
+    printf("--------------------------------------------------------------------------------\n");
     if (g_doctor_list != NULL && g_doctor_list->next != NULL)
     {
         doctor_curr = g_doctor_list->next;
         while (doctor_curr != NULL)
         {
-            printf("%-18s %-12s %-4s    %-14s %-16d %-8s\n", 
-                doctor_curr->id, 
-                doctor_curr->name, 
-                strlen(doctor_curr->gender) > 0 ? doctor_curr->gender : "-",
-                doctor_curr->department, 
-                doctor_curr->queue_length, 
-                doctor_curr->is_on_duty ? "值班中" : "未值班");
+            print_field(doctor_curr->id, 10);
+            print_field(doctor_curr->name, 8);
+            print_field(strlen(doctor_curr->gender) > 0 ? doctor_curr->gender : "-", 4);
+            printf(" ");
+            print_field(doctor_curr->department, 16);
+            printf("%-8d ", doctor_curr->queue_length);
+            print_field(doctor_curr->is_on_duty ? "值班中" : "未值班", 6);
+            printf("\n");
             doctor_curr = doctor_curr->next;
         }
     }
@@ -1339,21 +1943,21 @@ void show_load_monitoring(void)
     {
         printf("当前无医生数据\n");
     }
-    printf("------------------------------------------------------\n");
+    printf("--------------------------------------------------------------------------------\n");
 
     // 显示各科室负载汇总
     printf("【各科室负载汇总】\n");
-    printf("------------------------------------------------------\n");
-    printf("科室名称            医生人数    科室总排队人数\n");
-    printf("------------------------------------------------------\n");
+    printf("--------------------------------------------------------------------------------\n");
+    print_field("科室名称", 16); printf("%-10s %-10s\n", "医生人数", "总排队人数");
+    printf("--------------------------------------------------------------------------------\n");
     if (dept_list != NULL)
     {
         DeptStatNode* curr_dept = dept_list;
         while (curr_dept != NULL)
         {
-            printf("%-18s %-10d %-16d\n", 
-                curr_dept->department, 
-                curr_dept->doctor_count, 
+            print_field(curr_dept->department, 16);
+            printf("%-10d %-10d\n",
+                curr_dept->doctor_count,
                 curr_dept->queue_length);
             curr_dept = curr_dept->next;
         }
@@ -1362,11 +1966,74 @@ void show_load_monitoring(void)
     {
         printf("当前无科室数据\n");
     }
-    printf("------------------------------------------------------\n");
+    printf("================================================================================\n");
 
-    printf("======================================================\n");
+    // 显示床位占用明细
+    printf("【床位占用】\n");
+    printf("--------------------------------------------------------------------------------\n");
+    if (total_beds > 0)
+    {
+        int general_occ = 0, general_total = 0;
+        int single_occ = 0, single_total = 0;
+        int icu_occ = 0, icu_total = 0;
+        int isolation_occ = 0, isolation_total = 0;
+        WardNode* wc = g_ward_list->next;
+        while (wc != NULL)
+        {
+            switch (wc->ward_type)
+            {
+                case WARD_TYPE_GENERAL:  general_total++; if(wc->is_occupied) general_occ++; break;
+                case WARD_TYPE_SINGLE:    single_total++;  if(wc->is_occupied) single_occ++;  break;
+                case WARD_TYPE_ICU:       icu_total++;     if(wc->is_occupied) icu_occ++;     break;
+                case WARD_TYPE_ISOLATION: isolation_total++; if(wc->is_occupied) isolation_occ++; break;
+                default: break;
+            }
+            wc = wc->next;
+        }
+        printf("床位使用率：%d / %d (%.1f%%)\n", occupied_beds, total_beds,
+            100.0f * occupied_beds / total_beds);
+        printf("--------------------------------------------------------------------------------\n");
+        print_field("病房类型", 12); printf("%-10s %-10s\n", "已占用", "总数");
+        printf("--------------------------------------------------------------------------------\n");
+        if(general_total>0)  { print_field("普通病房", 12); printf("%-10d %-10d\n", general_occ, general_total); }
+        if(single_total>0)   { print_field("单人病房", 12); printf("%-10d %-10d\n", single_occ, single_total); }
+        if(icu_total>0)      { print_field("ICU", 12);      printf("%-10d %-10d\n", icu_occ, icu_total); }
+        if(isolation_total>0){ print_field("隔离病房", 12); printf("%-10d %-10d\n", isolation_occ, isolation_total); }
+        if (free_beds <= 3)
+            printf("\n  " RED "床位紧张，仅剩 %d 张空闲床位！" RESET "\n", free_beds);
+    }
+    else
+    {
+        printf("当前无床位数据\n");
+    }
+    printf("================================================================================\n");
+
+    // 显示待发药患者列表
+    printf("【待发药患者】\n");
+    printf("--------------------------------------------------------------------------------\n");
+    if (wait_med_count > 0 && g_patient_list != NULL && g_patient_list->next != NULL)
+    {
+        patient_curr = g_patient_list->next;
+        int med_idx = 0;
+        while (patient_curr != NULL)
+        {
+            if (patient_curr->status == STATUS_WAIT_MED)
+            {
+                med_idx++;
+                printf("%-3d %-10s %-10s %-16s\n", med_idx, patient_curr->id,
+                    patient_curr->name, patient_curr->diagnosis_text[0] ? patient_curr->diagnosis_text : "-");
+            }
+            patient_curr = patient_curr->next;
+        }
+    }
+    else
+    {
+        printf("当前无待发药患者\n");
+    }
+    printf("================================================================================\n");
+
     printf("提示：此面板数据实时更新，可作为系统运行监控参考。\n");
-    printf("======================================================\n");
+    printf("================================================================================\n");
     
     // 释放科室链表
     DeptStatNode* curr_dept = dept_list;
@@ -1390,9 +2057,12 @@ void show_public_status_statistics(void)
     int no_show_count = 0;
     int completed_count = 0;
     int doctor_count = 0;
+    int nurse_count = 0;
+    int pharmacist_count = 0;
 
     PatientNode* patient_curr = NULL;
     DoctorNode* doctor_curr = NULL;
+    AccountNode* account_curr = NULL;
 
     // 统计患者相关数据
     if (g_patient_list != NULL && g_patient_list->next != NULL)
@@ -1442,6 +2112,24 @@ void show_public_status_statistics(void)
         }
     }
 
+    // 统计护士和药师总数
+    if (g_account_list != NULL && g_account_list->next != NULL)
+    {
+        account_curr = g_account_list->next;
+        while (account_curr != NULL)
+        {
+            if (account_curr->role == ROLE_NURSE)
+            {
+                nurse_count++;
+            }
+            else if (account_curr->role == ROLE_PHARMACIST)
+            {
+                pharmacist_count++;
+            }
+            account_curr = account_curr->next;
+        }
+    }
+
     // 显示公共状态统计摘要
     printf("\n======================================================\n");
     printf("                  状态统计摘要\n");
@@ -1455,6 +2143,8 @@ void show_public_status_statistics(void)
     printf("7. 过号作废患者数：%d\n", no_show_count);
     printf("8. 已完成患者数：%d\n", completed_count);
     printf("9. 医生总数：%d\n", doctor_count);
+    printf("10. 护士总数：%d\n", nurse_count);
+    printf("11. 药师总数：%d\n", pharmacist_count);
     printf("======================================================\n");
     printf("提示：此面板数据实时更新，仅供参考。\n");
     printf("======================================================\n");
@@ -2125,17 +2815,15 @@ void show_system_logs(void)
     printf("\n==============================================================\n");
     printf("                        系统日志\n");
     printf("==============================================================\n");
-    printf("时间                  操作          目标          描述\n");
+    print_field("时间", 20); print_field("操作", 16); print_field("目标", 8); printf("描述\n");
     printf("--------------------------------------------------------------\n");
 
     curr = g_log_list->next;
     while (curr != NULL)
     {
-        printf("%-20s %-10s %-10s %-s\n", 
-            curr->timestamp, 
-            curr->operation, 
-            curr->target, 
-            curr->description);
+        printf("%-20s", curr->timestamp);
+        print_field(curr->operation, 16);
+        printf("%-8s %s\n", curr->target, curr->description);
         count++;
         curr = curr->next;
     }

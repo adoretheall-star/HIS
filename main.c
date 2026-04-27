@@ -138,7 +138,7 @@ static void admin_menu()
         printf("  [6] 查看护士值班状态\n");
         printf("  [7] 修改护士值班状态\n");
         printf("  [8] 管理统计面板\n");
-        printf("  [9] 资源预警查看\n");
+        printf("  [9] 预警管理\n");
         printf("  [10] 负载监控查看\n");
         printf("  [11] 公共状态统计\n");
         printf("  [12] 传染病异常提醒\n");
@@ -188,7 +188,7 @@ static void admin_menu()
                 system("pause");
                 break;
             case 9:
-                show_resource_warnings();
+                admin_alert_menu();
                 system("pause");
                 break;
             case 10:
@@ -273,7 +273,6 @@ static void handle_admin_register_account()
     char username[MAX_ID_LEN];
     char password[MAX_ID_LEN];
     char real_name[MAX_NAME_LEN];
-    char gender;
     char department[MAX_NAME_LEN];
     RoleType role;
 
@@ -363,7 +362,6 @@ static void handle_admin_register_account()
     
     // 输入性别
     char gender_str[8];
-    input_gender:
     while (1) {
         printf("请输入性别 (男/女): ");
         get_safe_string(gender_str, gender_str, 8);
@@ -403,7 +401,6 @@ static void handle_admin_register_account()
     if (role == ROLE_DOCTOR)
     {
         // 输入医生所属科室
-        input_department:
         while (1) {
             get_safe_string("请输入医生所属科室: ", department, MAX_NAME_LEN);
             
@@ -878,10 +875,10 @@ static void handle_doctor_consultation()
     int decision;
     int count;
     int consult_success = 0;
-    int estimated_days = 0;
-    int condition_level = 0;
-    double deposit = 0.0;
     static int check_record_counter = 1001;
+    int estimated_days;
+    int condition_level;
+    double deposit;
 
     printf("\n================ 医生接诊 ================\n");
 
@@ -976,7 +973,6 @@ enter_diagnosis:
         return;
     }
 
-enter_treatment:
     get_safe_string("请输入处理意见(输入 B 回退修改诊断，叫号未到或可直接回车留空): ", treatment_advice, MAX_RECORD_LEN);
     if (strcmp(treatment_advice, "B") == 0 || strcmp(treatment_advice, "b") == 0)
         goto enter_diagnosis;
@@ -2333,7 +2329,6 @@ static void handle_internal_patient_register()
     char symptom[MAX_SYMPTOM_LEN];
     char target_dept[MAX_NAME_LEN];
     int age;
-    char gender;
     printf("\n================ 患者建档 ================\n");
     printf("提示：输入 '0' 可以回退上一步，输入 '00' 可以退出操作\n");
     
@@ -2474,7 +2469,6 @@ static void handle_internal_patient_register()
     }
     
     // 输入目标科室（可选）
-    input_dept:
     get_safe_string("请输入目标科室(可选): ", target_dept, MAX_NAME_LEN);
     
     // 检查是否退出
@@ -2615,7 +2609,6 @@ static void handle_internal_appointment_register()
     }
     
     // 输入预约医生编号（可选）
-    input_doctor:
     get_safe_string("请输入预约医生编号(可留空): ", appoint_doctor, MAX_NAME_LEN);
     
     // 检查是否退出
@@ -5967,6 +5960,11 @@ static void patient_self_service_menu()
         }
     }
 }
+static void auto_save_on_exit(void)
+{
+    save_all_data();
+}
+
 int main() 
 {
     // ---------------------------------------------------
@@ -5993,6 +5991,8 @@ int main()
     // ---------------------------------------------------------
     printf("⚙️ 正在点火启动底层双向链表引擎...\n"
 );
+    
+    // 移除自动保存，改为在关键操作完成后手动保存
     
     // 1. 初始化所有链表头节点
     g_patient_list = init_patient_list();
@@ -7026,6 +7026,8 @@ enter_condition:
                 break;
             }
         }
+        
+
     }
     else
     {
@@ -7301,6 +7303,8 @@ static void handle_deposit_recharge()
     if (recharge_inpatient_deposit(patient_id, amount))
     {
         printf("\n✅ 押金充值成功！\n");
+        
+
     }
     else
     {
@@ -7359,6 +7363,8 @@ static void handle_daily_settlement()
     if (daily_settlement(patient_id))
     {
         printf("\n✅ 日结计费成功！\n");
+        
+
     }
     else
     {
@@ -7509,6 +7515,8 @@ static void handle_transfer_bed()
     if (transfer_bed(patient_id, old_bed_id, new_bed_id))
     {
         printf("\n✅ 转床成功！\n");
+        
+
     }
     else
     {
@@ -7568,6 +7576,8 @@ static void handle_discharge()
     {
         printf("\n✅ 出院办理成功！\n");
         printf("📋 床位已自动释放\n");
+        
+
     }
     else
     {
