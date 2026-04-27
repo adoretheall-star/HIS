@@ -42,4 +42,7 @@ int update_medicine_basic_info(
 // 下架药品
 int remove_medicine(const char* med_id);
 
+// 检查药品名称是否已存在（用于提前检测重复）
+int is_medicine_name_exists(const char* name);
+
 #endif // MEDICINE_SERVICE_H

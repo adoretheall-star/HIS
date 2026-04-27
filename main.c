@@ -763,23 +763,25 @@ static void admin_medicine_menu()
                 system("pause");
                 break;
             case 2:
-                printf("\n================ 查询药品 ===============-\n");
-                printf("提示：输入 'Q' 退出查询，输入其他内容继续查询\n\n");
+                printf("\n================ 查询药品 ================\n");
+                printf("输入药品编号或关键词查询，输入 Q 退出\n\n");
                 
                 while (1)
                 {
-                    get_safe_string("请输入查询关键词: ", keyword, MAX_NAME_LEN);
+                    printf("请输入药品编号或关键词: ");
+                    fflush(stdout);
+                    if (fgets(keyword, MAX_NAME_LEN, stdin) == NULL) break;
+                    keyword[strcspn(keyword, "\n")] = '\0';
                     
-                    // 检查是否退出
+                    if (keyword[0] == '\0') continue;
+                    
                     if (my_strcasecmp(keyword, "Q") == 0)
                     {
-                        printf("\n已退出药品查询\n");
+                        printf("已退出药品查询\n");
                         break;
                     }
                     
                     search_medicine_by_keyword(keyword);
-                    printf("\n------------------------------------------\n");
-                    printf("输入 'Q' 退出查询，输入其他内容继续查询\n");
                     printf("------------------------------------------\n");
                 }
                 system("pause");
@@ -2186,6 +2188,7 @@ static void handle_pharmacy_dispense()
         else
         {
             printf("⚠️ 患者编号格式不合法，正确格式为 P-1001，请重新输入！\n");
+            printf("提示：输入 '0' 可以回退上一步，输入 '00' 可以退出操作\n");
         }
     }
     

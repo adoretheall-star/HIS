@@ -2371,103 +2371,146 @@ void show_infectious_disease_alerts(void)
 
 void handle_medicine_register(void)
 {
-    char name[MAX_MED_NAME_LEN];
-    char alias[MAX_ALIAS_LEN];
-    char generic_name[MAX_GENERIC_NAME_LEN];
-    char expiry_date[MAX_DATE_LEN];
-    double price;
-    int stock;
-    int medicare_type;
+    char name[MAX_MED_NAME_LEN] = "";
+    char alias[MAX_ALIAS_LEN] = "";
+    char generic_name[MAX_GENERIC_NAME_LEN] = "";
+    char expiry_date[MAX_DATE_LEN] = "";
+    double price = 0.0;
+    int stock = 0;
+    int medicare_type = 0;
+    int step = 1;
 
-    printf("\n================ 新增药品 ===============-\n");
-    printf("提示：任意输入项输入 'B' 可返回上一级菜单\n\n");
-    
-    // 商品名（必填）
-    while (1)
+    printf("\n================ 新增药品 ================\n");
+    printf("提示：输入 'B' 返回上一步，第一步输入 'B' 退出\n\n");
+
+    while (step >= 1 && step <= 7)
     {
-        if (!get_form_string("请输入商品名（输入 B 返回上一级）: ", name, MAX_MED_NAME_LEN))
+        switch (step)
         {
-            return; // 返回上一级
+            case 1:
+                while (1)
+                {
+                    if (!get_form_string("请输入商品名（输入 B 退出）: ", name, MAX_MED_NAME_LEN))
+                    {
+                        return;
+                    }
+                    if (is_blank_string(name))
+                    {
+                        printf("商品名不能为空，请重新输入\n");
+                        continue;
+                    }
+                    // 提前检查商品名是否已存在，避免用户白填后续信息
+                    if (is_medicine_name_exists(name))
+                    {
+                        printf("警告：已存在同名药品，请使用不同名称或修改已有药品\n");
+                        continue;
+                    }
+                    step = 2;
+                    break;
+                }
+                break;
+
+            case 2:
+                while (1)
+                {
+                    if (!get_form_string("请输入别名（可留空，输入 B 返回上一步）: ", alias, MAX_ALIAS_LEN))
+                    {
+                        step = 1;
+                        break;
+                    }
+                    step = 3;
+                    break;
+                }
+                break;
+
+            case 3:
+                while (1)
+                {
+                    if (!get_form_string("请输入通用名（输入 B 返回上一步）: ", generic_name, MAX_GENERIC_NAME_LEN))
+                    {
+                        step = 2;
+                        break;
+                    }
+                    if (is_blank_string(generic_name))
+                    {
+                        printf("通用名不能为空，请重新输入\n");
+                        continue;
+                    }
+                    step = 4;
+                    break;
+                }
+                break;
+
+            case 4:
+                while (1)
+                {
+                    if (!get_form_double("请输入药品单价（输入 B 返回上一步）: ", &price, 0, "单价必须是大于 0 的数字，请重新输入\n"))
+                    {
+                        step = 3;
+                        break;
+                    }
+                    step = 5;
+                    break;
+                }
+                break;
+
+            case 5:
+                while (1)
+                {
+                    if (!get_form_int("请输入初始库存（输入 B 返回上一步）: ", &stock, 0, 999999, "库存必须是大于等于 0 的整数，请重新输入\n"))
+                    {
+                        step = 4;
+                        break;
+                    }
+                    step = 6;
+                    break;
+                }
+                break;
+
+            case 6:
+                printf("医保类型：0=非医保 1=甲类医保 2=乙类医保\n");
+                while (1)
+                {
+                    if (!get_form_int("请输入医保类型编号（输入 B 返回上一步）: ", &medicare_type, 0, 2, "医保类型输入非法，请重新输入\n"))
+                    {
+                        step = 5;
+                        break;
+                    }
+                    step = 7;
+                    break;
+                }
+                break;
+
+            case 7:
+                while (1)
+                {
+                    if (!get_form_date("请输入效期（YYYY-MM-DD，输入 B 返回上一步）: ", expiry_date, MAX_DATE_LEN))
+                    {
+                        step = 6;
+                        break;
+                    }
+                    step = 8;
+                    break;
+                }
+                break;
+
+            default:
+                break;
         }
-        if (is_blank_string(name))
-        {
-            printf("商品名不能为空，请重新输入\n");
-            continue;
-        }
-        break;
-    }
-    
-    // 别名（选填）
-    if (!get_form_string("请输入别名（可留空，输入 B 返回上一级）: ", alias, MAX_ALIAS_LEN))
-    {
-        return; // 返回上一级
-    }
-    
-    // 通用名（必填）
-    while (1)
-    {
-        if (!get_form_string("请输入通用名（输入 B 返回上一级）: ", generic_name, MAX_GENERIC_NAME_LEN))
-        {
-            return; // 返回上一级
-        }
-        if (is_blank_string(generic_name))
-        {
-            printf("通用名不能为空，请重新输入\n");
-            continue;
-        }
-        break;
-    }
-    
-    // 单价（必填）
-    while (1)
-    {
-        if (!get_form_double("请输入药品单价（输入 B 返回上一级）: ", &price, 0, "单价必须是大于 0 的数字，请重新输入\n"))
-        {
-            return; // 返回上一级
-        }
-        break;
-    }
-    
-    // 库存（必填）
-    while (1)
-    {
-        if (!get_form_int("请输入初始库存（输入 B 返回上一级）: ", &stock, 0, 999999, "库存必须是大于等于 0 的整数，请重新输入\n"))
-        {
-            return; // 返回上一级
-        }
-        break;
-    }
-    
-    // 医保类型（必填）
-    printf("医保类型：0=非医保 1=甲类医保 2=乙类医保\n");
-    while (1)
-    {
-        if (!get_form_int("请输入医保类型编号（输入 B 返回上一级）: ", &medicare_type, 0, 2, "医保类型输入非法，请重新输入\n"))
-        {
-            return; // 返回上一级
-        }
-        break;
-    }
-    
-    // 效期（必填）
-    while (1)
-    {
-        if (!get_form_date("请输入效期（YYYY-MM-DD，输入 B 返回上一级）: ", expiry_date, MAX_DATE_LEN))
-        {
-            return; // 返回上一级
-        }
-        break;
     }
 
-    register_medicine(
-        name,
-        alias,
-        generic_name,
-        price,
-        stock,
-        (MedicareType)medicare_type,
-        expiry_date
-    );
+    if (step == 8)
+    {
+        register_medicine(
+            name,
+            alias,
+            generic_name,
+            price,
+            stock,
+            (MedicareType)medicare_type,
+            expiry_date
+        );
+    }
 }
 
 void handle_medicine_basic_info_update(void)
@@ -2651,23 +2694,25 @@ void handle_medicine_search(void)
 {
     char keyword[MAX_MED_NAME_LEN];
 
-    printf("\n================ 查询药品 ===============-\n");
-    printf("提示：输入 'Q' 退出查询，输入其他内容继续查询\n\n");
-    
+    printf("\n================ 查询药品 ================\n");
+    printf("输入药品编号或关键词查询，输入 Q 退出\n\n");
+
     while (1)
     {
-        get_safe_string("请输入查询关键词: ", keyword, MAX_MED_NAME_LEN);
-        
-        // 检查是否退出
+        printf("请输入药品编号或关键词: ");
+        fflush(stdout);
+        if (fgets(keyword, MAX_MED_NAME_LEN, stdin) == NULL) break;
+        keyword[strcspn(keyword, "\n")] = '\0';
+
+        if (keyword[0] == '\0') continue;
+
         if (my_strcasecmp(keyword, "Q") == 0)
         {
-            printf("\n已退出药品查询\n");
+            printf("已退出药品查询\n");
             break;
         }
-        
+
         search_medicine_by_keyword(keyword);
-        printf("\n------------------------------------------\n");
-        printf("输入 'Q' 退出查询，输入其他内容继续查询\n");
         printf("------------------------------------------\n");
     }
 }
@@ -2706,10 +2751,40 @@ void handle_medicine_dispense(void)
 {
     char patient_id[MAX_ID_LEN];
 
-    printf("\n================ 发药处理 ===============-\n");
+    printf("\n================ 发药处理 ================\n");
+    printf("提示：输入 '0' 可以回退上一步，输入 '00' 可以退出操作\n");
     show_paid_patients_waiting_for_dispense();
     printf("------------------------------------------------------\n");
-    get_safe_string("请输入要发药的患者编号: ", patient_id, MAX_ID_LEN);
+    
+    while (1)
+    {
+        get_safe_string("请输入要发药的患者编号: ", patient_id, MAX_ID_LEN);
+        
+        // 检查是否退出
+        if (strcmp(patient_id, "00") == 0)
+        {
+            printf("操作取消！\n");
+            return;
+        }
+        
+        // 检查是否回退
+        if (strcmp(patient_id, "0") == 0)
+        {
+            return;
+        }
+        
+        // 检查患者编号格式是否合法
+        if (validate_patient_id(patient_id))
+        {
+            break;
+        }
+        else
+        {
+            printf("⚠️ 患者编号格式不合法，正确格式为 P-1001，请重新输入！\n");
+            printf("提示：输入 '0' 可以回退上一步，输入 '00' 可以退出操作\n");
+        }
+    }
+    
     dispense_medicine_for_patient(patient_id);
 }
 

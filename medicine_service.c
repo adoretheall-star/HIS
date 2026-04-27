@@ -225,6 +225,29 @@ static int is_duplicate_medicine(const char* name, const char* generic_name)
     return 0;
 }
 
+// 检查药品名称是否已存在（用于提前检测重复）
+int is_medicine_name_exists(const char* name)
+{
+    MedicineNode* curr = NULL;
+
+    if (g_medicine_list == NULL || is_blank_string(name))
+    {
+        return 0;
+    }
+
+    curr = g_medicine_list->next;
+    while (curr != NULL)
+    {
+        if (strcmp(curr->name, name) == 0)
+        {
+            return 1;
+        }
+        curr = curr->next;
+    }
+
+    return 0;
+}
+
 static int is_medicine_referenced_by_active_prescription(const char* med_id)
 {
     PatientNode* patient_curr = NULL;
