@@ -20,6 +20,9 @@
 #include "pharmacy_service.h"
 #include "inpatient_service.h"
 
+// 登录调试开关，默认关闭
+#define LOGIN_DEBUG 0
+
 // 辅助函数：不区分大小写的字符串比较
 static int my_strcasecmp(const char* s1, const char* s2)
 {
@@ -211,22 +214,14 @@ static void admin_menu()
                 system("pause");
                 break;
             case 16:
-                admin_medicine_menu();
-                system("pause");
-                break;
-            case 17:
-                inpatient_menu();
-                system("pause");
-                break;
-            case 18:
                 admin_complaint_menu();
                 system("pause");
                 break;
-            case 19:
+            case 17:
                 admin_evaluation_menu();
                 system("pause");
                 break;
-            case 20:
+            case 18:
                 patient_archive_menu();
                 system("pause");
                 break;
@@ -662,14 +657,12 @@ static void handle_admin_update_doctor_duty()
     int new_status = 0;
     char input_buffer[100];
     DoctorNode* doctor = NULL;
+    int step = 0;
 
     printf("\n================ 修改医生值班状态 ================\n");
-    printf("提示：输入 Q 取消操作\n");
+    printf("提示：输入 B 返回上一步，输入 Q 取消操作\n");
     
-    // 输入医生工号
-    get_safe_string("请输入医生工号: ", input_buffer, 100);
-    
-    if (strcmp(input_buffer, "Q") == 0 || strcmp(input_buffer, "q") == 0)
+    while (1)
     {
         switch (step)
         {
@@ -777,67 +770,6 @@ static void handle_admin_update_doctor_duty()
                 }
                 break;
         }
-    }
-    
-    // 显示当前医生信息
-    printf("\n当前状态：\n");
-    printf("医生工号：%s\n", doctor->id);
-    printf("医生姓名：%s\n", doctor->name);
-    printf("当前值班状态：%s\n", doctor->is_on_duty ? "值班中" : "未值班");
-    
-    // 输入新状态
-    get_safe_string("请输入新状态（1=值班中, 0=未值班）: ", input_buffer, 100);
-    
-    if (strcmp(input_buffer, "Q") == 0 || strcmp(input_buffer, "q") == 0)
-    {
-        printf("已取消修改医生值班状态操作。\n");
-        return;
-    }
-    
-    // 验证输入是否为数字
-    if (!is_digit_string(input_buffer))
-    {
-        printf("输入非法，请重新输入。值班状态只能是 0 或 1。\n");
-        return;
-    }
-    
-    new_status = atoi(input_buffer);
-    if (new_status != 0 && new_status != 1)
-    {
-        printf("输入非法，请重新输入。值班状态只能是 0 或 1。\n");
-        return;
-    }
-    
-    // 检查状态是否相同
-    if (new_status == doctor->is_on_duty)
-    {
-        printf("提示：新状态与当前状态相同，无需修改。\n");
-        return;
-    }
-    
-    // 确认页
-    printf("\n================ 确认操作 ================\n");
-    printf("医生工号：%s\n", doctor->id);
-    printf("当前状态：%s\n", doctor->is_on_duty ? "值班中" : "未值班");
-    printf("即将修改为：%s\n", new_status == 1 ? "值班中" : "未值班");
-    printf("========================================\n");
-    
-    get_safe_string("是否确定修改值班状态？(Y=确认, N=取消): ", input_buffer, 100);
-    
-    if (strcmp(input_buffer, "Y") == 0 || strcmp(input_buffer, "y") == 0)
-    {
-        update_doctor_duty_status(doctor_id, new_status);
-        return;
-    }
-    else if (strcmp(input_buffer, "N") == 0 || strcmp(input_buffer, "n") == 0)
-    {
-        printf("已取消修改医生值班状态操作。\n");
-        return;
-    }
-    else
-    {
-        printf("⚠️ 无效的选择，请重新输入。\n");
-        return;
     }
 }
 
@@ -2254,8 +2186,9 @@ static void internal_login_menu()
     
     if (account == NULL)
     {
-        printf("\n⚠️ 登录失败，账号不存在！\n");
-        system("pause");
+        printf("\n⚠️ 账号不存在！\n");
+        printf("按任意键继续...");
+        get_single_char("");
         return;
     }
 
@@ -2283,7 +2216,15 @@ static void internal_login_menu()
     // 3. 账号状态正常，输入密码
     get_safe_string("请输入密码: ", password, MAX_ID_LEN);
 
-    // 4. 比对密码
+    // 4. 调试输出（宏控制）
+    #if LOGIN_DEBUG
+    printf("DEBUG: 输入账号=[%s]\n", username);
+    printf("DEBUG: 输入密码=[%s]\n", password);
+    printf("DEBUG: 文件账号=[%s]\n", account->username);
+    printf("DEBUG: 文件密码=[%s]\n", account->password);
+    #endif
+
+    // 5. 比对密码
     if (strcmp(account->password, password) != 0)
     {
         account->error_count++;
@@ -2298,7 +2239,8 @@ static void internal_login_menu()
             printf("\n⚠️ 密码错误！您还有 %d 次机会。\n", 3 - account->error_count);
         }
         
-        system("pause");
+        printf("按任意键继续...");
+        get_single_char("");
         return;
     }
 
@@ -2307,7 +2249,8 @@ static void internal_login_menu()
     account->lock_time = 0;
 
     printf("\n✅ 登录成功，欢迎你：%s\n", account->real_name);
-    system("pause");
+    printf("按任意键继续...");
+    get_single_char("");
 
     switch (account->role)
     {
@@ -2323,7 +2266,8 @@ static void internal_login_menu()
             if (g_current_doctor == NULL)
             {
                 printf("\n⚠️ 未找到对应医生信息！\n");
-                system("pause");
+                printf("按任意键继续...");
+                get_single_char("");
                 return;
             }
             // 根据科室类型进入不同菜单
@@ -2343,7 +2287,8 @@ static void internal_login_menu()
             break;
         default:
             printf("\n⚠️ 当前角色暂未开放内部菜单！\n");
-            system("pause");
+            printf("按任意键继续...");
+            get_single_char("");
             break;
     }
 }
@@ -4356,7 +4301,26 @@ int main()
     g_inpatient_list = create_inpatient_record_head();
 
     // 加载存档数据
-    load_all_data();
+    #if LOGIN_DEBUG
+    printf("DEBUG: 开始加载数据...\n");
+    #endif
+    int load_result = load_all_data();
+    #if LOGIN_DEBUG
+    printf("DEBUG: 数据加载完成，结果: %d\n", load_result);
+    
+    // 检查账号链表状态
+    if (g_account_list->next == NULL) {
+        printf("DEBUG: 账号链表为空，准备注入初始数据\n");
+    } else {
+        printf("DEBUG: 账号链表不为空，跳过初始数据注入\n");
+        // 打印第一个账号信息
+        AccountNode* first_account = g_account_list->next;
+        if (first_account != NULL) {
+            printf("DEBUG: 第一个账号: %s, 密码: %s, 角色: %d\n", 
+                   first_account->username, first_account->password, first_account->role);
+        }
+    }
+    #endif
 
     // ==============================================
     // 仅当没有读取到管理员账号时，才注入系统初始数据

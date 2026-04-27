@@ -6,6 +6,9 @@
 #include "global.h"
 #include "list_ops.h"
 
+// 调试开关，默认关闭
+#define DATA_IO_DEBUG 0
+
 #define DATA_DIR "data/"
 
 static void ensure_data_dir() {
@@ -15,8 +18,9 @@ static void ensure_data_dir() {
 static void trim_newline(char* str) {
     if (str == NULL) return;
     size_t len = strlen(str);
-    if (len > 0 && str[len - 1] == '\n') {
+    while (len > 0 && (str[len - 1] == '\n' || str[len - 1] == '\r')) {
         str[len - 1] = '\0';
+        len = strlen(str);
     }
 }
 
@@ -480,17 +484,30 @@ int save_account_list(AccountNode* head) {
 
 int load_account_list(AccountNode** head) {
     ensure_data_dir();
-    FILE* fp = fopen(DATA_DIR "accounts.txt", "r");
-    if (fp == NULL) return 1;
+    char file_path[256];
+    snprintf(file_path, sizeof(file_path), "%saccounts.txt", DATA_DIR);
+    
+    #if DATA_IO_DEBUG
+    printf("DEBUG: 正在读取账号文件: %s\n", file_path);
+    #endif
+    
+    FILE* fp = fopen(file_path, "r");
+    if (fp == NULL) {
+        #if DATA_IO_DEBUG
+        printf("DEBUG: 无法打开账号文件: %s\n", file_path);
+        #endif
+        return 0;
+    }
 
     // 跳过表头
     char header_buffer[512];
     if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
         fclose(fp);
-        return 1;
+        return 0;
     }
 
     char line[512];
+    int loaded_count = 0;
     while (fgets(line, sizeof(line), fp) != NULL) {
         trim_newline(line);
         if (strlen(line) == 0) continue;
@@ -522,8 +539,14 @@ int load_account_list(AccountNode** head) {
         new_node->is_on_duty = is_on_duty;
 
         insert_account_tail(*head, new_node);
+        loaded_count++;
     }
     fclose(fp);
+    
+    #if DATA_IO_DEBUG
+    printf("DEBUG: 成功加载 %d 个账号\n", loaded_count);
+    #endif
+    
     return 1;
 }
 
