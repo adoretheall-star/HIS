@@ -11,8 +11,74 @@
 #include "patient_service.h"
 #include "utils.h"
 
+// 当前登录用户
+AccountNode* g_current_account = NULL;
+DoctorNode* g_current_doctor = NULL;
+PatientNode* g_current_patient = NULL;
+
 // 外部函数声明
 extern void query_patient_complaints(const char* patient_id);
+
+
+
+// 前置声明
+static void show_expiring_medicine_warning(void);
+static int days_between_dates(const char* start_date, const char* end_date);
+
+// 检查药品是否近效期
+static int is_medicine_expiring_soon(const char* expiry_date)
+{
+    if (expiry_date == NULL)
+    {
+        return 0;
+    }
+    
+    // 简单的近效期检查：假设当前日期为 2024-01-01，检查是否在 30 天内过期
+    // 实际项目中应该使用当前系统日期进行比较
+    const char* current_date = "2024-01-01";
+    int days_diff = days_between_dates(current_date, expiry_date);
+    
+    return (days_diff >= 0 && days_diff <= 30);
+}
+
+// 近效期药品预警
+static void show_expiring_medicine_warning(void)
+{
+    int count = 0;
+    int total_width = 80;
+    
+    // 检查近效期药品
+    if (g_medicine_list != NULL && g_medicine_list->next != NULL)
+    {
+        MedicineNode* curr = g_medicine_list->next;
+        while (curr != NULL)
+        {
+            if (is_medicine_expiring_soon(curr->expiry_date))
+            {
+                count++;
+            }
+            curr = curr->next;
+        }
+    }
+    
+    // 输出统计信息
+    printf("\n======================================================\n");
+    printf("                  近效期药品预警\n");
+    printf("======================================================\n");
+    
+    if (count > 0)
+    {
+        printf("⚠️ 发现 %d 种近效期药品，请及时处理！\n", count);
+    }
+    else
+    {
+        printf("✅ 没有发现近效期药品。\n");
+    }
+    
+    printf("======================================================\n");
+    printf("按任意键返回...\n");
+    get_single_char("");
+}
 
 // 解析日期字符串为 tm 结构
 static int parse_date_string(const char* date_str, struct tm* tm_out);
@@ -1356,6 +1422,7 @@ void show_expiring_medicines_summary(void)
 static void show_waiting_dispense_warning(void)
 {
     int count = 0;
+    int total_width = 0;
     
     // 第一步：统计每一列的最大显示宽度
     int id_width = get_display_width("患者编号");
@@ -1403,803 +1470,30 @@ static void show_waiting_dispense_warning(void)
             curr = curr->next;
         }
     }
+
+    // 计算总宽度
+    total_width = id_width + name_width + age_width + status_width + dept_width + 12; // 12 是中间的空格
+
+    // 输出表头
+    printf("\n======================================================\n");
+    printf("                  待取药患者提醒\n");
+    printf("======================================================\n");
+    print_padded_text("患者编号", id_width);
+    printf("    ");
+    print_padded_text("姓名", name_width);
+    printf("    ");
+    print_padded_text("年龄", age_width);
+    printf("    ");
+    print_padded_text("当前状态", status_width);
+    printf("    ");
+    print_padded_text("就诊科室", dept_width);
+    printf("\n");
     
-    // 输出底部横线
+    // 输出表头下横线
     for (int i = 0; i < total_width; i++) printf("-");
     printf("\n");
     
-    // 输出统计信息
-    char count_str[50];
-    snprintf(count_str, sizeof(count_str), "待发药患者数量：%d", count);
-    int count_width = get_display_width(count_str);
-    int count_padding = (total_width - count_width) / 2;
-    for (int i = 0; i < count_padding; i++) printf(" ");
-    printf("%s", count_str);
-    printf("\n");
-    
-    for (int i = 0; i < total_width; i++) printf("=");
-    printf("\n");
-    printf("按任意键返回...\n");
-    get_single_char("");
-}
-
-// 查看已占用床位信息
-static void show_occupied_beds(void)
-{
-    int count = 0;
-    
-    // 第一步：统计每一列的最大显示宽度
-    int room_bed_width = get_display_width("病房号 / 床位号");
-    int type_width = get_display_width("病房类型");
-    int patient_id_width = get_display_width("患者编号");
-    int patient_name_width = get_display_width("患者姓名");
-    int status_width = get_display_width("当前状态");
-    
-    // 统计已占用床位并计算列宽
-    if (g_ward_list != NULL && g_ward_list->next != NULL)
-    {
-        WardNode* curr = g_ward_list->next;
-        while (curr != NULL)
-        {
-            if (curr->is_occupied)
-            {
-                count++;
-                
-                const char* ward_type_name = NULL;
-                switch (curr->ward_type)
-                {
-                    case WARD_TYPE_GENERAL:
-                        ward_type_name = "普通病房";
-                        break;
-                    case WARD_TYPE_ICU:
-                        ward_type_name = "ICU";
-                        break;
-                    case WARD_TYPE_ISOLATION:
-                        ward_type_name = "隔离病房";
-                        break;
-                    case WARD_TYPE_SINGLE:
-                        ward_type_name = "单人病房";
-                        break;
-                    default:
-                        ward_type_name = "未知";
-                        break;
-                }
-                
-                int current_room_bed_width = get_display_width(curr->room_id) + get_display_width(" / ") + get_display_width(curr->bed_id);
-                int current_type_width = get_display_width(ward_type_name);
-                int current_patient_id_width = get_display_width(curr->patient_id);
-                int current_patient_name_width = 0;
-                
-                // 查找患者姓名
-                if (g_patient_list != NULL && g_patient_list->next != NULL)
-                {
-                    PatientNode* patient_curr = g_patient_list->next;
-                    while (patient_curr != NULL)
-                    {
-                        if (strcmp(patient_curr->id, curr->patient_id) == 0)
-                        {
-                            current_patient_name_width = get_display_width(patient_curr->name);
-                            break;
-                        }
-                        patient_curr = patient_curr->next;
-                    }
-                }
-                
-                if (current_room_bed_width > room_bed_width)
-                    room_bed_width = current_room_bed_width;
-                if (current_type_width > type_width)
-                    type_width = current_type_width;
-                if (current_patient_id_width > patient_id_width)
-                    patient_id_width = current_patient_id_width;
-                if (current_patient_name_width > patient_name_width)
-                    patient_name_width = current_patient_name_width;
-            }
-            curr = curr->next;
-        }
-    }
-    
-    // 第二步：按动态列宽输出表格
-    printf("\n");
-    int total_width = room_bed_width + type_width + patient_id_width + patient_name_width + status_width + 20; // 20是列间距总和
-    for (int i = 0; i < total_width; i++) printf("=");
-    printf("\n");
-    
-    // 输出标题
-    int title_width = get_display_width("已占用床位信息");
-    int title_padding = (total_width - title_width) / 2;
-    for (int i = 0; i < title_padding; i++) printf(" ");
-    printf("已占用床位信息");
-    for (int i = 0; i < total_width - title_width - title_padding; i++) printf(" ");
-    printf("\n");
-    
-    for (int i = 0; i < total_width; i++) printf("=");
-    printf("\n");
-    
-    if (count == 0)
-    {
-        printf("当前无已占用床位\n");
-    }
-    else
-    {
-        // 输出表头
-        print_padded_text("病房号 / 床位号", room_bed_width);
-        printf("    ");
-        print_padded_text("病房类型", type_width);
-        printf("    ");
-        print_padded_text("患者编号", patient_id_width);
-        printf("    ");
-        print_padded_text("患者姓名", patient_name_width);
-        printf("    ");
-        print_padded_text("当前状态", status_width);
-        printf("\n");
-        
-        // 输出表头下横线
-        for (int i = 0; i < total_width; i++) printf("-");
-        printf("\n");
-        
-        // 输出数据行
-        if (g_ward_list != NULL && g_ward_list->next != NULL)
-        {
-            WardNode* curr = g_ward_list->next;
-            while (curr != NULL)
-            {
-                if (curr->is_occupied)
-                {
-                    const char* ward_type_name = NULL;
-                    switch (curr->ward_type)
-                    {
-                        case WARD_TYPE_GENERAL:
-                            ward_type_name = "普通病房";
-                            break;
-                        case WARD_TYPE_ICU:
-                            ward_type_name = "ICU";
-                            break;
-                        case WARD_TYPE_ISOLATION:
-                            ward_type_name = "隔离病房";
-                            break;
-                        case WARD_TYPE_SINGLE:
-                            ward_type_name = "单人病房";
-                            break;
-                        default:
-                            ward_type_name = "未知";
-                            break;
-                    }
-                    
-                    char room_bed_str[100];
-                    snprintf(room_bed_str, sizeof(room_bed_str), "%s / %s", curr->room_id, curr->bed_id);
-                    
-                    char patient_name[50] = "";
-                    if (g_patient_list != NULL && g_patient_list->next != NULL)
-                    {
-                        PatientNode* patient_curr = g_patient_list->next;
-                        while (patient_curr != NULL)
-                        {
-                            if (strcmp(patient_curr->id, curr->patient_id) == 0)
-                            {
-                                strncpy(patient_name, patient_curr->name, sizeof(patient_name) - 1);
-                                break;
-                            }
-                            patient_curr = patient_curr->next;
-                        }
-                    }
-                    
-                    print_padded_text(room_bed_str, room_bed_width);
-                    printf("    ");
-                    print_padded_text(ward_type_name, type_width);
-                    printf("    ");
-                    print_padded_text(curr->patient_id, patient_id_width);
-                    printf("    ");
-                    print_padded_text(patient_name, patient_name_width);
-                    printf("    ");
-                    print_padded_text("已占用", status_width);
-                    printf("\n");
-                }
-                curr = curr->next;
-            }
-        }
-    }
-    
-    // 输出底部横线
-    for (int i = 0; i < total_width; i++) printf("-");
-    printf("\n");
-    
-    // 输出统计信息
-    char count_str[50];
-    snprintf(count_str, sizeof(count_str), "已占用床位数量：%d", count);
-    int count_width = get_display_width(count_str);
-    int count_padding = (total_width - count_width) / 2;
-    for (int i = 0; i < count_padding; i++) printf(" ");
-    printf("%s", count_str);
-    printf("\n");
-    
-    for (int i = 0; i < total_width; i++) printf("=");
-    printf("\n");
-    printf("按任意键返回...\n");
-    get_single_char("");
-}
-
-// 查看空闲床位信息
-static void show_free_beds(void)
-{
-    int count = 0;
-    
-    // 第一步：统计每一列的最大显示宽度
-    int room_bed_width = get_display_width("病房号 / 床位号");
-    int type_width = get_display_width("病房类型");
-    int status_width = get_display_width("当前状态");
-    
-    // 统计空闲床位并计算列宽
-    if (g_ward_list != NULL && g_ward_list->next != NULL)
-    {
-        WardNode* curr = g_ward_list->next;
-        while (curr != NULL)
-        {
-            if (!curr->is_occupied)
-            {
-                count++;
-                
-                const char* ward_type_name = NULL;
-                switch (curr->ward_type)
-                {
-                    case WARD_TYPE_GENERAL:
-                        ward_type_name = "普通病房";
-                        break;
-                    case WARD_TYPE_ICU:
-                        ward_type_name = "ICU";
-                        break;
-                    case WARD_TYPE_ISOLATION:
-                        ward_type_name = "隔离病房";
-                        break;
-                    case WARD_TYPE_SINGLE:
-                        ward_type_name = "单人病房";
-                        break;
-                    default:
-                        ward_type_name = "未知";
-                        break;
-                }
-                
-                int current_room_bed_width = get_display_width(curr->room_id) + get_display_width(" / ") + get_display_width(curr->bed_id);
-                int current_type_width = get_display_width(ward_type_name);
-                
-                if (current_room_bed_width > room_bed_width)
-                    room_bed_width = current_room_bed_width;
-                if (current_type_width > type_width)
-                    type_width = current_type_width;
-            }
-            curr = curr->next;
-        }
-    }
-    
-    // 第二步：按动态列宽输出表格
-    printf("\n");
-    int total_width = room_bed_width + type_width + status_width + 12; // 12是列间距总和
-    for (int i = 0; i < total_width; i++) printf("=");
-    printf("\n");
-    
-    // 输出标题
-    int title_width = get_display_width("空闲床位信息");
-    int title_padding = (total_width - title_width) / 2;
-    for (int i = 0; i < title_padding; i++) printf(" ");
-    printf("空闲床位信息");
-    for (int i = 0; i < total_width - title_width - title_padding; i++) printf(" ");
-    printf("\n");
-    
-    for (int i = 0; i < total_width; i++) printf("=");
-    printf("\n");
-    
-    if (count == 0)
-    {
-        printf("当前无空闲床位\n");
-    }
-    else
-    {
-        // 输出表头
-        print_padded_text("病房号 / 床位号", room_bed_width);
-        printf("    ");
-        print_padded_text("病房类型", type_width);
-        printf("    ");
-        print_padded_text("当前状态", status_width);
-        printf("\n");
-        
-        // 输出表头下横线
-        for (int i = 0; i < total_width; i++) printf("-");
-        printf("\n");
-        
-        // 输出数据行
-        if (g_ward_list != NULL && g_ward_list->next != NULL)
-        {
-            WardNode* curr = g_ward_list->next;
-            while (curr != NULL)
-            {
-                if (!curr->is_occupied)
-                {
-                    const char* ward_type_name = NULL;
-                    switch (curr->ward_type)
-                    {
-                        case WARD_TYPE_GENERAL:
-                            ward_type_name = "普通病房";
-                            break;
-                        case WARD_TYPE_ICU:
-                            ward_type_name = "ICU";
-                            break;
-                        case WARD_TYPE_ISOLATION:
-                            ward_type_name = "隔离病房";
-                            break;
-                        case WARD_TYPE_SINGLE:
-                            ward_type_name = "单人病房";
-                            break;
-                        default:
-                            ward_type_name = "未知";
-                            break;
-                    }
-                    
-                    char room_bed_str[100];
-                    snprintf(room_bed_str, sizeof(room_bed_str), "%s / %s", curr->room_id, curr->bed_id);
-                    
-                    print_padded_text(room_bed_str, room_bed_width);
-                    printf("    ");
-                    print_padded_text(ward_type_name, type_width);
-                    printf("    ");
-                    print_padded_text("空闲", status_width);
-                    printf("\n");
-                }
-                curr = curr->next;
-            }
-        }
-    }
-    
-    // 输出底部横线
-    for (int i = 0; i < total_width; i++) printf("-");
-    printf("\n");
-    
-    // 输出统计信息
-    char count_str[50];
-    snprintf(count_str, sizeof(count_str), "空闲床位数量：%d", count);
-    int count_width = get_display_width(count_str);
-    int count_padding = (total_width - count_width) / 2;
-    for (int i = 0; i < count_padding; i++) printf(" ");
-    printf("%s", count_str);
-    printf("\n");
-    
-    for (int i = 0; i < total_width; i++) printf("=");
-    printf("\n");
-    printf("按任意键返回...\n");
-    get_single_char("");
-}
-
-// 查看床位占用汇总
-static void show_bed_occupancy_summary(void)
-{
-    int total_beds = 0;
-    int occupied_beds = 0;
-    int free_beds = 0;
-    
-    // 统计床位信息
-    if (g_ward_list != NULL && g_ward_list->next != NULL)
-    {
-        WardNode* curr = g_ward_list->next;
-        while (curr != NULL)
-        {
-            total_beds++;
-            if (curr->is_occupied)
-            {
-                occupied_beds++;
-            }
-            else
-            {
-                free_beds++;
-            }
-            curr = curr->next;
-        }
-    }
-    
-    // 计算床位占用率
-    double occupancy_rate = 0.0;
-    if (total_beds > 0)
-    {
-        occupancy_rate = (double)occupied_beds / total_beds * 100;
-    }
-    
-    // 输出汇总信息
-    printf("\n==============================================================\n");
-    printf("                    床位占用汇总\n");
-    printf("==============================================================\n");
-    printf("总床位数：%d\n", total_beds);
-    printf("当前已占用床位数：%d\n", occupied_beds);
-    printf("当前空闲床位数：%d\n", free_beds);
-    printf("床位占用率：%.2f%%\n", occupancy_rate);
-    printf("==============================================================\n");
-    printf("按任意键返回...\n");
-    get_single_char("");
-}
-
-// 床位占用预警
-static void show_bed_occupancy_warning(void)
-{
-    int choice;
-    
-    do
-    {
-        printf("\n==============================================================\n");
-        printf("                    床位占用预警\n");
-        printf("==============================================================\n");
-        printf("[1] 查看已占用床位信息\n");
-        printf("[2] 查看空闲床位信息\n");
-        printf("[3] 查看床位占用汇总\n");
-        printf("[0] 返回上一级\n");
-        printf("==============================================================\n");
-        printf("请输入选择：");
-        
-        choice = get_safe_int("");
-        
-        switch (choice)
-        {
-            case 1:
-                show_occupied_beds();
-                break;
-            case 2:
-                show_free_beds();
-                break;
-            case 3:
-                show_bed_occupancy_summary();
-                break;
-            case 0:
-                // 返回上一级
-                break;
-            default:
-                printf("输入错误，请重新选择！\n");
-                printf("按任意键继续...\n");
-                get_single_char("");
-                break;
-        }
-    } while (choice != 0);
-}
-
-// 住院押金预警详情
-static void show_deposit_warning(void)
-{
-    int count = 0;
-    
-    // 第一步：统计每一列的最大显示宽度
-    int inpatient_id_width = get_display_width("住院号");
-    int patient_id_width = get_display_width("患者编号");
-    int patient_name_width = get_display_width("患者姓名");
-    int ward_type_width = get_display_width("病房类型");
-    int deposit_width = get_display_width("当前押金余额");
-    int daily_cost_width = get_display_width("预计日费用");
-    int reason_width = get_display_width("预警原因");
-    
-    // 统计押金预警患者并计算列宽
-    if (g_inpatient_list != NULL && g_inpatient_list->next != NULL)
-    {
-        InpatientRecord* curr = g_inpatient_list->next;
-        while (curr != NULL)
-        {
-            if (curr->is_active)
-            {
-                double daily_cost = estimate_daily_cost_by_ward_type(curr->ward_type);
-                double threshold = daily_cost * 3;
-                if (curr->deposit_balance < threshold)
-                {
-                    count++;
-                    
-                    const char* ward_type_name = NULL;
-                    switch (curr->ward_type)
-                    {
-                        case WARD_TYPE_GENERAL:
-                            ward_type_name = "普通病房";
-                            break;
-                        case WARD_TYPE_ICU:
-                            ward_type_name = "ICU";
-                            break;
-                        case WARD_TYPE_ISOLATION:
-                            ward_type_name = "隔离病房";
-                            break;
-                        case WARD_TYPE_SINGLE:
-                            ward_type_name = "单人病房";
-                            break;
-                        default:
-                            ward_type_name = "未知";
-                            break;
-                    }
-                    
-                    int current_inpatient_id_width = get_display_width(curr->inpatient_id);
-                    int current_patient_id_width = get_display_width(curr->patient_id);
-                    int current_ward_type_width = get_display_width(ward_type_name);
-                    
-                    if (current_inpatient_id_width > inpatient_id_width)
-                        inpatient_id_width = current_inpatient_id_width;
-                    if (current_patient_id_width > patient_id_width)
-                        patient_id_width = current_patient_id_width;
-                    if (current_ward_type_width > ward_type_width)
-                        ward_type_width = current_ward_type_width;
-                }
-            }
-            curr = curr->next;
-        }
-    }
-    
-    // 第二步：按动态列宽输出表格
-    printf("\n");
-    int total_width = inpatient_id_width + patient_id_width + patient_name_width + ward_type_width + deposit_width + daily_cost_width + reason_width + 28; // 28是列间距总和
-    for (int i = 0; i < total_width; i++) printf("=");
-    printf("\n");
-    
-    // 输出标题
-    int title_width = get_display_width("住院押金预警详情");
-    int title_padding = (total_width - title_width) / 2;
-    for (int i = 0; i < title_padding; i++) printf(" ");
-    printf("住院押金预警详情");
-    for (int i = 0; i < total_width - title_width - title_padding; i++) printf(" ");
-    printf("\n");
-    
-    for (int i = 0; i < total_width; i++) printf("=");
-    printf("\n");
-    
-    if (count == 0)
-    {
-        printf("当前无住院押金预警\n");
-    }
-    else
-    {
-        // 输出表头
-        print_padded_text("住院号", inpatient_id_width);
-        printf("    ");
-        print_padded_text("患者编号", patient_id_width);
-        printf("    ");
-        print_padded_text("患者姓名", patient_name_width);
-        printf("    ");
-        print_padded_text("病房类型", ward_type_width);
-        printf("    ");
-        print_padded_text("当前押金余额", deposit_width);
-        printf("    ");
-        print_padded_text("预计日费用", daily_cost_width);
-        printf("    ");
-        print_padded_text("预警原因", reason_width);
-        printf("\n");
-        
-        // 输出表头下横线
-        for (int i = 0; i < total_width; i++) printf("-");
-        printf("\n");
-        
-        // 输出数据行
-        if (g_inpatient_list != NULL && g_inpatient_list->next != NULL)
-        {
-            InpatientRecord* curr = g_inpatient_list->next;
-            while (curr != NULL)
-            {
-                if (curr->is_active)
-                {
-                    double daily_cost = estimate_daily_cost_by_ward_type(curr->ward_type);
-                    double threshold = daily_cost * 3;
-                    if (curr->deposit_balance < threshold)
-                    {
-                        const char* ward_type_name = NULL;
-                        switch (curr->ward_type)
-                        {
-                            case WARD_TYPE_GENERAL:
-                                ward_type_name = "普通病房";
-                                break;
-                            case WARD_TYPE_ICU:
-                                ward_type_name = "ICU";
-                                break;
-                            case WARD_TYPE_ISOLATION:
-                                ward_type_name = "隔离病房";
-                                break;
-                            case WARD_TYPE_SINGLE:
-                                ward_type_name = "单人病房";
-                                break;
-                            default:
-                                ward_type_name = "未知";
-                                break;
-                        }
-                        
-                        char patient_name[50] = "";
-                        if (g_patient_list != NULL && g_patient_list->next != NULL)
-                        {
-                            PatientNode* patient_curr = g_patient_list->next;
-                            while (patient_curr != NULL)
-                            {
-                                if (strcmp(patient_curr->id, curr->patient_id) == 0)
-                                {
-                                    strncpy(patient_name, patient_curr->name, sizeof(patient_name) - 1);
-                                    break;
-                                }
-                                patient_curr = patient_curr->next;
-                            }
-                        }
-                        
-                        print_padded_text(curr->inpatient_id, inpatient_id_width);
-                        printf("    ");
-                        print_padded_text(curr->patient_id, patient_id_width);
-                        printf("    ");
-                        print_padded_text(patient_name, patient_name_width);
-                        printf("    ");
-                        print_padded_text(ward_type_name, ward_type_width);
-                        printf("    ");
-                        printf("%.2f", curr->deposit_balance);
-                        printf("    ");
-                        printf("%.2f", daily_cost);
-                        printf("    ");
-                        print_padded_text("押金不足", reason_width);
-                        printf("\n");
-                    }
-                }
-                curr = curr->next;
-            }
-        }
-    }
-    
-    // 输出底部横线
-    for (int i = 0; i < total_width; i++) printf("-");
-    printf("\n");
-    
-    // 输出统计信息
-    char count_str[50];
-    snprintf(count_str, sizeof(count_str), "押金预警住院患者数量：%d", count);
-    int count_width = get_display_width(count_str);
-    int count_padding = (total_width - count_width) / 2;
-    for (int i = 0; i < count_padding; i++) printf(" ");
-    printf("%s", count_str);
-    printf("\n");
-    
-    for (int i = 0; i < total_width; i++) printf("=");
-    printf("\n");
-    printf("按任意键返回...\n");
-    get_single_char("");
-}
-
-// 欠费 / 待缴费患者预警详情
-static void show_unpaid_patient_warning(void)
-{
-    int count = 0;
-    
-    // 第一步：统计每一列的最大显示宽度
-    int patient_id_width = get_display_width("患者编号");
-    int patient_name_width = get_display_width("姓名");
-    int age_width = get_display_width("年龄");
-    int status_width = get_display_width("当前状态");
-    int department_width = get_display_width("就诊科室");
-    
-    // 统计欠费/待缴费患者并计算列宽
-    if (g_patient_list != NULL && g_patient_list->next != NULL)
-    {
-        PatientNode* curr = g_patient_list->next;
-        while (curr != NULL)
-        {
-            if (curr->status == STATUS_UNPAID)
-            {
-                count++;
-                
-                int current_patient_id_width = get_display_width(curr->id);
-                int current_patient_name_width = get_display_width(curr->name);
-                
-                char age_str[10];
-                snprintf(age_str, sizeof(age_str), "%d", curr->age);
-                int current_age_width = get_display_width(age_str);
-                
-                const char* status_name = "欠费/待缴费";
-                int current_status_width = get_display_width(status_name);
-                
-                const char* department_name = curr->target_dept;
-                if (department_name == NULL || strlen(department_name) == 0)
-                {
-                    department_name = "未分配";
-                }
-                int current_department_width = get_display_width(department_name);
-                
-                if (current_patient_id_width > patient_id_width)
-                    patient_id_width = current_patient_id_width;
-                if (current_patient_name_width > patient_name_width)
-                    patient_name_width = current_patient_name_width;
-                if (current_age_width > age_width)
-                    age_width = current_age_width;
-                if (current_status_width > status_width)
-                    status_width = current_status_width;
-                if (current_department_width > department_width)
-                    department_width = current_department_width;
-            }
-            curr = curr->next;
-        }
-    }
-    
-    // 第二步：按动态列宽输出表格
-    printf("\n");
-    int total_width = patient_id_width + patient_name_width + age_width + status_width + department_width + 20; // 20是列间距总和
-    for (int i = 0; i < total_width; i++) printf("=");
-    printf("\n");
-    
-    // 输出标题
-    int title_width = get_display_width("欠费 / 待缴费患者预警详情");
-    int title_padding = (total_width - title_width) / 2;
-    for (int i = 0; i < title_padding; i++) printf(" ");
-    printf("欠费 / 待缴费患者预警详情");
-    for (int i = 0; i < total_width - title_width - title_padding; i++) printf(" ");
-    printf("\n");
-    
-    for (int i = 0; i < total_width; i++) printf("=");
-    printf("\n");
-    
-    if (count == 0)
-    {
-        printf("当前无欠费 / 待缴费患者预警\n");
-    }
-    else
-    {
-        // 输出表头
-        print_padded_text("患者编号", patient_id_width);
-        printf("    ");
-        print_padded_text("姓名", patient_name_width);
-        printf("    ");
-        print_padded_text("年龄", age_width);
-        printf("    ");
-        print_padded_text("当前状态", status_width);
-        printf("    ");
-        print_padded_text("就诊科室", department_width);
-        printf("\n");
-        
-        // 输出表头下横线
-        for (int i = 0; i < total_width; i++) printf("-");
-        printf("\n");
-        
-        // 输出数据行
-        if (g_patient_list != NULL && g_patient_list->next != NULL)
-        {
-            PatientNode* curr = g_patient_list->next;
-            while (curr != NULL)
-            {
-                if (curr->status == STATUS_UNPAID)
-                {
-                    char age_str[10];
-                    snprintf(age_str, sizeof(age_str), "%d", curr->age);
-                    
-                    const char* status_name = "欠费/待缴费";
-                    
-                    const char* department_name = curr->target_dept;
-                    if (department_name == NULL || strlen(department_name) == 0)
-                    {
-                        department_name = "未分配";
-                    }
-                    
-                    print_padded_text(curr->id, patient_id_width);
-                    printf("    ");
-                    print_padded_text(curr->name, patient_name_width);
-                    printf("    ");
-                    print_padded_text(age_str, age_width);
-                    printf("    ");
-                    print_padded_text(status_name, status_width);
-                    printf("    ");
-                    print_padded_text(department_name, department_width);
-                    printf("\n");
-                }
-                curr = curr->next;
-            }
-        }
-    }
-    
-    // 输出底部横线
-    for (int i = 0; i < total_width; i++) printf("-");
-    printf("\n");
-    
-    // 输出统计信息
-    char count_str[50];
-    snprintf(count_str, sizeof(count_str), "欠费 / 待缴费患者数量：%d", count);
-    int count_width = get_display_width(count_str);
-    int count_padding = (total_width - count_width) / 2;
-    for (int i = 0; i < count_padding; i++) printf(" ");
-    printf("%s", count_str);
-    printf("\n");
-    
-    for (int i = 0; i < total_width; i++) printf("=");
-    printf("\n");
-    printf("按任意键返回...\n");
-    get_single_char("");
-}
-
-// 统计待发药患者数量
-static int get_waiting_dispense_count(void)
-{
-    int count = 0;
+    // 输出数据行
     if (g_patient_list != NULL && g_patient_list->next != NULL)
     {
         PatientNode* curr = g_patient_list->next;
@@ -2207,36 +1501,56 @@ static int get_waiting_dispense_count(void)
         {
             if (curr->status == STATUS_WAIT_MED)
             {
-                count++;
+                const char* status_name = NULL;
+                switch (curr->status)
+                {
+                    case STATUS_WAIT_MED:
+                        status_name = "已缴费待取药";
+                        break;
+                    default:
+                        status_name = "未知";
+                        break;
+                }
+                
+                print_padded_text(curr->id, id_width);
+                printf("    ");
+                print_padded_text(curr->name, name_width);
+                printf("    ");
+                printf("%d", curr->age);
+                printf("    ");
+                print_padded_text(status_name, status_width);
+                printf("    ");
+                print_padded_text(curr->target_dept, dept_width);
+                printf("\n");
             }
             curr = curr->next;
         }
     }
-    return count;
+    
+    // 输出底部横线
+    for (int i = 0; i < total_width; i++) printf("-");
+    printf("\n");
+    
+    // 输出统计信息
+    char count_str[50];
+    snprintf(count_str, sizeof(count_str), "待取药患者数量：%d", count);
+    int count_width = get_display_width(count_str);
+    int count_padding = (total_width - count_width) / 2;
+    for (int i = 0; i < count_padding; i++) printf(" ");
+    printf("%s", count_str);
+    printf("\n");
+    
+    for (int i = 0; i < total_width; i++) printf("=");
+    printf("\n");
+    printf("按任意键返回...\n");
+    get_single_char("");
 }
 
-// 统计床位占用情况
-static void get_bed_occupancy(int* occupied, int* free)
-{
-    *occupied = 0;
-    *free = 0;
-    if (g_ward_list != NULL && g_ward_list->next != NULL)
-    {
-        WardNode* curr = g_ward_list->next;
-        while (curr != NULL)
-        {
-            if (curr->is_occupied)
-            {
-                (*occupied)++;
-            }
-            else
-            {
-                (*free)++;
-            }
-            curr = curr->next;
-        }
-    }
-}
+// 函数声明
+static void show_waiting_dispense_warning(void);
+static void show_bed_occupancy_warning(void);
+static void show_deposit_warning(void);
+static void show_arrears_warning(void);
 
 // 显示资源预警
 void show_resource_warnings(void)
@@ -2248,11 +1562,10 @@ void show_resource_warnings(void)
         int low_stock_count = 0;
         int expiring_medicine_count = 0;
         int deposit_warning_count = 0;
-        int waiting_dispense_count = get_waiting_dispense_count();
+        int waiting_dispense_count = 0;
         int occupied_beds = 0;
         int free_beds = 0;
         int unpaid_patient_count = 0;
-        get_bed_occupancy(&occupied_beds, &free_beds);
 
         time_t now = time(NULL);
         struct tm now_tm;
@@ -2296,6 +1609,7 @@ void show_resource_warnings(void)
                 // 仅统计当前仍在住院中的患者
                 if (curr->is_active)
                 {
+                    occupied_beds++;
                     // 根据病房类型估算日费用，若押金不足3天费用则预警
                     double daily_cost = estimate_daily_cost_by_ward_type(curr->ward_type);
                     double threshold = daily_cost * 3; // 押金不足3天费用时预警
@@ -2303,6 +1617,20 @@ void show_resource_warnings(void)
                     {
                         deposit_warning_count++;
                     }
+                }
+                curr = curr->next;
+            }
+        }
+
+        // 统计待发药患者数量
+        if (g_patient_list != NULL && g_patient_list->next != NULL)
+        {
+            PatientNode* curr = g_patient_list->next;
+            while (curr != NULL)
+            {
+                if (curr->status == STATUS_UNPAID)
+                {
+                    waiting_dispense_count++;
                 }
                 curr = curr->next;
             }
@@ -2322,6 +1650,10 @@ void show_resource_warnings(void)
             }
         }
 
+        // 计算空闲床位数（假设有100个床位）
+        free_beds = 100 - occupied_beds;
+        if (free_beds < 0) free_beds = 0;
+
         printf("\n==============================================================\n");
         printf("                      资源预警\n");
         printf("==============================================================\n");
@@ -2340,7 +1672,7 @@ void show_resource_warnings(void)
         printf("[3] 待发药患者预警\n");
         printf("[4] 床位占用预警\n");
         printf("[5] 住院押金预警\n");
-        printf("[6] 欠费 / 待缴费患者预警\n");
+        printf("[6] 欠费 / 待缴费预警\n");
         printf("[0] 返回上一级\n");
         printf("==============================================================\n");
         printf("请输入选择：");
@@ -2365,7 +1697,7 @@ void show_resource_warnings(void)
                 show_deposit_warning();
                 break;
             case 6:
-                show_unpaid_patient_warning();
+                show_arrears_warning();
                 break;
             case 0:
                 // 返回上一级
@@ -2379,63 +1711,192 @@ void show_resource_warnings(void)
     } while (choice != 0);
 }
 
-// 显示负载监控
-void show_load_monitoring(void)
+
+
+
+
+// 床位占用预警
+static void show_bed_occupancy_warning(void)
 {
-    printf("\n==============================================================\n");
-    printf("                      负载监控\n");
-    printf("==============================================================\n");
-    
-    // 统计各角色在线人数
-    int doctor_on_duty = 0;
-    int nurse_on_duty = 0;
-    int pharmacist_on_duty = 0;
-    
-    if (g_account_list != NULL && g_account_list->next != NULL)
+    system("cls");
+    printf("\n======================================================\n");
+    printf("                床位占用预警\n");
+    printf("======================================================\n");
+
+    int occupied_count = 0;
+    int free_count = 0;
+
+    if (g_inpatient_list != NULL && g_inpatient_list->next != NULL)
     {
-        AccountNode* curr = g_account_list->next;
+        InpatientRecord* curr = g_inpatient_list->next;
+        
         while (curr != NULL)
         {
-            if (curr->is_on_duty)
+            if (curr->is_active)
             {
-                switch (curr->role)
+                occupied_count++;
+                printf("患者编号：%s\n", curr->patient_id);
+                
+                // 查找患者姓名
+                PatientNode* patient = find_patient_by_id(g_patient_list, curr->patient_id);
+                if (patient != NULL)
                 {
-                    case ROLE_DOCTOR:
-                        doctor_on_duty++;
-                        break;
-                    case ROLE_NURSE:
-                        nurse_on_duty++;
-                        break;
-                    case ROLE_PHARMACIST:
-                        pharmacist_on_duty++;
-                        break;
-                    default:
-                        break;
+                    printf("患者姓名：%s\n", patient->name);
+                }
+                else
+                {
+                    printf("患者姓名：未知\n");
+                }
+                
+                printf("当前状态：已占用\n");
+                printf("------------------------------------------------------\n");
+            }
+            curr = curr->next;
+        }
+    }
+
+    // 计算空闲床位数（假设有100个床位）
+    free_count = 100 - occupied_count;
+    if (free_count < 0) free_count = 0;
+
+    if (occupied_count == 0)
+    {
+        printf("当前暂无床位占用预警。\n");
+    }
+    else
+    {
+        printf("已占用床位总数：%d\n", occupied_count);
+        printf("空闲床位总数：%d\n", free_count);
+    }
+    
+    printf("======================================================\n");
+    printf("按任意键返回...\n");
+    get_single_char("");
+}
+
+// 住院押金预警
+static void show_deposit_warning(void)
+{
+    system("cls");
+    printf("\n======================================================\n");
+    printf("                住院押金预警\n");
+    printf("======================================================\n");
+
+    int count = 0;
+
+    if (g_inpatient_list != NULL && g_inpatient_list->next != NULL)
+    {
+        InpatientRecord* curr = g_inpatient_list->next;
+        
+        while (curr != NULL)
+        {
+            if (curr->is_active)
+            {
+                // 根据病房类型估算日费用，若押金不足3天费用则预警
+                double daily_cost = estimate_daily_cost_by_ward_type(curr->ward_type);
+                double threshold = daily_cost * 3; // 押金不足3天费用时预警
+                
+                if (curr->deposit_balance < threshold)
+                {
+                    count++;
+                    printf("患者编号：%s\n", curr->patient_id);
+                    
+                    // 查找患者姓名
+                    PatientNode* patient = find_patient_by_id(g_patient_list, curr->patient_id);
+                    if (patient != NULL)
+                    {
+                        printf("患者姓名：%s\n", patient->name);
+                    }
+                    else
+                    {
+                        printf("患者姓名：未知\n");
+                    }
+                    
+                    printf("当前押金：%.2f\n", curr->deposit_balance);
+                    printf("预警阈值：%.2f\n", threshold);
+                    printf("差额：%.2f\n", threshold - curr->deposit_balance);
+                    printf("当前住院状态：住院中\n");
+                    printf("------------------------------------------------------\n");
                 }
             }
             curr = curr->next;
         }
     }
-    
-    printf("当前在岗医生：%d\n", doctor_on_duty);
-    printf("当前在岗护士：%d\n", nurse_on_duty);
-    printf("当前在岗药师：%d\n", pharmacist_on_duty);
-    
-    // 简单的负载评估
-    if (doctor_on_duty < 2)
+
+    if (count == 0)
     {
-        printf("警告：医生人数不足\n");
+        printf("当前暂无住院押金预警。\n");
     }
-    if (nurse_on_duty < 3)
+    else
     {
-        printf("警告：护士人数不足\n");
-    }
-    if (pharmacist_on_duty < 1)
-    {
-        printf("警告：药师人数不足\n");
+        printf("押金预警住院患者总数：%d\n", count);
     }
     
-    printf("==============================================================\n");
+    printf("======================================================\n");
+    printf("按任意键返回...\n");
+    get_single_char("");
+}
+
+// 欠费/待缴费预警
+static void show_arrears_warning(void)
+{
+    system("cls");
+    printf("\n======================================================\n");
+    printf("              欠费 / 待缴费预警\n");
+    printf("======================================================\n");
+
+    int count = 0;
+
+    if (g_patient_list != NULL && g_patient_list->next != NULL)
+    {
+        PatientNode* curr = g_patient_list->next;
+        
+        while (curr != NULL)
+        {
+            if (curr->status == STATUS_UNPAID)
+            {
+                count++;
+                printf("患者编号：%s\n", curr->id);
+                printf("患者姓名：%s\n", curr->name);
+                printf("当前状态：待缴费\n");
+                printf("账户余额：%.2f\n", curr->balance);
+                
+                // 检查是否为住院患者
+                int is_inpatient = 0;
+                if (g_inpatient_list != NULL && g_inpatient_list->next != NULL)
+                {
+                    InpatientRecord* inpatient_curr = g_inpatient_list->next;
+                    while (inpatient_curr != NULL)
+                    {
+                        if (inpatient_curr->is_active && strcmp(inpatient_curr->patient_id, curr->id) == 0)
+                        {
+                            is_inpatient = 1;
+                            break;
+                        }
+                        inpatient_curr = inpatient_curr->next;
+                    }
+                }
+                
+                printf("是否住院：%s\n", is_inpatient ? "是" : "否");
+                printf("备注：%s\n", curr->balance < 0 ? "欠费" : "待缴费");
+                printf("------------------------------------------------------\n");
+            }
+            curr = curr->next;
+        }
+    }
+
+    if (count == 0)
+    {
+        printf("当前暂无欠费 / 待缴费预警。\n");
+    }
+    else
+    {
+        printf("欠费 / 待缴费患者总数：%d\n", count);
+    }
+    
+    printf("======================================================\n");
+    printf("按任意键返回...\n");
+    get_single_char("");
 }
 
 // 显示公共状态统计摘要
@@ -2874,4 +2335,144 @@ void handle_medicine_remove(void)
     }
 
     printf("==============================================================\n");
+}
+
+// 显示评价统计
+void show_evaluation_statistics()
+{
+    if (g_consult_record_list == NULL)
+    {
+        printf("\n⚠️ 接诊记录链表尚未初始化！\n");
+        return;
+    }
+
+    int total_evaluations = 0;
+    int unevaluated_count = 0;
+    int star_counts[6] = {0};   // 1~5 星，0 位置不用
+    float total_score = 0.0f;
+
+    ConsultRecordNode* curr = g_consult_record_list->next;
+    while (curr != NULL)
+    {
+        if (curr->star_rating >= 1 && curr->star_rating <= 5)
+        {
+            total_evaluations++;
+            star_counts[curr->star_rating]++;
+            total_score += curr->star_rating;
+        }
+        else
+        {
+            unevaluated_count++;
+        }
+        curr = curr->next;
+    }
+
+    printf("\n======================================================\n");
+    printf("                    评价统计\n");
+    printf("======================================================\n");
+    printf("总评价数量：%d\n", total_evaluations);
+
+    if (total_evaluations > 0)
+    {
+        float average_score = total_score / total_evaluations;
+        printf("平均满意度：%.2f 星\n", average_score);
+        printf("------------------------------------------------------\n");
+        printf("各星级评价分布：\n");
+        printf("1 星：%d\n", star_counts[1]);
+        printf("2 星：%d\n", star_counts[2]);
+        printf("3 星：%d\n", star_counts[3]);
+        printf("4 星：%d\n", star_counts[4]);
+        printf("5 星：%d\n", star_counts[5]);
+    }
+    else
+    {
+        printf("当前暂无有效评价数据。\n");
+    }
+
+    printf("未评价记录数：%d\n", unevaluated_count);
+    printf("======================================================\n");
+}
+
+// 投诉管理菜单
+void admin_complaint_menu(void)
+{
+    int running = 1;
+
+    while (running)
+    {
+        system("cls");
+        printf("\n======================================================\n");
+        printf("               📝 投诉管理\n");
+        printf("======================================================\n");
+        printf("  [1] 查看所有投诉\n");
+        printf("  [2] 处理投诉\n");
+        printf("  [3] 按患者编号查询投诉历史\n");
+        printf("  [4] 按投诉编号查询投诉详情\n");
+        printf("  [0] 返回上一级\n");
+        printf("------------------------------------------------------\n");
+
+        switch (get_safe_int("👉 请输入操作编号: "))
+        {
+            case 1:
+                printf("\n查看所有投诉功能开发中...\n");
+                system("pause");
+                break;
+            case 2:
+                printf("\n处理投诉功能开发中...\n");
+                system("pause");
+                break;
+            case 3:
+                printf("\n按患者编号查询投诉历史功能开发中...\n");
+                system("pause");
+                break;
+            case 4:
+                printf("\n按投诉编号查询投诉详情功能开发中...\n");
+                system("pause");
+                break;
+            case 0:
+                running = 0;
+                break;
+            default:
+                printf("\n⚠️ 无效的选项，请重新输入！\n");
+                system("pause");
+                break;
+        }
+    }
+}
+
+// 评价管理菜单
+void admin_evaluation_menu(void)
+{
+    int running = 1;
+
+    while (running)
+    {
+        system("cls");
+        printf("\n======================================================\n");
+        printf("               ⭐ 评价管理\n");
+        printf("======================================================\n");
+        printf("  [1] 查看所有评价\n");
+        printf("  [2] 查看评价统计\n");
+        printf("  [0] 返回上一级\n");
+        printf("------------------------------------------------------\n");
+
+        switch (get_safe_int("👉 请输入操作编号: "))
+        {
+            case 1:
+                printf("\n查看所有评价功能开发中...\n");
+                system("pause");
+                break;
+            case 2:
+                show_evaluation_statistics();
+                system("pause");
+                break;
+            case 0:
+                running = 0;
+                break;
+            default:
+                printf("\n⚠️ 无效的选项，请重新输入！\n");
+                system("pause");
+                break;
+        }
+    }
 }
