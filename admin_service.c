@@ -285,8 +285,7 @@ int verify_account(const char* username, const char* password, int* role)
         return 0;
     }
 
-    new_account = create_account_node(username, password, real_name, role);
-    if (new_account == NULL)
+    if (strcmp(account->password, password) != 0)
     {
         return 0;
     }
@@ -805,6 +804,148 @@ void show_admin_dashboard(void)
     printf("==============================================================\n");
 }
 
+void admin_complaint_menu(void)
+{
+    int choice;
+    
+    do
+    {
+        printf("\n==============================================================\n");
+        printf("                      投诉管理\n");
+        printf("==============================================================\n");
+        printf("[1] 查看所有投诉\n");
+        printf("[2] 处理投诉\n");
+        printf("[3] 按患者查询投诉\n");
+        printf("[4] 按工单号查询投诉\n");
+        printf("[0] 返回上一级\n");
+        printf("==============================================================\n");
+        printf("请输入选择：");
+        
+        choice = get_safe_int("");
+        
+        switch (choice)
+        {
+            case 1:
+                show_all_complaints();
+                break;
+            case 2:
+                handle_complaint_response();
+                break;
+            case 3:
+                query_patient_complaints_by_id();
+                break;
+            case 4:
+                query_complaint_by_id();
+                break;
+            case 0:
+                break;
+            default:
+                printf("输入错误，请重新选择！\n");
+                break;
+        }
+    } while (choice != 0);
+}
+
+void admin_evaluation_menu(void)
+{
+    int choice;
+    
+    do
+    {
+        printf("\n==============================================================\n");
+        printf("                      评价管理\n");
+        printf("==============================================================\n");
+        printf("[1] 查看所有评价\n");
+        printf("[2] 评价统计\n");
+        printf("[0] 返回上一级\n");
+        printf("==============================================================\n");
+        printf("请输入选择：");
+        
+        choice = get_safe_int("");
+        
+        switch (choice)
+        {
+            case 1:
+                show_all_evaluations();
+                break;
+            case 2:
+                show_evaluation_statistics();
+                break;
+            case 0:
+                break;
+            default:
+                printf("输入错误，请重新选择！\n");
+                break;
+        }
+    } while (choice != 0);
+}
+
+void show_all_complaints(void)
+{
+    printf("\n==============================================================\n");
+    printf("                      所有投诉\n");
+    printf("==============================================================\n");
+    printf("（暂无投诉记录）\n");
+    printf("==============================================================\n");
+    printf("按任意键返回...\n");
+    get_single_char("");
+}
+
+void handle_complaint_response(void)
+{
+    printf("\n==============================================================\n");
+    printf("                      处理投诉\n");
+    printf("==============================================================\n");
+    printf("（暂无待处理投诉）\n");
+    printf("==============================================================\n");
+    printf("按任意键返回...\n");
+    get_single_char("");
+}
+
+void query_patient_complaints_by_id(void)
+{
+    char patient_id[MAX_ID_LEN];
+    
+    printf("\n==============================================================\n");
+    printf("                      按患者查询投诉\n");
+    printf("==============================================================\n");
+    get_safe_string("请输入患者编号：", patient_id, sizeof(patient_id));
+    query_patient_complaints(patient_id);
+}
+
+void query_complaint_by_id(void)
+{
+    printf("\n==============================================================\n");
+    printf("                      按工单号查询投诉\n");
+    printf("==============================================================\n");
+    printf("（功能开发中）\n");
+    printf("==============================================================\n");
+    printf("按任意键返回...\n");
+    get_single_char("");
+}
+
+void show_all_evaluations(void)
+{
+    printf("\n==============================================================\n");
+    printf("                      所有评价\n");
+    printf("==============================================================\n");
+    printf("（暂无评价记录）\n");
+    printf("==============================================================\n");
+    printf("按任意键返回...\n");
+    get_single_char("");
+}
+
+void show_evaluation_statistics(void)
+{
+    printf("\n==============================================================\n");
+    printf("                      评价统计\n");
+    printf("==============================================================\n");
+    printf("（暂无统计数据）\n");
+    printf("==============================================================\n");
+    printf("按任意键返回...\n");
+    get_single_char("");
+}
+
 // 解析日期字符串为 tm 结构
 static int parse_date_string(const char* date_str, struct tm* tm_out)
 {
@@ -1052,8 +1193,8 @@ static void show_low_stock_warning(void)
     get_single_char("");
 }
 
-// 显示负载监控查看
-void show_load_monitoring(void)
+// 显示近效期药品摘要
+void show_expiring_medicines_summary(void)
 {
     int count = 0;
     
@@ -1222,6 +1363,7 @@ static void show_waiting_dispense_warning(void)
     int age_width = get_display_width("年龄");
     int status_width = get_display_width("当前状态");
     int dept_width = get_display_width("就诊科室");
+    int total_width = id_width + name_width + age_width + status_width + dept_width + 20; // 20是列间距总和
     
     // 统计待发药患者并计算列宽
     if (g_patient_list != NULL && g_patient_list->next != NULL)
@@ -1259,91 +1401,6 @@ static void show_waiting_dispense_warning(void)
                     dept_width = current_dept_width;
             }
             curr = curr->next;
-        }
-    }
-
-    // 显示总体负载摘要
-    printf("\n======================================================\n");
-    printf("                  负载监控查看\n");
-    printf("======================================================\n");
-    printf("【总体负载摘要】\n");
-    printf("------------------------------------------------------\n");
-    printf("医生总数：%d\n", doctor_count);
-    printf("总待诊患者数：%d\n", pending_count);
-    printf("总待复诊患者数：%d\n", recheck_count);
-    printf("总过号作废患者数：%d\n", no_show_count);
-    printf("总已完成患者数：%d\n", completed_count);
-    printf("======================================================\n");
-
-    // 显示各医生负载明细
-    printf("【各医生负载明细】\n");
-    printf("------------------------------------------------------\n");
-    printf("医生工号            姓名            科室            当前排队人数    值班状态\n");
-    printf("------------------------------------------------------\n");
-    if (g_doctor_list != NULL && g_doctor_list->next != NULL)
-    {
-        doctor_curr = g_doctor_list->next;
-        while (doctor_curr != NULL)
-        {
-            printf("%-18s %-14s %-16s %-16d %-8s\n", 
-                doctor_curr->id, 
-                doctor_curr->name, 
-                doctor_curr->department, 
-                doctor_curr->queue_length, 
-                doctor_curr->is_on_duty ? "值班中" : "未值班");
-            doctor_curr = doctor_curr->next;
-        }
-    }
-    else
-    {
-        // 输出表头
-        print_padded_text("患者编号", id_width);
-        printf("    ");
-        print_padded_text("姓名", name_width);
-        printf("    ");
-        print_padded_text("年龄", age_width);
-        printf("    ");
-        print_padded_text("当前状态", status_width);
-        printf("    ");
-        print_padded_text("就诊科室", dept_width);
-        printf("\n");
-        
-        // 输出表头下横线
-        for (int i = 0; i < total_width; i++) printf("-");
-        printf("\n");
-        
-        // 输出数据行
-        if (g_patient_list != NULL && g_patient_list->next != NULL)
-        {
-            PatientNode* curr = g_patient_list->next;
-            while (curr != NULL)
-            {
-                if (curr->status == STATUS_WAIT_MED)
-                {
-                    const char* status_name = NULL;
-                    switch (curr->status)
-                    {
-                        case STATUS_WAIT_MED:
-                            status_name = "已缴费待取药";
-                            break;
-                        default:
-                            status_name = "未知";
-                            break;
-                    }
-                    
-                    print_padded_text(curr->id, id_width);
-                    printf("    ");
-                    print_padded_text(curr->name, name_width);
-                    printf("    ");
-                    printf("%d", curr->age);
-                    printf("    ");
-                    print_padded_text(status_name, status_width);
-                    printf("    ");
-                    print_padded_text(curr->target_dept, dept_width);
-                    printf("\n");
-                }
-                curr = curr->next;
-            }
         }
     }
     
@@ -2197,18 +2254,17 @@ void show_resource_warnings(void)
         int unpaid_patient_count = 0;
         get_bed_occupancy(&occupied_beds, &free_beds);
 
+        time_t now = time(NULL);
+        struct tm now_tm;
+        localtime_s(&now_tm, &now);
+        char current_date[11];
+        snprintf(current_date, sizeof(current_date), "%d-%02d-%02d",
+                 now_tm.tm_year + 1900, now_tm.tm_mon + 1, now_tm.tm_mday);
+
         // 统计低库存药品和近效期药品数量
         if (g_medicine_list != NULL && g_medicine_list->next != NULL)
         {
             MedicineNode* curr = g_medicine_list->next;
-            
-            time_t now = time(NULL);
-            struct tm now_tm;
-            localtime_s(&now_tm, &now);
-            
-            char current_date[11];
-            snprintf(current_date, sizeof(current_date), "%d-%02d-%02d", 
-                     now_tm.tm_year + 1900, now_tm.tm_mon + 1, now_tm.tm_mday);
             
             while (curr != NULL)
             {
@@ -2297,7 +2353,7 @@ void show_resource_warnings(void)
                 show_low_stock_warning();
                 break;
             case 2:
-                show_expiring_medicine_warning();
+                show_expiring_medicines(current_date, 30);
                 break;
             case 3:
                 show_waiting_dispense_warning();

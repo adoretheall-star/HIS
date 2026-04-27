@@ -215,15 +215,15 @@ static void admin_menu()
                 inpatient_menu();
                 system("pause");
                 break;
-            case 16:
+            case 18:
                 admin_complaint_menu();
                 system("pause");
                 break;
-            case 17:
+            case 19:
                 admin_evaluation_menu();
                 system("pause");
                 break;
-            case 18:
+            case 20:
                 patient_archive_menu();
                 system("pause");
                 break;
@@ -269,34 +269,19 @@ static void handle_admin_register_account()
     char username[MAX_ID_LEN];
     char password[MAX_ID_LEN];
     char real_name[MAX_NAME_LEN];
-    char gender;
+    char gender_str[8];
     char department[MAX_NAME_LEN];
     char input_buffer[100];
     RoleType role = 0;
     int step = 0;
 
     printf("\n================ 新增员工账号 ================\n");
-    get_safe_string("请输入登录账号: ", username, MAX_ID_LEN);
-    get_safe_string("请输入登录密码: ", password, MAX_ID_LEN);
-    get_safe_string("请输入真实姓名: ", real_name, MAX_NAME_LEN);
     
-    // 输入性别
-    char gender_str[8];
-    while (1) {
-        printf("请输入性别 (男/女): ");
-        get_safe_string(gender_str, gender_str, 8);
-        if (strcmp(gender_str, "男") == 0 || strcmp(gender_str, "女") == 0) {
-            break;
-        }
-        printf("⚠️ 无效的性别输入，请输入 男 或 女。\n");
-    }
-
-    role = prompt_admin_staff_role();
-    if (role == 0)
+    while (1)
     {
         switch (step)
         {
-            case 0: // 登录账号
+            case 0:
                 get_safe_string("请输入登录账号: ", input_buffer, 100);
                 
                 if (strcmp(input_buffer, "B") == 0)
@@ -327,7 +312,7 @@ static void handle_admin_register_account()
                 step = 1;
                 break;
                 
-            case 1: // 登录密码
+            case 1:
                 get_safe_string("请输入登录密码: ", input_buffer, 100);
                 
                 if (strcmp(input_buffer, "B") == 0)
@@ -345,7 +330,7 @@ static void handle_admin_register_account()
                 step = 2;
                 break;
                 
-            case 2: // 真实姓名
+            case 2:
                 get_safe_string("请输入真实姓名: ", input_buffer, 100);
                 
                 if (strcmp(input_buffer, "B") == 0)
@@ -363,7 +348,20 @@ static void handle_admin_register_account()
                 step = 3;
                 break;
                 
-            case 3: // 角色选择
+            case 3:
+                while (1) {
+                    printf("请输入性别 (男/女): ");
+                    get_safe_string(input_buffer, input_buffer, 100);
+                    if (strcmp(input_buffer, "男") == 0 || strcmp(input_buffer, "女") == 0) {
+                        strcpy(gender_str, input_buffer);
+                        break;
+                    }
+                    printf("⚠️ 无效的性别输入，请输入 男 或 女。\n");
+                }
+                step = 4;
+                break;
+                
+            case 4:
                 printf("\n请选择员工角色：\n");
                 printf("  [1] 管理员\n");
                 printf("  [2] 护士\n");
@@ -373,7 +371,7 @@ static void handle_admin_register_account()
                 
                 if (strcmp(input_buffer, "B") == 0)
                 {
-                    step = 2;
+                    step = 3;
                     continue;
                 }
                 else if (strcmp(input_buffer, "Q") == 0)
@@ -404,20 +402,20 @@ static void handle_admin_register_account()
                 
                 if (role == ROLE_DOCTOR)
                 {
-                    step = 4;
+                    step = 5;
                 }
                 else
                 {
-                    step = 5; // 直接进入提交
+                    step = 6;
                 }
                 break;
                 
-            case 4: // 医生所属科室
+            case 5:
                 get_safe_string("请输入医生所属科室: ", input_buffer, 100);
                 
                 if (strcmp(input_buffer, "B") == 0)
                 {
-                    step = 3;
+                    step = 4;
                     continue;
                 }
                 else if (strcmp(input_buffer, "Q") == 0)
@@ -443,18 +441,18 @@ static void handle_admin_register_account()
                     return;
                 }
                 
-                step = 5;
+                step = 6;
                 break;
                 
-            case 5: // 提交注册
-                if (!register_account(username, password, real_name, role))
+            case 6:
+                if (!register_account(username, password, real_name, gender_str, role))
                 {
                     return;
                 }
                 
                 if (role == ROLE_DOCTOR)
                 {
-                    DoctorNode* new_doctor = create_doctor_node(username, real_name, department);
+                    DoctorNode* new_doctor = create_doctor_node(username, real_name, gender_str, department);
                     if (new_doctor == NULL)
                     {
                         delete_account_by_username(g_account_list, username);
@@ -468,25 +466,6 @@ static void handle_admin_register_account()
                 
                 return;
         }
-    }
-
-    if (!register_account(username, password, real_name, gender_str, role))
-    {
-        return;
-    }
-
-    if (role == ROLE_DOCTOR)
-    {
-        DoctorNode* new_doctor = create_doctor_node(username, real_name, gender_str, department);
-        if (new_doctor == NULL)
-        {
-            delete_account_by_username(g_account_list, username);
-            printf("⚠️ 医生实体创建失败，已回滚刚新增的账号。\n");
-            return;
-        }
-
-        insert_doctor_tail(g_doctor_list, new_doctor);
-        printf("✅ 已同步创建医生实体：%s（%s）- %s\n", real_name, username, department);
     }
 }
 
@@ -766,7 +745,7 @@ static void handle_admin_update_account()
                 
                 if (old_role != ROLE_DOCTOR && account->role == ROLE_DOCTOR)
                 {
-                    DoctorNode* new_doctor = create_doctor_node(username, account->real_name, department);
+                    DoctorNode* new_doctor = create_doctor_node(username, account->real_name, account->gender, department);
                     if (new_doctor == NULL)
                     {
                         printf("⚠️ 医生实体创建失败，请尽快补录医生信息。\n");
@@ -796,7 +775,7 @@ static void handle_admin_update_account()
                             return;
                         }
                         
-                        doctor = create_doctor_node(username, account->real_name, department);
+                        doctor = create_doctor_node(username, account->real_name, account->gender, department);
                         if (doctor == NULL)
                         {
                             printf("⚠️ 医生实体补建失败，请手动处理。\n");
@@ -834,14 +813,7 @@ static void handle_admin_update_doctor_duty()
     
     while (1)
     {
-        printf("⚠️ 账号更新后未能重新定位账号节点，请检查数据。\n");
-        return;
-    }
-
-    if (old_role != ROLE_DOCTOR && account->role == ROLE_DOCTOR)
-    {
-        DoctorNode* new_doctor = create_doctor_node(username, account->real_name, account->gender, department);
-        if (new_doctor == NULL)
+        switch (step)
         {
             case 0: // 第1步：输入医生工号
                 get_safe_string("请输入医生工号: ", input_buffer, 100);
@@ -1074,36 +1046,6 @@ static void handle_admin_update_nurse_duty()
                     printf("⚠️ 无效的选择，请重新输入。\n");
                 }
                 break;
-        }
-    }
-    else if (account->role == ROLE_DOCTOR)
-    {
-        doctor = find_doctor_by_id(g_doctor_list, username);
-        if (doctor == NULL)
-        {
-            if (is_blank_string(department))
-            {
-                printf("⚠️ 检测到缺失医生实体，但当前未提供科室，无法自动补建。\n");
-                return;
-            }
-
-            doctor = create_doctor_node(username, account->real_name, account->gender, department);
-            if (doctor == NULL)
-            {
-                printf("⚠️ 医生实体补建失败，请手动处理。\n");
-                return;
-            }
-            insert_doctor_tail(g_doctor_list, doctor);
-            printf("✅ 已补建缺失的医生实体。\n");
-        }
-        else
-        {
-            safe_copy_string(doctor->name, MAX_NAME_LEN, account->real_name);
-            if (!is_blank_string(department))
-            {
-                safe_copy_string(doctor->department, MAX_NAME_LEN, department);
-            }
-            printf("✅ 已同步更新医生实体资料。\n");
         }
     }
 }
