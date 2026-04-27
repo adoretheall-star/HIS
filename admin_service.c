@@ -1430,7 +1430,7 @@ static void show_waiting_dispense_warning(void)
     int age_width = get_display_width("年龄");
     int status_width = get_display_width("当前状态");
     int dept_width = get_display_width("就诊科室");
-    int total_width = id_width + name_width + age_width + status_width + dept_width + 20; // 20是列间距总和
+    total_width = id_width + name_width + age_width + status_width + dept_width + 20; // 20是列间距总和
     
     // 统计待发药患者并计算列宽
     if (g_patient_list != NULL && g_patient_list->next != NULL)
@@ -2170,6 +2170,18 @@ void handle_medicine_basic_info_update(void)
     printf("==============================================================\n");
 }
 
+// 显示负载监控
+void show_load_monitoring(void)
+{
+    printf("\n==============================================================\n");
+    printf("                      系统负载监控\n");
+    printf("==============================================================\n");
+    printf("（功能开发中）\n");
+    printf("==============================================================\n");
+    printf("按任意键返回...\n");
+    get_single_char("");
+}
+
 // 处理药品库存更新
 void handle_medicine_stock_update(void)
 {
@@ -2337,142 +2349,3 @@ void handle_medicine_remove(void)
     printf("==============================================================\n");
 }
 
-// 显示评价统计
-void show_evaluation_statistics()
-{
-    if (g_consult_record_list == NULL)
-    {
-        printf("\n⚠️ 接诊记录链表尚未初始化！\n");
-        return;
-    }
-
-    int total_evaluations = 0;
-    int unevaluated_count = 0;
-    int star_counts[6] = {0};   // 1~5 星，0 位置不用
-    float total_score = 0.0f;
-
-    ConsultRecordNode* curr = g_consult_record_list->next;
-    while (curr != NULL)
-    {
-        if (curr->star_rating >= 1 && curr->star_rating <= 5)
-        {
-            total_evaluations++;
-            star_counts[curr->star_rating]++;
-            total_score += curr->star_rating;
-        }
-        else
-        {
-            unevaluated_count++;
-        }
-        curr = curr->next;
-    }
-
-    printf("\n======================================================\n");
-    printf("                    评价统计\n");
-    printf("======================================================\n");
-    printf("总评价数量：%d\n", total_evaluations);
-
-    if (total_evaluations > 0)
-    {
-        float average_score = total_score / total_evaluations;
-        printf("平均满意度：%.2f 星\n", average_score);
-        printf("------------------------------------------------------\n");
-        printf("各星级评价分布：\n");
-        printf("1 星：%d\n", star_counts[1]);
-        printf("2 星：%d\n", star_counts[2]);
-        printf("3 星：%d\n", star_counts[3]);
-        printf("4 星：%d\n", star_counts[4]);
-        printf("5 星：%d\n", star_counts[5]);
-    }
-    else
-    {
-        printf("当前暂无有效评价数据。\n");
-    }
-
-    printf("未评价记录数：%d\n", unevaluated_count);
-    printf("======================================================\n");
-}
-
-// 投诉管理菜单
-void admin_complaint_menu(void)
-{
-    int running = 1;
-
-    while (running)
-    {
-        system("cls");
-        printf("\n======================================================\n");
-        printf("               📝 投诉管理\n");
-        printf("======================================================\n");
-        printf("  [1] 查看所有投诉\n");
-        printf("  [2] 处理投诉\n");
-        printf("  [3] 按患者编号查询投诉历史\n");
-        printf("  [4] 按投诉编号查询投诉详情\n");
-        printf("  [0] 返回上一级\n");
-        printf("------------------------------------------------------\n");
-
-        switch (get_safe_int("👉 请输入操作编号: "))
-        {
-            case 1:
-                printf("\n查看所有投诉功能开发中...\n");
-                system("pause");
-                break;
-            case 2:
-                printf("\n处理投诉功能开发中...\n");
-                system("pause");
-                break;
-            case 3:
-                printf("\n按患者编号查询投诉历史功能开发中...\n");
-                system("pause");
-                break;
-            case 4:
-                printf("\n按投诉编号查询投诉详情功能开发中...\n");
-                system("pause");
-                break;
-            case 0:
-                running = 0;
-                break;
-            default:
-                printf("\n⚠️ 无效的选项，请重新输入！\n");
-                system("pause");
-                break;
-        }
-    }
-}
-
-// 评价管理菜单
-void admin_evaluation_menu(void)
-{
-    int running = 1;
-
-    while (running)
-    {
-        system("cls");
-        printf("\n======================================================\n");
-        printf("               ⭐ 评价管理\n");
-        printf("======================================================\n");
-        printf("  [1] 查看所有评价\n");
-        printf("  [2] 查看评价统计\n");
-        printf("  [0] 返回上一级\n");
-        printf("------------------------------------------------------\n");
-
-        switch (get_safe_int("👉 请输入操作编号: "))
-        {
-            case 1:
-                printf("\n查看所有评价功能开发中...\n");
-                system("pause");
-                break;
-            case 2:
-                show_evaluation_statistics();
-                system("pause");
-                break;
-            case 0:
-                running = 0;
-                break;
-            default:
-                printf("\n⚠️ 无效的选项，请重新输入！\n");
-                system("pause");
-                break;
-        }
-    }
-}

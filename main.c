@@ -214,11 +214,11 @@ static void admin_menu()
                 admin_complaint_menu();
                 system("pause");
                 break;
-            case 19:
+            case 17:
                 admin_evaluation_menu();
                 system("pause");
                 break;
-            case 20:
+            case 18:
                 patient_archive_menu();
                 system("pause");
                 break;
