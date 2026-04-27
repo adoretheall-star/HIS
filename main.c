@@ -63,8 +63,10 @@ static void handle_patient_self_registration();
 static void handle_patient_self_appointment_cancel();
 static void handle_patient_self_basic_record_query();
 static void handle_patient_self_visit_overview_query();
+
 static void handle_patient_self_consult_history_query(const char* patient_id, const char* id_card);
 static void handle_patient_self_current_visit_overview();
+static void handle_patient_self_balance_query();
 
 static void handle_patient_archive_query_by_id();
 static void handle_patient_archive_query_by_id_card();
@@ -109,6 +111,9 @@ static void inpatient_menu();
 static void handle_inpatient_register();
 static void handle_bed_assign();
 static void handle_inpatient_record_query();
+static void handle_inpatient_query_by_id();
+static void handle_inpatient_query_by_dept();
+static void handle_discharged_patients();
 static void handle_deposit_recharge();
 static void handle_daily_settlement();
 static void handle_transfer_bed();
@@ -2018,38 +2023,118 @@ static void nurse_menu()
 // 显示最近的安全预警
 static void display_recent_alerts()
 {
-    if (g_alert_list == NULL || g_alert_list->next == NULL)
-    {
-        printf("\n🔒 当前安全环境：优\n");
-        return;
-    }
-    
-    printf("\n🚨 【安全预警中心】最近警报：\n");
+    int has_content = 0;
+
+    printf("\n🚨 【安全预警中心】最近预警：\n");
     printf("------------------------------------------------------\n");
-    
-    // 逆序打印最近的 5 条警报
-    AlertNode* curr = g_alert_list->next;
-    int count = 0;
-    
-    // 先找到链表末尾
-    while (curr->next != NULL)
+
+    // === 实时扫描：住院欠费预警 ===
+    if (g_inpatient_list && g_inpatient_list->next)
     {
-        curr = curr->next;
+        InpatientRecord* ir = g_inpatient_list->next;
+        while (ir)
+        {
+            if (ir->is_active && ir->deposit_balance < 0)
+            {
+                PatientNode* p = find_patient_by_id(g_patient_list, ir->patient_id);
+                printf("🚨 住院欠费：%s（%s）押金 %.2f 元，已欠费！\n",
+                    p ? p->name : "未知", ir->patient_id, ir->deposit_balance);
+                has_content = 1;
+            }
+            ir = ir->next;
+        }
     }
-    
-    // 从末尾向前遍历，打印最近的 5 条
-    while (curr != g_alert_list && count < 5)
+
+    // === 实时扫描：押金不足 ===
+    if (g_inpatient_list && g_inpatient_list->next)
     {
-        struct tm* local_time = localtime(&curr->time);
-        char time_str[20];
-        strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", local_time);
-        
-        printf("[%s] %s\n", time_str, curr->message);
-        
-        curr = curr->prev;
-        count++;
+        InpatientRecord* ir = g_inpatient_list->next;
+        while (ir)
+        {
+            if (ir->is_active && ir->deposit_balance >= 0 && strlen(ir->bed_id) > 0)
+            {
+                double rate = 120.0;
+                switch (ir->ward_type) {
+                    case WARD_TYPE_ICU: rate = 500.0; break;
+                    case WARD_TYPE_ISOLATION: rate = 300.0; break;
+                    case WARD_TYPE_SINGLE: rate = 400.0; break;
+                    default: rate = 120.0; break;
+                }
+                if (ir->deposit_balance < rate * 3)
+                {
+                    PatientNode* p = find_patient_by_id(g_patient_list, ir->patient_id);
+                    printf("⚠️ 押金不足：%s（%s）余额 %.2f，不足3天费用\n",
+                        p ? p->name : "未知", ir->patient_id, ir->deposit_balance);
+                    has_content = 1;
+                }
+            }
+            ir = ir->next;
+        }
     }
-    
+
+    // === 实时扫描：低库存 ===
+    if (g_medicine_list && g_medicine_list->next)
+    {
+        MedicineNode* m = g_medicine_list->next;
+        while (m)
+        {
+            if (m->stock < 5)
+            {
+                printf("⚠️ 低库存：药品 [%s] %s 库存 %d，低于阈值5\n",
+                    m->id, m->name, m->stock);
+                has_content = 1;
+            }
+            m = m->next;
+        }
+    }
+
+    // === 实时扫描：临期药品 ===
+    if (g_medicine_list && g_medicine_list->next)
+    {
+        MedicineNode* m = g_medicine_list->next;
+        while (m)
+        {
+            if (strlen(m->expiry_date) > 0)
+            {
+                struct tm tm_exp = {0};
+                if (sscanf(m->expiry_date, "%d-%d-%d", &tm_exp.tm_year, &tm_exp.tm_mon, &tm_exp.tm_mday) == 3)
+                {
+                    tm_exp.tm_year -= 1900;
+                    tm_exp.tm_mon -= 1;
+                    time_t exp_time = mktime(&tm_exp);
+                    double days_left = difftime(exp_time, time(NULL)) / 86400.0;
+                    if (days_left <= 30)
+                    {
+                        printf("⚠️ 临期药品：%s [%s] %d天后过期\n",
+                            m->name, m->id, (int)days_left);
+                        has_content = 1;
+                    }
+                }
+            }
+            m = m->next;
+        }
+    }
+
+    // === 事件预警（来自预警队列） ===
+    if (g_alert_list && g_alert_list->next)
+    {
+        AlertNode* curr = g_alert_list->next;
+        while (curr->next) curr = curr->next;
+        int count = 0;
+        while (curr != g_alert_list && count < 5)
+        {
+            char time_str[20];
+            strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", localtime(&curr->time));
+            printf("[%s] %s\n", time_str, curr->message);
+            curr = curr->prev;
+            count++;
+            has_content = 1;
+        }
+    }
+
+    if (!has_content)
+        printf("✅ 当前无预警，系统运行正常\n");
+
     printf("------------------------------------------------------\n");
 }
 
@@ -3071,6 +3156,76 @@ static void handle_patient_self_current_visit_overview()
     }
     
     system("pause");
+}
+
+static void handle_patient_self_balance_query()
+{
+    char patient_id[MAX_ID_LEN];
+    char id_card[MAX_ID_LEN];
+
+    printf("\n================ 查询账户余额 ================\n");
+
+    while (1)
+    {
+        get_safe_string("请输入患者编号（输入 00 退出）: ", patient_id, MAX_ID_LEN);
+        if (strcmp(patient_id, "00") == 0) { printf("操作取消！\n"); return; }
+        if (is_blank_string(patient_id))
+        {
+            printf("⚠️ 患者编号不能为空，请重新输入\n");
+            continue;
+        }
+        if (find_patient_by_id(g_patient_list, patient_id) == NULL)
+        {
+            printf("⚠️ 未找到该患者，请重新输入\n");
+            continue;
+        }
+        break;
+    }
+
+    while (1)
+    {
+        get_safe_string("请输入身份证号进行身份核验（输入 00 退出）: ", id_card, MAX_ID_LEN);
+        if (strcmp(id_card, "00") == 0) { printf("操作取消！\n"); return; }
+        if (is_blank_string(id_card))
+        {
+            printf("⚠️ 身份证号不能为空，请重新输入\n");
+            continue;
+        }
+        if (!validate_id_card(id_card))
+        {
+            printf("⚠️ 身份证号格式不合法，请重新输入\n");
+            continue;
+        }
+        break;
+    }
+
+    PatientNode* patient = find_patient_by_id_card(id_card);
+    if (patient == NULL || strcmp(patient->id, patient_id) != 0)
+    {
+        printf("\n❌ 身份核验失败！患者编号与身份证号不匹配\n");
+        return;
+    }
+
+    printf("\n=============================================\n");
+    printf("  💰 账户余额\n");
+    printf("=============================================\n");
+    printf("  患者编号：%s\n", patient->id);
+    printf("  姓名：%s\n", patient->name);
+    printf("  账户余额：%.2f 元\n", patient->balance);
+    if (patient->balance < 0)
+        printf("  ⚠️ 余额已欠费，请及时充值！\n");
+    printf("=============================================\n");
+
+    InpatientRecord* ir = find_active_inpatient_by_patient_id(patient->id);
+    if (ir)
+    {
+        printf("\n  📋 住院押金信息\n");
+        printf("  住院号：%s\n", ir->inpatient_id);
+        printf("  押金余额：%.2f 元\n", ir->deposit_balance);
+        if (ir->deposit_balance < 0)
+            printf("  ⚠️ 押金已欠费，请及时催缴！\n");
+        printf("---------------------------------------------\n");
+    }
 }
 
 static void handle_patient_self_consult_history_query(const char* patient_id, const char* id_card)
@@ -4964,6 +5119,7 @@ static void patient_self_service_menu()
         printf("  [11] 查看投诉进度\n");
         printf("  [12] 就诊满意度评价\n");
         printf("  [13] 补缴黑名单欠费\n");
+        printf("  [14] 查询账户余额\n");
         printf("  [0] 返回上一级\n");
         printf("------------------------------------------------------\n");
         switch (get_safe_int("👉 请输入操作编号: "))
@@ -5797,6 +5953,10 @@ static void patient_self_service_menu()
                 
                 system("pause");
                 break;
+            case 14:
+                handle_patient_self_balance_query();
+                system("pause");
+                break;
             case 0:
                 running = 0;
                 break;
@@ -5902,7 +6062,7 @@ int main()
 "A-001", "P-001", "2026-04-01", "上午", "D-201", "外科", RESERVED
 ));
         insert_ward_tail(g_ward_list, create_ward_node(
-"W-101", "B-101", WARD_TYPE_GENERAL
+"W-101", "B-101", WARD_TYPE_GENERAL, "内科"
 ));
         insert_account_tail(g_account_list, create_account_node(
 "admin", "123456", "超级管理员", "男", ROLE_ADMIN));
@@ -6133,7 +6293,7 @@ int main()
                 sprintf(temp_id, "B-1%02d", i);
                 sprintf(temp_room, "%s病区-%02d房", dept, (j/4)+1); // 科室关联病房
                 int ward_type = (i % 4) + 1; // 1=普通, 2=ICU, 3=隔离病房, 4=单人病房
-                insert_ward_tail(g_ward_list, create_ward_node(temp_room, temp_id, ward_type));
+                insert_ward_tail(g_ward_list, create_ward_node(temp_room, temp_id, ward_type, dept));
                 i++;
             }
         }
@@ -6447,11 +6607,14 @@ static void inpatient_menu()
         printf("  [6] 分配床位\n");
         printf("  [7] 查询住院患者信息\n");
         printf("  [8] 查询患者住院记录\n");
-        printf("  [9] 押金充值\n");
-        printf("  [10] 日结计费\n");
-        printf("  [11] 转床\n");
-        printf("  [12] 办理出院（自动释放床位）\n");
-        printf("  [13] 床位/押金预警信息\n");
+        printf("  [9] 按住院号查\n");
+        printf("  [10] 按科室查住院患者\n");
+        printf("  [11] 已出院患者\n");
+        printf("  [12] 押金充值\n");
+        printf("  [13] 日结计费\n");
+        printf("  [14] 转床\n");
+        printf("  [15] 办理出院（自动释放床位）\n");
+        printf("  [16] 床位/押金预警信息\n");
         printf("  [0] 返回上一级\n");
         printf("------------------------------------------------------\n");   
 
@@ -6469,73 +6632,62 @@ static void inpatient_menu()
                 break;
             case 3:
                 {
-                    WardNode* ward_curr = NULL;
-                    printf("\n================ 床位占用情况 ===============-\n");
-                    printf("------------------------------------------------------\n");
-                    printf("病房编号       床位编号       类型         患者编号       患者姓名       身份证号\n");
-                    printf("------------------------------------------------------\n");
+                    printf("\n===============================================================\n");
+                    printf("                      床位占用情况\n");
+                    printf("===============================================================\n");
+                    print_col("病房编号", 12);
+                    print_col("床位编号", 12);
+                    print_col("类型", 10);
+                    print_col("患者编号", 13);
+                    print_col("患者姓名", 12);
+                    print_col("身份证号", 18);
+                    printf("\n");
+                    printf("---------------------------------------------------------------\n");
 
                     if (g_ward_list != NULL && g_ward_list->next != NULL)     
                     {
-                        ward_curr = g_ward_list->next;
+                        WardNode* ward_curr = g_ward_list->next;
                         int has_occupied_beds = 0;
                         while (ward_curr != NULL)
                         {
                             if (ward_curr->is_occupied)
                             {
                                 has_occupied_beds = 1;
-                                // 查找患者信息
-                                PatientNode* patient = NULL;
-                                if (g_patient_list != NULL && g_patient_list->next != NULL)
-                                {
-                                    PatientNode* patient_curr = g_patient_list->next;
-                                    while (patient_curr != NULL)
-                                    {
-                                        if (strcmp(patient_curr->id, ward_curr->patient_id) == 0)
-                                        {
-                                            patient = patient_curr;
-                                            break;
-                                        }
-                                        patient_curr = patient_curr->next;
-                                    }
-                                }
-                                
-                                if (patient != NULL)
+                                const char* p_name = "未知";
+                                const char* p_card = "未知";
+                                PatientNode* patient = find_patient_by_id(g_patient_list, ward_curr->patient_id);
+                                if (patient)
                                 {
                                     char masked_id_card[20];
                                     mask_id_card(patient->id_card, masked_id_card);
-                                    printf("%-13s %-13s %-12s %-13s %-13s %s\n",
-                                        ward_curr->room_id,
-                                        ward_curr->bed_id,
-                                        ward_curr->ward_type == WARD_TYPE_ICU ? "ICU" : "普通病房",
-                                        ward_curr->patient_id,
-                                        patient->name,
-                                        masked_id_card);
+                                    p_name = patient->name;
+                                    p_card = masked_id_card;
                                 }
-                                else
-                                {
-                                    printf("%-13s %-13s %-12s %-13s %-13s %s\n",
-                                        ward_curr->room_id,
-                                        ward_curr->bed_id,
-                                        ward_curr->ward_type == WARD_TYPE_ICU ? "ICU" : "普通病房",
-                                        ward_curr->patient_id,
-                                        "未知",
-                                        "未知");
-                                }
-                                printf("------------------------------------------------------\n");
+
+                                const char* t = ward_curr->ward_type == WARD_TYPE_ICU ? "ICU" :
+                                    (ward_curr->ward_type == WARD_TYPE_ISOLATION ? "隔离病房" :
+                                    (ward_curr->ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房"));
+
+                                print_col(ward_curr->room_id, 12);
+                                print_col(ward_curr->bed_id, 12);
+                                print_col(t, 10);
+                                print_col(ward_curr->patient_id, 13);
+                                print_col(p_name, 12);
+                                print_col(p_card, 18);
+                                printf("\n");
                             }
                             ward_curr = ward_curr->next;
                         }
                         if (!has_occupied_beds)
                         {
-                            printf("当前暂无已占用床位\n");
-                            printf("------------------------------------------------------\n");
+                            printf("  当前暂无已占用床位\n");
                         }
+                        printf("---------------------------------------------------------------\n");
                     }
                     else
                     {
-                        printf("当前无床位数据\n");
-                        printf("------------------------------------------------------\n");
+                        printf("  当前无床位数据\n");
+                        printf("---------------------------------------------------------------\n");
                     }
                     system("pause");
                 }
@@ -6632,19 +6784,28 @@ static void inpatient_menu()
                 handle_inpatient_record_query();
                 break;
             case 9:
+                handle_inpatient_query_by_id();
+                break;
+            case 10:
+                handle_inpatient_query_by_dept();
+                break;
+            case 11:
+                handle_discharged_patients();
+                break;
+            case 12:
                 handle_deposit_recharge();
                 break;
 
-            case 10:
+            case 13:
                 handle_daily_settlement();
                 break;
-            case 11:
+            case 14:
                 handle_transfer_bed();
                 break;
-            case 12:
+            case 15:
                 handle_discharge();
                 break;
-            case 13:
+            case 16:
                 show_deposit_warnings();
                 system("pause");
                 break;
@@ -6674,26 +6835,23 @@ static void handle_inpatient_register()
     
     printf("\n================ 住院登记 ===============-\n");
     
-    // 输入患者编号（不能为空、必须存在、不能已住院；输入Q取消）
+enter_patient:
     while (1)
     {
-        get_safe_string("请输入患者编号 (输入Q返回上一级): ", patient_id, MAX_ID_LEN);
+        get_safe_string("请输入患者编号 (输入B返回上一级): ", patient_id, MAX_ID_LEN);
         
-        // 检查是否取消
-        if (my_strcasecmp(patient_id, "q") == 0)
+        if (my_strcasecmp(patient_id, "b") == 0)
         {
             printf("\n已取消本次住院登记，返回上一级\n");
             return;
         }
         
-        // 检查患者编号是否为空
         if (is_blank_string(patient_id))
         {
             printf("⚠️ 患者编号不能为空，请重新输入\n");
             continue;
         }
         
-        // 检查患者是否存在
         patient = find_patient_by_id(g_patient_list, patient_id);
         if (patient == NULL)
         {
@@ -6701,7 +6859,6 @@ static void handle_inpatient_register()
             continue;
         }
 
-        // 检查患者是否已住院
         inpatient_record = find_active_inpatient_by_patient_id(patient_id);
         if (inpatient_record != NULL)
         {
@@ -6709,7 +6866,6 @@ static void handle_inpatient_register()
             continue;
         }
 
-        // 检查患者是否已标记为需要住院
         if (patient->status != STATUS_NEED_HOSPITALIZE)
         {
             printf("⚠️ 该患者未被医生开具住院通知，不能办理住院登记！\n");
@@ -6717,23 +6873,17 @@ static void handle_inpatient_register()
             continue;
         }
 
-        // 所有校验通过
         break;
     }
     
-    // 输入预计住院天数（必须大于0；输入Q取消）
+enter_days:
     while (1)
     {
-        get_safe_string("请输入预计住院天数 (输入Q返回上一级): ", input_buf, sizeof(input_buf));
+        get_safe_string("请输入预计住院天数 (输入B回退上一步): ", input_buf, sizeof(input_buf));
         
-        // 检查是否取消
-        if (my_strcasecmp(input_buf, "q") == 0)
-        {
-            printf("\n已取消本次住院登记，返回上一级\n");
-            return;
-        }
+        if (my_strcasecmp(input_buf, "b") == 0)
+            goto enter_patient;
         
-        // 严格校验：检查是否为纯数字
         for (i = 0; input_buf[i] != '\0'; i++)
         {
             if (!isdigit((unsigned char)input_buf[i]))
@@ -6757,19 +6907,14 @@ static void handle_inpatient_register()
         break;
     }
     
-    // 输入初始押金（必须大于0；输入Q取消）
+enter_deposit:
     while (1)
     {
-        get_safe_string("请输入初始押金金额 (输入Q返回上一级): ", input_buf, sizeof(input_buf));
+        get_safe_string("请输入初始押金金额 (输入B回退上一步): ", input_buf, sizeof(input_buf));
         
-        // 检查是否取消
-        if (my_strcasecmp(input_buf, "q") == 0)
-        {
-            printf("\n已取消本次住院登记，返回上一级\n");
-            return;
-        }
+        if (my_strcasecmp(input_buf, "b") == 0)
+            goto enter_days;
         
-        // 严格校验：检查是否为合法浮点数
         char* endptr;
         temp_deposit = strtod(input_buf, &endptr);
         if (*endptr != '\0' || endptr == input_buf)
@@ -6787,19 +6932,14 @@ static void handle_inpatient_register()
         break;
     }
     
-    // 输入病情级别（1=普通/2=重症；输入Q取消）
+enter_condition:
     while (1)
     {
-        get_safe_string("请输入病情级别 (1=普通, 2=重症, 输入Q返回上一级): ", input_buf, sizeof(input_buf));
+        get_safe_string("请输入病情级别 (1=普通, 2=重症, 输入B回退上一步): ", input_buf, sizeof(input_buf));
         
-        // 检查是否取消
-        if (my_strcasecmp(input_buf, "q") == 0)
-        {
-            printf("\n已取消本次住院登记，返回上一级\n");
-            return;
-        }
+        if (my_strcasecmp(input_buf, "b") == 0)
+            goto enter_deposit;
         
-        // 严格校验：检查是否为纯数字
         for (i = 0; input_buf[i] != '\0'; i++)
         {
             if (!isdigit((unsigned char)input_buf[i]))
@@ -6823,15 +6963,15 @@ static void handle_inpatient_register()
         break;
     }
     
-    // 校验患者余额是否足够
     if (patient->balance < deposit)
     {
         printf("\n⚠️ 患者账户余额不足！\n");
         printf("   当前余额: %.2f 元\n", patient->balance);
         printf("   需要押金: %.2f 元\n", deposit);
         printf("   差额: %.2f 元\n", deposit - patient->balance);
-        printf("\n❌ 住院登记失败，请先充值\n");
-        return;
+        printf("   输入 B 重新输入押金\n");
+        get_safe_string("按 B 键返回: ", input_buf, sizeof(input_buf));
+        goto enter_deposit;
     }
     
     // 显示住院登记摘要
@@ -6849,11 +6989,10 @@ static void handle_inpatient_register()
     printf("======================================================\n");
     
     // 确认提交
-    get_safe_string("是否确认提交住院登记？(Y/N): ", input_buf, sizeof(input_buf));
+    get_safe_string("是否确认提交住院登记？(Y=确认, B=返回修改): ", input_buf, sizeof(input_buf));
     if (my_strcasecmp(input_buf, "y") != 0 && my_strcasecmp(input_buf, "yes") != 0)
     {
-        printf("\n已取消住院登记\n");
-        return;
+        goto enter_condition;
     }
     
     // 扣除押金
@@ -6865,26 +7004,26 @@ static void handle_inpatient_register()
         printf("\n✅ 住院登记成功！\n");
         
         // 询问是否立即分配床位
-        get_safe_string("是否立即为患者分配床位？(Y/N): ", input_buf, sizeof(input_buf));
+        get_safe_string("是否立即为患者分配床位？(Y=确认, B=不分配): ", input_buf, sizeof(input_buf));
         if (my_strcasecmp(input_buf, "y") == 0 || my_strcasecmp(input_buf, "yes") == 0)
         {
-            // 显示空闲床位
             show_free_beds();
             
-            // 输入床位编号
             char bed_id[MAX_ID_LEN];
-            get_safe_string("请输入床位编号 (输入Q取消): ", bed_id, MAX_ID_LEN);
-            
-            if (my_strcasecmp(bed_id, "q") != 0 && !is_blank_string(bed_id))
+            while (1)
             {
+                get_safe_string("请输入床位编号 (输入B跳过): ", bed_id, MAX_ID_LEN);
+                if (my_strcasecmp(bed_id, "b") == 0) break;
+                if (is_blank_string(bed_id))
+                {
+                    printf("⚠️ 床位编号不能为空，请重新输入\n");
+                    continue;
+                }
                 if (assign_bed_to_patient(patient_id, bed_id))
-                {
                     printf("\n✅ 床位分配成功！\n");
-                }
                 else
-                {
-                    printf("\n❌ 床位分配失败，请稍后手动分配\n");
-                }
+                    continue;
+                break;
             }
         }
     }
@@ -6906,27 +7045,24 @@ static void handle_bed_assign()
     
     printf("\n================ 分配床位 ===============-\n");
     
-    // 输入患者编号（不能为空、必须存在、必须已住院但未分配床位；输入Q取消）
+enter_patient_bed:
     while (1)
     {
-        get_safe_string("请输入患者编号 (输入Q返回上一级): ", patient_id, MAX_ID_LEN);
+        get_safe_string("请输入患者编号 (输入B返回上一级): ", patient_id, MAX_ID_LEN);
         
-        // 检查是否取消
-        if (my_strcasecmp(patient_id, "q") == 0)
+        if (my_strcasecmp(patient_id, "b") == 0)
         {
             printf("\n已取消本次床位分配，返回上一级\n");
             system("pause");
             return;
         }
         
-        // 检查患者编号是否为空
         if (is_blank_string(patient_id))
         {
             printf("⚠️ 患者编号不能为空，请重新输入\n");
             continue;
         }
         
-        // 检查患者是否存在
         patient = find_patient_by_id(g_patient_list, patient_id);
         if (patient == NULL)
         {
@@ -6934,7 +7070,6 @@ static void handle_bed_assign()
             continue;
         }
         
-        // 检查患者是否已住院
         inpatient_record = find_active_inpatient_by_patient_id(patient_id);
         if (inpatient_record == NULL)
         {
@@ -6942,60 +7077,49 @@ static void handle_bed_assign()
             continue;
         }
         
-        // 检查患者是否已分配床位
         if (patient_has_bed(patient_id))
         {
             printf("⚠️ 该患者已分配床位，不能重复分配\n");
             continue;
         }
         
-        // 所有校验通过
         break;
     }
     
-    // 显示空闲床位
     printf("\n📋 空闲床位列表：\n");
     show_free_beds();
     
-    // 输入床位编号（不能为空、必须存在、必须空闲；输入Q取消）
     while (1)
     {
-        get_safe_string("请输入床位编号 (输入Q返回上一级): ", bed_id, MAX_ID_LEN);
+        get_safe_string("请输入床位编号 (输入B回退上一步): ", bed_id, MAX_ID_LEN);
         
-        // 检查是否取消
-        if (my_strcasecmp(bed_id, "q") == 0)
-        {
-            printf("\n已取消本次床位分配，返回上一级\n");
-            system("pause");
-            return;
-        }
+        if (my_strcasecmp(bed_id, "b") == 0)
+            goto enter_patient_bed;
         
-        // 检查床位编号是否为空
         if (is_blank_string(bed_id))
         {
             printf("⚠️ 床位编号不能为空，请重新输入\n");
             continue;
         }
         
-        // 检查床位是否存在且空闲
-        if (!bed_is_available(bed_id))
+        WardNode* target_bed = find_bed_by_id(bed_id);
+        if (target_bed == NULL)
         {
-            printf("⚠️ 床位不存在或已被占用，请重新输入\n");
+            printf("⚠️ 床位不存在，请重新输入\n");
+            continue;
+        }
+        if (target_bed->is_occupied)
+        {
+            printf("⚠️ 该床位已被占用，请重新输入\n");
             continue;
         }
         
-        // 所有校验通过
-        break;
-    }
-    
-    // 调用分配床位函数
-    if (assign_bed_to_patient(patient_id, bed_id))
-    {
-        printf("\n✅ 床位分配成功！\n");
-    }
-    else
-    {
-        printf("\n❌ 床位分配失败，请检查输入信息\n");
+        if (assign_bed_to_patient(patient_id, bed_id))
+        {
+            printf("\n✅ 床位分配成功！\n");
+            break;
+        }
+        printf("\n❌ 床位分配失败，请重新输入\n");
     }
     
     system("pause");
@@ -7042,6 +7166,62 @@ static void handle_inpatient_record_query()
     // 调用查询函数
     show_inpatient_record_by_patient_id(patient_id);
     
+    system("pause");
+}
+
+static void handle_inpatient_query_by_id()
+{
+    char query_str[MAX_ID_LEN];
+
+    printf("\n================ 按住院号查询 ===============-\n");
+
+    while (1)
+    {
+        get_safe_string("请输入住院号（输入B返回上一级）: ", query_str, MAX_ID_LEN);
+        if (my_strcasecmp(query_str, "b") == 0) return;
+        if (is_blank_string(query_str))
+        {
+            printf("⚠️ 住院号不能为空，请重新输入\n");
+            continue;
+        }
+        if (strncmp(query_str, "I-", 2) != 0)
+        {
+            printf("⚠️ 住院号格式应为 I-xxx，请重新输入\n");
+            continue;
+        }
+        break;
+    }
+
+    show_inpatient_record_by_inpatient_id(query_str);
+    system("pause");
+}
+
+static void handle_inpatient_query_by_dept()
+{
+    char dept[MAX_NAME_LEN];
+
+    printf("\n================ 按科室查询住院患者 ===============-\n");
+    printf("可用科室：内科、外科、综合重症、感染科、综合、妇产科 等\n");
+
+    while (1)
+    {
+        get_safe_string("请输入科室（输入B返回上一级）: ", dept, MAX_NAME_LEN);
+        if (my_strcasecmp(dept, "b") == 0) return;
+        if (is_blank_string(dept))
+        {
+            printf("⚠️ 科室名称不能为空，请重新输入\n");
+            continue;
+        }
+        break;
+    }
+
+    show_hospitalized_patients_by_dept(dept);
+    system("pause");
+}
+
+static void handle_discharged_patients()
+{
+    show_discharged_patients();
     system("pause");
 }
 
@@ -7096,7 +7276,7 @@ static void handle_deposit_recharge()
     while (1)
     {
         printf("请输入充值金额 (输入Q返回上一级): ");
-        get_safe_string(input_buf, input_buf, sizeof(input_buf));
+        get_safe_string("", input_buf, sizeof(input_buf));
         
         // 检查是否取消
         if (my_strcasecmp(input_buf, "q") == 0)
@@ -7305,14 +7485,23 @@ static void handle_transfer_bed()
             continue;
         }
         
-        // 检查新床位是否存在且空闲
-        if (!bed_is_available(new_bed_id))
+        WardNode* new_target = find_bed_by_id(new_bed_id);
+        if (new_target == NULL)
         {
-            printf("⚠️ 新床位不存在或已被占用，请重新输入\n");
+            printf("⚠️ 新床位不存在，请重新输入\n");
+            continue;
+        }
+        if (strcmp(new_bed_id, old_bed_id) == 0)
+        {
+            printf("⚠️ 新床位与原床位相同，无需转床，请重新输入\n");
+            continue;
+        }
+        if (new_target->is_occupied)
+        {
+            printf("⚠️ 新床位已被占用，请重新输入\n");
             continue;
         }
         
-        // 所有校验通过
         break;
     }
     

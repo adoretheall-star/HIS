@@ -466,12 +466,12 @@ int save_ward_list(WardNode* head) {
     if (fp == NULL) return 0;
 
     // 写入表头
-    fprintf(fp, "病房号|床位号|病房类型(1=普通,2=ICU,3=隔离病房,4=单人病房)|是否占用(0=否,1=是)|患者编号\n");
+    fprintf(fp, "病房号|床位号|病房类型(1=普通,2=ICU,3=隔离病房,4=单人病房)|所属科室|是否占用(0=否,1=是)|患者编号\n");
 
     WardNode* curr = head->next;
     while (curr != NULL) {
-        fprintf(fp, "%s|%s|%d|%d|%s\n",
-            curr->room_id, curr->bed_id, curr->ward_type, curr->is_occupied, curr->patient_id);
+        fprintf(fp, "%s|%s|%d|%s|%d|%s\n",
+            curr->room_id, curr->bed_id, curr->ward_type, curr->dept, curr->is_occupied, curr->patient_id);
         curr = curr->next;
     }
     fclose(fp);
@@ -495,21 +495,22 @@ int load_ward_list(WardNode** head) {
         trim_newline(line);
         if (strlen(line) == 0) continue;
 
-        char room_id[MAX_ID_LEN], bed_id[MAX_ID_LEN], patient_id[MAX_ID_LEN];
+        char room_id[MAX_ID_LEN], bed_id[MAX_ID_LEN], patient_id[MAX_ID_LEN], dept[MAX_NAME_LEN];
         int ward_type, is_occupied;
 
         char* fields[10];
         int field_count = split_line_by_delimiter(line, '|', fields, 10);
         
-        if (field_count < 5) continue;
+        if (field_count < 6) continue;
         
         strcpy(room_id, fields[0]);
         strcpy(bed_id, fields[1]);
         ward_type = atoi(fields[2]);
-        is_occupied = atoi(fields[3]);
-        strcpy(patient_id, fields[4]);
+        strcpy(dept, fields[3]);
+        is_occupied = atoi(fields[4]);
+        strcpy(patient_id, fields[5]);
 
-        WardNode* new_node = create_ward_node(room_id, bed_id, ward_type);
+        WardNode* new_node = create_ward_node(room_id, bed_id, ward_type, dept);
         if (new_node == NULL) continue;
 
         new_node->is_occupied = is_occupied;
@@ -1005,7 +1006,7 @@ int save_inpatient_list(InpatientRecord* head) {
     if (fp == NULL) return 0;
 
     // 写入表头
-    fprintf(fp, "住院记录编号|患者编号|床位号|病房类型(1=普通,2=ICU,3=隔离病房,4=单人病房)|推荐病房类型(1=普通,2=ICU,3=隔离病房,4=单人病房)|预计天数|已住天数|押金余额|是否活跃(0=否,1=是)|最近一次日结时间戳\n");
+    fprintf(fp, "住院记录编号|患者编号|床位号|初分床位号|病房类型(1=普通,2=ICU,3=隔离病房,4=单人病房)|推荐病房类型(1=普通,2=ICU,3=隔离病房,4=单人病房)|预计天数|已住天数|押金余额|是否活跃(0=否,1=是)|最近一次日结时间戳\n");
 
     InpatientRecord* curr = head->next;
     while (curr != NULL) {
@@ -1016,8 +1017,8 @@ int save_inpatient_list(InpatientRecord* head) {
         } else {
             strcpy(time_str, "未日结");
         }
-        fprintf(fp, "%s|%s|%s|%d|%d|%d|%d|%.2f|%d|%s\n",
-            curr->inpatient_id, curr->patient_id, curr->bed_id,
+        fprintf(fp, "%s|%s|%s|%s|%d|%d|%d|%d|%.2f|%d|%s\n",
+            curr->inpatient_id, curr->patient_id, curr->bed_id, curr->original_bed_id,
             curr->ward_type, curr->recommended_ward_type, curr->estimated_days,
             curr->days_stayed, curr->deposit_balance, curr->is_active,
             time_str);
@@ -1044,7 +1045,7 @@ int load_inpatient_list(InpatientRecord** head) {
         trim_newline(line);
         if (strlen(line) == 0) continue;
 
-        char inpatient_id[MAX_ID_LEN], patient_id[MAX_ID_LEN], bed_id[MAX_ID_LEN];
+        char inpatient_id[MAX_ID_LEN], patient_id[MAX_ID_LEN], bed_id[MAX_ID_LEN], original_bed_id[MAX_ID_LEN];
         int ward_type, recommended_ward_type, estimated_days, days_stayed, is_active;
         double deposit_balance;
         long last_settlement_time = 0;
@@ -1052,23 +1053,23 @@ int load_inpatient_list(InpatientRecord** head) {
         char* fields[15];
         int field_count = split_line_by_delimiter(line, '|', fields, 15);
         
-        if (field_count < 10) continue;
+        if (field_count < 11) continue;
         
         strcpy(inpatient_id, fields[0]);
         strcpy(patient_id, fields[1]);
         strcpy(bed_id, fields[2]);
-        ward_type = atoi(fields[3]);
-        recommended_ward_type = atoi(fields[4]);
-        estimated_days = atoi(fields[5]);
-        days_stayed = atoi(fields[6]);
-        deposit_balance = atof(fields[7]);
-        is_active = atoi(fields[8]);
+        strcpy(original_bed_id, fields[3]);
+        ward_type = atoi(fields[4]);
+        recommended_ward_type = atoi(fields[5]);
+        estimated_days = atoi(fields[6]);
+        days_stayed = atoi(fields[7]);
+        deposit_balance = atof(fields[8]);
+        is_active = atoi(fields[9]);
         
         // 解析时间戳
-        if (strcmp(fields[9], "未日结") != 0) {
-            // 尝试解析时间字符串 "YYYY-MM-DD HH:MM:SS"
+        if (strcmp(fields[10], "未日结") != 0) {
             int year, month, day, hour, minute, second;
-            if (sscanf(fields[9], "%d-%d-%d %d:%d:%d", &year, &month, &day, &hour, &minute, &second) == 6) {
+            if (sscanf(fields[10], "%d-%d-%d %d:%d:%d", &year, &month, &day, &hour, &minute, &second) == 6) {
                 struct tm tm_time;
                 tm_time.tm_year = year - 1900;  // 年份从1900开始
                 tm_time.tm_mon = month - 1;      // 月份从0开始
@@ -1087,6 +1088,8 @@ int load_inpatient_list(InpatientRecord** head) {
         if (new_node == NULL) continue;
         
         new_node->last_settlement_time = last_settlement_time;
+        strncpy(new_node->original_bed_id, original_bed_id, MAX_ID_LEN - 1);
+        new_node->original_bed_id[MAX_ID_LEN - 1] = '\0';
 
         insert_inpatient_record_tail(*head, new_node);
     }

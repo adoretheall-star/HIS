@@ -582,4 +582,5 @@ void print_col(const char* str, int col_width)
     int w = str_display_width(str);
     printf("%s", str);
     for (int i = w; i < col_width; i++) printf(" ");
+    printf("  ");
 }

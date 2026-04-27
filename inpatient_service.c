@@ -23,6 +23,8 @@
 // 全局变量（声明为 extern，实际定义在 list_ops.c 中）
 extern InpatientRecord* g_inpatient_list;
 
+static const char* ward_type_str(WardType t);
+
 // 病房费用标准
 #define GENERAL_WARD_RATE 120.0  // 普通病房每天费用
 #define ICU_WARD_RATE 500.0      // ICU每天费用
@@ -108,11 +110,19 @@ void show_all_beds()
         return;
     }
 
-    printf("\n======================================================\n");
-    printf("                   全部床位信息\n");
-    printf("======================================================\n");
-    printf("病房编号       床位编号       类型         状态       患者编号       患者姓名       身份证号\n");
-    printf("------------------------------------------------------\n");
+    printf("\n=======================================================================\n");
+    printf("                           全部床位信息\n");
+    printf("=======================================================================\n");
+    print_col("病房编号", 12);
+    print_col("床位编号", 12);
+    print_col("科室", 10);
+    print_col("类型", 10);
+    print_col("状态", 8);
+    print_col("患者编号", 13);
+    print_col("患者姓名", 12);
+    print_col("身份证号", 18);
+    printf("\n");
+    printf("-----------------------------------------------------------------------\n");
 
     curr = g_ward_list->next;
     while (curr != NULL)
@@ -123,53 +133,51 @@ void show_all_beds()
             occupied++;
         }
 
+        const char* type_str = ward_type_str(curr->ward_type);
+
         if (curr->is_occupied)
         {
             PatientNode* patient = find_patient_by_id(g_patient_list, curr->patient_id);
-            if (patient != NULL)
+            char masked_id_card[20];
+            const char* p_name = patient ? patient->name : "未知";
+            const char* p_id = patient ? curr->patient_id : "未知";
+            const char* p_card = "-";
+            if (patient)
             {
-                char masked_id_card[20];
                 mask_id_card(patient->id_card, masked_id_card);
-                printf("%-13s %-13s %-12s %-10s %-13s %-13s %s\n",
-                    curr->room_id,
-                    curr->bed_id,
-                    curr->ward_type == WARD_TYPE_ICU ? "ICU" : (curr->ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (curr->ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房")),
-                    "占用",
-                    curr->patient_id,
-                    patient->name,
-                    masked_id_card);
+                p_card = masked_id_card;
             }
-            else
-            {
-                printf("%-13s %-13s %-12s %-10s %-13s %-13s %s\n",
-                    curr->room_id,
-                    curr->bed_id,
-                    curr->ward_type == WARD_TYPE_ICU ? "ICU" : (curr->ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (curr->ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房")),
-                    "占用",
-                    curr->patient_id,
-                    "未知",
-                    "未知");
-            }
+
+            print_col(curr->room_id, 12);
+            print_col(curr->bed_id, 12);
+            print_col(curr->dept, 10);
+            print_col(type_str, 10);
+            print_col("占用", 8);
+            print_col(p_id, 13);
+            print_col(p_name, 12);
+            print_col(p_card, 18);
+            printf("\n");
         }
         else
         {
-            printf("%-13s %-13s %-12s %-10s %-13s %-13s %s\n",
-                curr->room_id,
-                curr->bed_id,
-                curr->ward_type == WARD_TYPE_ICU ? "ICU" : (curr->ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (curr->ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房")),
-                "空闲",
-                "-",
-                "-",
-                "-");
+            print_col(curr->room_id, 12);
+            print_col(curr->bed_id, 12);
+            print_col(curr->dept, 10);
+            print_col(type_str, 10);
+            print_col("空闲", 8);
+            print_col("-", 13);
+            print_col("-", 12);
+            print_col("-", 18);
+            printf("\n");
         }
 
         curr = curr->next;
     }
 
-    printf("------------------------------------------------------\n");
+    printf("-----------------------------------------------------------------------\n");
     printf("总计：%d 张床位，其中 %d 张已占用，%d 张空闲\n",
         total, occupied, total - occupied);
-    printf("======================================================\n");
+    printf("=======================================================================\n");
 }
 
 void show_free_beds()
@@ -183,11 +191,15 @@ void show_free_beds()
         return;
     }
 
-    printf("\n======================================================\n");
-    printf("                   空闲床位信息\n");
-    printf("======================================================\n");
-    printf("病房编号       床位编号       类型\n");
-    printf("------------------------------------------------------\n");
+    printf("\n=======================================================================\n");
+    printf("                           空闲床位信息\n");
+    printf("=======================================================================\n");
+    print_col("病房编号", 12);
+    print_col("床位编号", 12);
+    print_col("科室", 10);
+    print_col("类型", 10);
+    printf("\n");
+    printf("-----------------------------------------------------------------------\n");
 
     curr = g_ward_list->next;
     while (curr != NULL)
@@ -195,17 +207,45 @@ void show_free_beds()
         if (!curr->is_occupied)
         {
             free_count++;
-            printf("%-13s %-13s %s\n",
-                curr->room_id,
-                curr->bed_id,
-                curr->ward_type == WARD_TYPE_ICU ? "ICU" : (curr->ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (curr->ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房")));
+            print_col(curr->room_id, 12);
+            print_col(curr->bed_id, 12);
+            print_col(curr->dept, 10);
+            print_col(ward_type_str(curr->ward_type), 10);
+            printf("\n");
         }
         curr = curr->next;
     }
 
-    printf("------------------------------------------------------\n");
+    printf("-----------------------------------------------------------------------\n");
     printf("总计：%d 张空闲床位\n", free_count);
-    printf("======================================================\n");
+    printf("=======================================================================\n");
+}
+
+static void print_col_num_int(const char* str, int val, int col_width)
+{
+    char buf[32];
+    if (str && str[0])
+        snprintf(buf, sizeof(buf), "%s%d", str, val);
+    else
+        snprintf(buf, sizeof(buf), "%d", val);
+    print_col(buf, col_width);
+}
+
+static void print_col_num_dbl(const char* str, double val, int col_width)
+{
+    char buf[32];
+    if (str && str[0])
+        snprintf(buf, sizeof(buf), "%s%.2f", str, val);
+    else
+        snprintf(buf, sizeof(buf), "%.2f", val);
+    print_col(buf, col_width);
+}
+
+static const char* ward_type_str(WardType t)
+{
+    return t == WARD_TYPE_ICU ? "ICU" :
+           (t == WARD_TYPE_ISOLATION ? "隔离病房" :
+           (t == WARD_TYPE_SINGLE ? "单人病房" : "普通病房"));
 }
 
 void show_hospitalized_patients()
@@ -221,11 +261,32 @@ void show_hospitalized_patients()
         return;
     }
 
-    printf("\n======================================================\n");
-    printf("                   住院患者信息\n");
-    printf("======================================================\n");
-    printf("住院号       患者编号     患者姓名   病房编号       床位编号       推荐类型     实际类型     已住天数  押金余额\n");
-    printf("------------------------------------------------------\n");
+    printf("\n==============================================================\n");
+    printf("                       住院患者信息\n");
+    printf("==============================================================\n");
+    print_col("住院号", 12);
+    print_col("患者编号", 12);
+    print_col("患者姓名", 12);
+    print_col("病房编号", 12);
+    print_col("床位编号", 12);
+    print_col("推荐类型", 10);
+    print_col("实际类型", 10);
+    print_col("", 6);
+    print_col("已住", 6);
+    print_col("押金", 10);
+    printf("\n");
+    print_col("", 12);
+    print_col("", 12);
+    print_col("", 12);
+    print_col("", 12);
+    print_col("", 12);
+    print_col("", 10);
+    print_col("", 10);
+    print_col("", 6);
+    print_col("天数", 6);
+    print_col("余额", 10);
+    printf("\n");
+    printf("--------------------------------------------------------------\n");
 
     curr = g_inpatient_list->next;
     while (curr != NULL)
@@ -233,69 +294,37 @@ void show_hospitalized_patients()
         if (curr->is_active)
         {
             patient = find_patient_by_id(g_patient_list, curr->patient_id);
-            if (patient != NULL)
+            const char* p_name = patient ? patient->name : "患者档案缺失";
+            count++;
+
+            const char* actual_ward_type = "未分配";
+            const char* room_id = "未分配";
+            const char* bed_id_str = "未分配";
+
+            if (strlen(curr->bed_id) > 0)
             {
-                count++;
-                // 处理未分床的情况
-                const char* actual_ward_type = "未分配";
-                const char* room_id = "未分配";
-                
-                if (strlen(curr->bed_id) > 0)
-                {
-                    actual_ward_type = curr->ward_type == WARD_TYPE_ICU ? "ICU" : (curr->ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (curr->ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房"));
-                    // 通过床位编号查找病房编号
-                    bed = find_bed_by_id(curr->bed_id);
-                    if (bed != NULL)
-                    {
-                        room_id = bed->room_id;
-                    }
-                }
-                
-                printf("%-12s %-12s %-10s %-13s %-13s %-12s %-12s %-8d %.2f\n",
-                    curr->inpatient_id,
-                    curr->patient_id,
-                    patient->name,
-                    room_id,
-                    strlen(curr->bed_id) > 0 ? curr->bed_id : "未分配",
-                    curr->recommended_ward_type == WARD_TYPE_ICU ? "ICU" : (curr->recommended_ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (curr->recommended_ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房")),
-                    actual_ward_type,
-                    curr->days_stayed,
-                    curr->deposit_balance);
+                actual_ward_type = ward_type_str(curr->ward_type);
+                bed_id_str = curr->bed_id;
+                bed = find_bed_by_id(curr->bed_id);
+                if (bed != NULL) room_id = bed->room_id;
             }
-            else
-            {
-                count++;
-                // 处理未分床的情况
-                const char* actual_ward_type = "未分配";
-                const char* room_id = "未分配";
-                
-                if (strlen(curr->bed_id) > 0)
-                {
-                    actual_ward_type = curr->ward_type == WARD_TYPE_ICU ? "ICU" : (curr->ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (curr->ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房"));
-                    // 通过床位编号查找病房编号
-                    bed = find_bed_by_id(curr->bed_id);
-                    if (bed != NULL)
-                    {
-                        room_id = bed->room_id;
-                    }
-                }
-                
-                printf("%-12s %-12s %-10s %-13s %-13s %-12s %-12s %-8d %.2f\n",
-                    curr->inpatient_id,
-                    curr->patient_id,
-                    "患者档案缺失",
-                    room_id,
-                    strlen(curr->bed_id) > 0 ? curr->bed_id : "未分配",
-                    curr->recommended_ward_type == WARD_TYPE_ICU ? "ICU" : (curr->recommended_ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (curr->recommended_ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房")),
-                    actual_ward_type,
-                    curr->days_stayed,
-                    curr->deposit_balance);
-            }
+
+            print_col(curr->inpatient_id, 12);
+            print_col(curr->patient_id, 12);
+            print_col(p_name, 12);
+            print_col(room_id, 12);
+            print_col(bed_id_str, 12);
+            print_col(ward_type_str(curr->recommended_ward_type), 10);
+            print_col(actual_ward_type, 10);
+            printf("      ");
+            print_col_num_int("", curr->days_stayed, 6);
+            print_col_num_dbl("", curr->deposit_balance, 10);
+            printf("\n");
         }
         curr = curr->next;
     }
 
-    printf("------------------------------------------------------\n");
+    printf("--------------------------------------------------------------\n");
     printf("总计：%d 位住院患者\n", count);
     printf("======================================================\n");
 }
@@ -325,49 +354,231 @@ void show_inpatient_record_by_patient_id(const char* patient_id)
         return;
     }
 
-    printf("\n======================================================\n");
-    printf("                 患者住院记录\n");
-    printf("======================================================\n");
+    printf("\n==============================================================\n");
+    printf("                    患者住院记录\n");
+    printf("==============================================================\n");
     printf("患者信息：%s - %s\n", patient->id, patient->name);
-    printf("------------------------------------------------------\n");
-    printf("住院号       病房编号       床位编号       推荐类型     实际类型     预计天数  已住天数  押金余额  状态\n");
-    printf("------------------------------------------------------\n");
+    printf("--------------------------------------------------------------\n");
+    print_col("住院号", 12);
+    print_col("病房编号", 12);
+    print_col("床位编号", 12);
+    print_col("推荐类型", 10);
+    print_col("实际类型", 10);
+    print_col("预计天数", 8);
+    print_col("已住天数", 8);
+    print_col("押金余额", 10);
+    print_col("状态", 8);
+    printf("\n");
+    printf("--------------------------------------------------------------\n");
 
     curr = g_inpatient_list->next;
     while (curr != NULL)
     {
         if (strcmp(curr->patient_id, patient_id) == 0)
         {
-            // 处理未分床的情况
             const char* actual_ward_type = "未分配";
             const char* room_id = "未分配";
-            
+            const char* bed_id_str = "未分配";
+
             if (strlen(curr->bed_id) > 0)
             {
-                actual_ward_type = curr->ward_type == WARD_TYPE_ICU ? "ICU" : (curr->ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (curr->ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房"));
-                // 通过床位编号查找病房编号
+                actual_ward_type = ward_type_str(curr->ward_type);
+                bed_id_str = curr->bed_id;
                 bed = find_bed_by_id(curr->bed_id);
-                if (bed != NULL)
-                {
-                    room_id = bed->room_id;
-                }
+                if (bed != NULL) room_id = bed->room_id;
             }
-            
-            printf("%-12s %-13s %-13s %-12s %-12s %-8d %-8d %.2f %s\n",
-                curr->inpatient_id,
-                room_id,
-                strlen(curr->bed_id) > 0 ? curr->bed_id : "未分配",
-                curr->recommended_ward_type == WARD_TYPE_ICU ? "ICU" : (curr->recommended_ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (curr->recommended_ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房")),
-                actual_ward_type,
-                curr->estimated_days,
-                curr->days_stayed,
-                curr->deposit_balance,
-                curr->is_active ? "住院中" : "已出院");
+
+            print_col(curr->inpatient_id, 12);
+            print_col(room_id, 12);
+            print_col(bed_id_str, 12);
+            print_col(ward_type_str(curr->recommended_ward_type), 10);
+            print_col(actual_ward_type, 10);
+            print_col_num_int("", curr->estimated_days, 8);
+            print_col_num_int("", curr->days_stayed, 8);
+            print_col_num_dbl("", curr->deposit_balance, 10);
+            print_col(curr->is_active ? "住院中" : "已出院", 8);
+            printf("\n");
+
+            if (strlen(curr->original_bed_id) > 0 && strlen(curr->bed_id) > 0 &&
+                strcmp(curr->original_bed_id, curr->bed_id) != 0)
+            {
+                printf("  ↳ 初分：%s → 当前：%s（转床）\n", curr->original_bed_id, curr->bed_id);
+            }
         }
         curr = curr->next;
     }
 
-    printf("======================================================\n");
+    printf("==============================================================\n");
+}
+
+void show_inpatient_record_by_inpatient_id(const char* inpatient_id)
+{
+    if (is_blank_string(inpatient_id))
+    {
+        printf("提示：住院号不能为空。\n");
+        return;
+    }
+
+    if (g_inpatient_list == NULL || g_inpatient_list->next == NULL)
+    {
+        printf("⚠️ 住院记录链表尚未初始化或无住院记录！\n");
+        return;
+    }
+
+    InpatientRecord* curr = g_inpatient_list->next;
+    while (curr != NULL)
+    {
+        if (strcmp(curr->inpatient_id, inpatient_id) == 0)
+        {
+            PatientNode* patient = find_patient_by_id(g_patient_list, curr->patient_id);
+            const char* p_name = patient ? patient->name : "未知";
+
+            printf("\n==============================================================\n");
+            printf("                    住院记录详情\n");
+            printf("==============================================================\n");
+            printf("住院号：%s\n", curr->inpatient_id);
+            printf("患者编号：%s\n", curr->patient_id);
+            printf("患者姓名：%s\n", p_name);
+            printf("--------------------------------------------------------------\n");
+            printf("当前床位：%s\n", strlen(curr->bed_id) > 0 ? curr->bed_id : "未分配");
+            if (strlen(curr->original_bed_id) > 0 && strcmp(curr->original_bed_id, curr->bed_id) != 0)
+                printf("初分床位：%s（已转床）\n", curr->original_bed_id);
+            printf("实际类型：%s\n", ward_type_str(curr->ward_type));
+            printf("推荐类型：%s\n", ward_type_str(curr->recommended_ward_type));
+            printf("预计天数：%d\n", curr->estimated_days);
+            printf("已住天数：%d\n", curr->days_stayed);
+            printf("押金余额：%.2f\n", curr->deposit_balance);
+            printf("状态：%s\n", curr->is_active ? "住院中" : "已出院");
+            printf("==============================================================\n");
+            return;
+        }
+        curr = curr->next;
+    }
+
+    printf("\n⚠️ 未找到住院号 %s 的记录。\n", inpatient_id);
+}
+
+void show_hospitalized_patients_by_dept(const char* dept)
+{
+    if (is_blank_string(dept))
+    {
+        printf("提示：科室名称不能为空。\n");
+        return;
+    }
+
+    if (g_inpatient_list == NULL || g_inpatient_list->next == NULL)
+    {
+        printf("⚠️ 住院记录链表尚未初始化或无住院记录！\n");
+        return;
+    }
+
+    printf("\n==============================================================\n");
+    printf("               科室住院患者 —— %s\n", dept);
+    printf("==============================================================\n");
+    print_col("住院号", 10);
+    print_col("患者编号", 12);
+    print_col("患者姓名", 12);
+    print_col("床位", 10);
+    print_col("类型", 10);
+    print_col("状态", 8);
+    printf("\n");
+    printf("--------------------------------------------------------------\n");
+
+    InpatientRecord* curr = g_inpatient_list->next;
+    int count = 0;
+    while (curr != NULL)
+    {
+        if (curr->is_active)
+        {
+            const char* bed_id = strlen(curr->bed_id) > 0 ? curr->bed_id : "未分配";
+            WardNode* bed = find_bed_by_id(bed_id);
+            int match = (bed != NULL && strcmp(bed->dept, dept) == 0);
+            if (!match && bed == NULL)
+            {
+                PatientNode* p = find_patient_by_id(g_patient_list, curr->patient_id);
+                if (p && strcmp(p->target_dept, dept) == 0) match = 1;
+            }
+
+            if (match)
+            {
+                count++;
+                PatientNode* patient = find_patient_by_id(g_patient_list, curr->patient_id);
+                const char* p_name = patient ? patient->name : "未知";
+                print_col(curr->inpatient_id, 10);
+                print_col(curr->patient_id, 12);
+                print_col(p_name, 12);
+                print_col(bed_id, 10);
+                print_col(ward_type_str(curr->ward_type), 10);
+                print_col(curr->is_active ? "住院中" : "已出院", 8);
+                printf("\n");
+            }
+        }
+        curr = curr->next;
+    }
+
+    if (count == 0)
+        printf("  暂无 %s 的住院患者\n", dept);
+    else
+        printf("  共 %d 位患者\n", count);
+    printf("==============================================================\n");
+}
+
+void show_discharged_patients(void)
+{
+    if (g_inpatient_list == NULL || g_inpatient_list->next == NULL)
+    {
+        printf("⚠️ 住院记录链表尚未初始化或无住院记录！\n");
+        return;
+    }
+
+    printf("\n==============================================================\n");
+    printf("                      已出院患者\n");
+    printf("==============================================================\n");
+    print_col("住院号", 10);
+    print_col("患者编号", 12);
+    print_col("患者姓名", 12);
+    print_col("床位", 10);
+    print_col("类型", 10);
+    print_col("已住", 6);
+    print_col("押金", 10);
+    printf("\n");
+    print_col("", 10);
+    print_col("", 12);
+    print_col("", 12);
+    print_col("", 10);
+    print_col("", 10);
+    print_col("天数", 6);
+    print_col("余额", 10);
+    printf("\n");
+    printf("--------------------------------------------------------------\n");
+
+    InpatientRecord* curr = g_inpatient_list->next;
+    int count = 0;
+    while (curr != NULL)
+    {
+        if (!curr->is_active)
+        {
+            count++;
+            PatientNode* patient = find_patient_by_id(g_patient_list, curr->patient_id);
+            const char* p_name = patient ? patient->name : "未知";
+            const char* bed_id = strlen(curr->bed_id) > 0 ? curr->bed_id : "——";
+            print_col(curr->inpatient_id, 10);
+            print_col(curr->patient_id, 12);
+            print_col(p_name, 12);
+            print_col(bed_id, 10);
+            print_col(ward_type_str(curr->ward_type), 10);
+            print_col_num_int("", curr->days_stayed, 6);
+            print_col_num_dbl("", curr->deposit_balance, 10);
+            printf("\n");
+        }
+        curr = curr->next;
+    }
+
+    if (count == 0)
+        printf("  暂无已出院患者\n");
+    else
+        printf("  共 %d 位已出院患者\n", count);
+    printf("==============================================================\n");
 }
 
 // ==========================================
@@ -592,7 +803,12 @@ int assign_bed_to_patient(const char* patient_id, const char* bed_id)
     inpatient_record->bed_id[MAX_ID_LEN - 1] = '\0';
     inpatient_record->ward_type = bed->ward_type;
 
-    // 记录日志
+    if (strlen(inpatient_record->original_bed_id) == 0)
+    {
+        strncpy(inpatient_record->original_bed_id, bed_id, MAX_ID_LEN - 1);
+        inpatient_record->original_bed_id[MAX_ID_LEN - 1] = '\0';
+    }
+
     char description[200];
     if (inpatient_record->recommended_ward_type == bed->ward_type)
     {
@@ -916,21 +1132,10 @@ int daily_settlement(const char* patient_id)
     // 计算当日费用
     daily_rate = get_ward_rate(inpatient_record->ward_type);
 
-    // 检查押金是否足够
-    if (inpatient_record->deposit_balance < daily_rate)
-    {
-        printf("⚠️ 押金不足，无法执行日结计费！\n");
-        printf("当前押金余额：%.2f 元，当日费用：%.2f 元\n",
-            inpatient_record->deposit_balance, daily_rate);
-        return 0;
-    }
-
-    // 执行日结计费
     inpatient_record->days_stayed++;
     inpatient_record->deposit_balance -= daily_rate;
     inpatient_record->last_settlement_time = (long)now;
 
-    // 记录日志
     char description[200];
     snprintf(description, sizeof(description), "对患者 %s (%s) 执行日结计费 %.2f 元，已住 %d 天",
         patient->name, patient_id, daily_rate, inpatient_record->days_stayed);
@@ -940,6 +1145,14 @@ int daily_settlement(const char* patient_id)
     printf("已住天数：%d 天\n", inpatient_record->days_stayed);
     printf("当日费用：%.2f 元\n", daily_rate);
     printf("剩余押金：%.2f 元\n", inpatient_record->deposit_balance);
+
+    if (inpatient_record->deposit_balance < 0)
+    {
+        printf("⚠️ 押金已欠费，请及时催缴！\n");
+    }
+
+    save_inpatient_list(g_inpatient_list);
+
     return 1;
 }
 
@@ -955,11 +1168,30 @@ void show_deposit_warnings()
         return;
     }
 
-    printf("\n======================================================\n");
-    printf("                   押金预警信息\n");
-    printf("======================================================\n");
-    printf("患者编号     患者姓名   病房编号       床位编号       推荐类型     实际类型     已住天数  押金余额  预警状态\n");
-    printf("------------------------------------------------------\n");
+    printf("\n==============================================================\n");
+    printf("                       押金预警信息\n");
+    printf("==============================================================\n");
+    print_col("患者编号", 12);
+    print_col("患者姓名", 12);
+    print_col("病房编号", 12);
+    print_col("床位编号", 12);
+    print_col("推荐类型", 10);
+    print_col("实际类型", 10);
+    print_col("", 6);
+    print_col("押金", 10);
+    print_col("预警", 8);
+    printf("\n");
+    print_col("", 12);
+    print_col("", 12);
+    print_col("", 12);
+    print_col("", 12);
+    print_col("", 10);
+    print_col("", 10);
+    print_col("天数", 6);
+    print_col("余额", 10);
+    print_col("状态", 8);
+    printf("\n");
+    printf("--------------------------------------------------------------\n");
 
     curr = g_inpatient_list->next;
     while (curr != NULL)
@@ -969,61 +1201,51 @@ void show_deposit_warnings()
             patient = find_patient_by_id(g_patient_list, curr->patient_id);
             if (patient != NULL)
             {
-                // 处理未分床的情况
                 const char* actual_ward_type = "未分配";
                 const char* room_id = "未分配";
-                if (strlen(curr->bed_id) > 0)
-                {
-                    actual_ward_type = curr->ward_type == WARD_TYPE_ICU ? "ICU" : (curr->ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (curr->ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房"));
-                    // 通过床位编号查找病房编号
-                    WardNode* bed = find_bed_by_id(curr->bed_id);
-                    if (bed != NULL)
-                    {
-                        room_id = bed->room_id;
-                    }
-                }
-                
-                // 计算每日费用（如果有床位）
+                const char* bed_id_str = "未分配";
                 double daily_rate = 0.0;
+                int show_warn = 0;
+                const char* warn_msg = "";
+
                 if (strlen(curr->bed_id) > 0)
                 {
+                    actual_ward_type = ward_type_str(curr->ward_type);
+                    bed_id_str = curr->bed_id;
+                    WardNode* bed = find_bed_by_id(curr->bed_id);
+                    if (bed != NULL) room_id = bed->room_id;
                     daily_rate = get_ward_rate(curr->ward_type);
                 }
-                
-                // 检查押金是否不足
-                if (strlen(curr->bed_id) > 0 && curr->deposit_balance < daily_rate * 3)  // 不足3天费用
+
+                if (strlen(curr->bed_id) > 0 && curr->deposit_balance < daily_rate * 3)
                 {
                     warning_count++;
-                    printf("%-12s %-10s %-13s %-13s %-12s %-12s %-8d %.2f %s\n",
-                        curr->patient_id,
-                        patient->name,
-                        room_id,
-                        curr->bed_id,
-                        curr->recommended_ward_type == WARD_TYPE_ICU ? "ICU" : (curr->recommended_ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (curr->recommended_ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房")),
-                        actual_ward_type,
-                        curr->days_stayed,
-                        curr->deposit_balance,
-                        "押金不足");
+                    warn_msg = "押金不足";
+                    show_warn = 1;
                 }
-                else if (strlen(curr->bed_id) == 0)  // 未分床但押金较少
+                else if (strlen(curr->bed_id) == 0)
                 {
-                    // 根据推荐病房类型计算预警阈值
-                    double warning_threshold = get_ward_rate(curr->recommended_ward_type) * 3;  // 3天费用
-                    
+                    double warning_threshold = get_ward_rate(curr->recommended_ward_type) * 3;
                     if (curr->deposit_balance < warning_threshold)
                     {
                         warning_count++;
-                    printf("%-12s %-10s %-13s %-13s %-12s %-12s %-8d %.2f %s\n",
-                        curr->patient_id,
-                        patient->name,
-                        room_id,
-                        "-",
-                        curr->recommended_ward_type == WARD_TYPE_ICU ? "ICU" : (curr->recommended_ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (curr->recommended_ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房")),
-                        actual_ward_type,
-                        curr->days_stayed,
-                        curr->deposit_balance,
-                        "押金较少");
+                        warn_msg = "押金较少";
+                        show_warn = 1;
                     }
+                }
+
+                if (show_warn)
+                {
+                    print_col(curr->patient_id, 12);
+                    print_col(patient->name, 12);
+                    print_col(room_id, 12);
+                    print_col(bed_id_str, 12);
+                    print_col(ward_type_str(curr->recommended_ward_type), 10);
+                    print_col(actual_ward_type, 10);
+                    print_col_num_int("", curr->days_stayed, 6);
+                    print_col_num_dbl("", curr->deposit_balance, 10);
+                    print_col(warn_msg, 8);
+                    printf("\n");
                 }
             }
         }
@@ -1151,11 +1373,17 @@ void show_patients_need_hospitalize()
         return;
     }
 
-    printf("\n======================================================\n");
-    printf("               需要住院待登记患者\n");
-    printf("======================================================\n");
-    printf("患者编号     患者姓名   性别  年龄  身份证号          状态\n");
-    printf("------------------------------------------------------\n");
+    printf("\n==============================================================\n");
+    printf("                  需要住院待登记患者\n");
+    printf("==============================================================\n");
+    print_col("患者编号", 13);
+    print_col("患者姓名", 12);
+    print_col("性别", 6);
+    print_col("年龄", 6);
+    print_col("身份证号", 20);
+    print_col("状态", 12);
+    printf("\n");
+    printf("--------------------------------------------------------------\n");
 
     curr = g_patient_list->next;
     while (curr != NULL)
@@ -1165,13 +1393,15 @@ void show_patients_need_hospitalize()
             count++;
             char masked_id_card[20];
             mask_id_card(curr->id_card, masked_id_card);
-            printf("%-13s %-10s %-5s %-5d %s %s\n",
-                curr->id,
-                curr->name,
-                curr->gender,
-                curr->age,
-                masked_id_card,
-                get_patient_status_text(curr->status));
+            char age_str[8];
+            snprintf(age_str, sizeof(age_str), "%d", curr->age);
+            print_col(curr->id, 13);
+            print_col(curr->name, 12);
+            print_col(curr->gender, 6);
+            print_col(age_str, 6);
+            print_col(masked_id_card, 20);
+            print_col(get_patient_status_text(curr->status), 12);
+            printf("\n");
         }
         curr = curr->next;
     }
