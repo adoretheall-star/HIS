@@ -2845,6 +2845,10 @@ static void handle_patient_self_first_visit()
     char gender_str[8] = "";
     char input_buffer[128];
     char error_msg[256] = "";
+    char auto_recommended_dept[MAX_NAME_LEN] = "";
+    char final_dept[MAX_NAME_LEN] = "";
+    int is_recommended_dept = 0;
+    int is_night_mode = 0;
     int step = 0;
 
     while (1)
@@ -2855,7 +2859,7 @@ static void handle_patient_self_first_visit()
         printf("系统将通过身份证号判断您是否为首次来院\n");
         printf("提示：输入 B 返回上一步，输入 Q 取消操作\n\n");
 
-        if (step >= 1)
+        if (step >= 1 && step < 6)
         {
             printf("身份证号: %s\n", id_card);
             printf("姓名    : %s\n", name);
@@ -2887,6 +2891,9 @@ static void handle_patient_self_first_visit()
                 break;
             case 5:
                 printf("当前正在输入：就诊科室\n");
+                break;
+            case 6:
+                printf("当前状态：建档信息确认\n");
                 break;
         }
 
@@ -3082,11 +3089,26 @@ static void handle_patient_self_first_visit()
                 }
 
                 strcpy(symptom, input_buffer);
+
+                {
+                    const char* recommended_dept = recommend_dept_by_symptom(symptom);
+                    if (recommended_dept != NULL && strlen(recommended_dept) > 0)
+                    {
+                        safe_copy_string(auto_recommended_dept, MAX_NAME_LEN, recommended_dept);
+                        printf("\n🤖 智能导诊推荐：根据您的症状，系统推荐就诊科室为【%s】\n", auto_recommended_dept);
+                    }
+                    else
+                    {
+                        safe_copy_string(auto_recommended_dept, MAX_NAME_LEN, "全科");
+                    }
+                }
+
                 step = 5;
                 break;
 
             case 5:
-                get_safe_string("请输入您要就诊的科室: ", input_buffer, sizeof(input_buffer));
+                printf("\n请输入您要就诊的科室（直接回车采用推荐科室【%s】）: ", auto_recommended_dept);
+                get_safe_string("", input_buffer, sizeof(input_buffer));
 
                 if (strcmp(input_buffer, "Q") == 0 || strcmp(input_buffer, "q") == 0)
                 {
@@ -3103,22 +3125,111 @@ static void handle_patient_self_first_visit()
 
                 if (is_blank_string(input_buffer))
                 {
-                    strcpy(error_msg, "⚠️ 就诊科室不能为空，请重新输入。");
-                    continue;
+                    safe_copy_string(target_dept, MAX_NAME_LEN, auto_recommended_dept);
+                    is_recommended_dept = 1;
+                }
+                else
+                {
+                    safe_copy_string(target_dept, MAX_NAME_LEN, input_buffer);
+                    is_recommended_dept = 0;
                 }
 
-                strcpy(target_dept, input_buffer);
-
+                if (is_night_shift())
                 {
-                    PatientNode* new_patient = register_patient(name, age, gender_str, id_card, symptom, target_dept);
+                    safe_copy_string(final_dept, MAX_NAME_LEN, "急诊科");
+                    is_night_mode = 1;
+                }
+                else
+                {
+                    safe_copy_string(final_dept, MAX_NAME_LEN, target_dept);
+                    is_night_mode = 0;
+                }
+                step = 6;
+                break;
+
+            case 6:
+                printf("\n================ 建档信息确认 ================\n");
+                printf("身份证号：%s\n", id_card);
+                printf("姓名    ：%s\n", name);
+                printf("年龄    ：%d\n", age);
+                printf("性别    ：%s\n", gender_str);
+                printf("症状    ：%s\n", symptom);
+                printf("\n");
+                
+                printf("智能导诊：已启用\n");
+                printf("推荐科室：%s\n", auto_recommended_dept);
+                if (!is_recommended_dept)
+                {
+                    printf("用户选择：%s（未使用推荐）\n", target_dept);
+                }
+                printf("\n");
+                
+                if (is_night_mode)
+                {
+                    printf("夜间接管：已触发，就诊时段锁定为「晚上」\n");
+                }
+                else
+                {
+                    printf("夜间接管：未触发\n");
+                }
+                printf("最终科室：%s\n", final_dept);
+                printf("\n");
+                
+                printf("黑名单同步：否\n\n");
+                printf("提示：按 Enter 确认提交，输入 B 返回上一步，输入 Q 取消操作\n");
+                
+                get_safe_string("", input_buffer, sizeof(input_buffer));
+                
+                if (strcmp(input_buffer, "Q") == 0 || strcmp(input_buffer, "q") == 0)
+                {
+                    printf("提示：已取消本次建档操作，正在返回菜单页。\n");
+                    system("pause");
+                    return;
+                }
+                
+                if (strcmp(input_buffer, "B") == 0 || strcmp(input_buffer, "b") == 0)
+                {
+                    step = 5;
+                    continue;
+                }
+                
+                if (strlen(input_buffer) > 0)
+                {
+                    strcpy(error_msg, "⚠️ 请按 Enter 确认提交，或者输入 B/Q。");
+                    continue;
+                }
+                
+                {
+                    PatientNode* new_patient = register_patient(name, age, gender_str, id_card, symptom, final_dept);
                     
                     system("cls");
                     if (new_patient != NULL)
                     {
                         printf("\n✅ 建档成功！\n");
                         printf("您的新患者编号是：%s\n", new_patient->id);
-                        printf("请妥善保管您的患者编号，后续就诊时使用\n");
-                        printf("\n建档完成后，您可以继续进行预约/挂号操作\n");
+                        printf("最终就诊科室：%s\n", final_dept);
+                        
+                        if (is_recommended_dept)
+                        {
+                            printf("智能导诊结果：已推荐%s\n", auto_recommended_dept);
+                        }
+                        else
+                        {
+                            printf("智能导诊结果：已推荐%s，用户选择了%s\n", auto_recommended_dept, final_dept);
+                        }
+                        
+                        if (is_night_mode)
+                        {
+                            printf("夜间接管状态：已触发\n");
+                        }
+                        else
+                        {
+                            printf("夜间接管状态：未触发\n");
+                        }
+                        
+                        printf("黑名单状态：否\n\n");
+                        printf("请妥善保管您的患者编号，后续就诊时使用。\n");
+                        printf("建档完成后，您可以继续进行预约/挂号操作。\n");
                     }
                     else
                     {
@@ -3155,20 +3266,34 @@ static void handle_patient_self_registration()
     printf("\n================ 自助挂号（现场挂号） ================\n");
     printf("温馨提示：本功能仅支持已建档患者使用\n");
     printf("如果您是首次就诊，请先到服务台建档\n");
+    printf("提示：输入 B 返回上一步，输入 Q 返回菜单页\n");
     
     // 患者编号输入环节
     input_patient_id:
-    get_safe_string("请输入您的患者编号(输入 0 回退上一步，输入 00 退出): ", patient_id, MAX_ID_LEN);
-    if (strcmp(patient_id, "00") == 0)
+    get_safe_string("请输入您的患者编号：", patient_id, MAX_ID_LEN);
+    if (strcmp(patient_id, "Q") == 0 || strcmp(patient_id, "q") == 0)
     {
-        printf("操作取消！\n");
+        printf("提示：已返回菜单页。\n");
         return;
+    }
+    if (strcmp(patient_id, "B") == 0 || strcmp(patient_id, "b") == 0)
+    {
+        printf("当前已是第一步，无法返回上一步\n");
+        goto input_patient_id;
     }
     // 患者编号校验（死循环）
     while (1)
     {
-        if (strcmp(patient_id, "0") == 0)
+        if (strcmp(patient_id, "Q") == 0 || strcmp(patient_id, "q") == 0)
+        {
+            printf("提示：已返回菜单页。\n");
+            return;
+        }
+        if (strcmp(patient_id, "B") == 0 || strcmp(patient_id, "b") == 0)
+        {
+            printf("当前已是第一步，无法返回上一步\n");
             goto input_patient_id;
+        }
         if (strlen(patient_id) == 0)
         {
             printf("患者编号不能为空，请重新输入：");
@@ -3187,17 +3312,24 @@ static void handle_patient_self_registration()
     
     // 身份证号输入环节
     input_id_card:
-    get_safe_string("请输入您的身份证号（身份核验）(输入 0 回退上一步，输入 00 退出): ", id_card, MAX_ID_LEN);
-    if (strcmp(id_card, "00") == 0)
+    get_safe_string("请输入您的身份证号（身份核验）：", id_card, MAX_ID_LEN);
+    if (strcmp(id_card, "Q") == 0 || strcmp(id_card, "q") == 0)
     {
-        printf("操作取消！\n");
+        printf("提示：已返回菜单页。\n");
         return;
     }
-    if (strcmp(id_card, "0") == 0)
+    if (strcmp(id_card, "B") == 0 || strcmp(id_card, "b") == 0)
         goto input_patient_id;
     // 身份证号校验（死循环）
     while (1)
     {
+        if (strcmp(id_card, "Q") == 0 || strcmp(id_card, "q") == 0)
+        {
+            printf("提示：已返回菜单页。\n");
+            return;
+        }
+        if (strcmp(id_card, "B") == 0 || strcmp(id_card, "b") == 0)
+            goto input_patient_id;
         if (strlen(id_card) == 0)
         {
             printf("身份证号不能为空，请重新输入：");
@@ -3225,13 +3357,13 @@ static void handle_patient_self_registration()
     
     // 症状输入环节
     input_symptom:
-    get_safe_string("请输入您本次就诊的症状描述(输入 0 回退上一步，输入 00 退出): ", current_symptom, MAX_SYMPTOM_LEN);
-    if (strcmp(current_symptom, "00") == 0)
+    get_safe_string("请输入您本次就诊的症状描述：", current_symptom, MAX_SYMPTOM_LEN);
+    if (strcmp(current_symptom, "Q") == 0 || strcmp(current_symptom, "q") == 0)
     {
-        printf("操作取消！\n");
+        printf("提示：已返回菜单页。\n");
         return;
     }
-    if (strcmp(current_symptom, "0") == 0)
+    if (strcmp(current_symptom, "B") == 0 || strcmp(current_symptom, "b") == 0)
         goto input_id_card;
     // 症状校验
     if (strlen(current_symptom) == 0)
@@ -3273,17 +3405,17 @@ static void handle_patient_self_registration()
         
         // 科室输入环节
         input_dept:
-        get_safe_string("请输入挂号科室(可留空)(输入 0 回退上一步，输入 00 退出): ", appoint_dept, MAX_NAME_LEN);
-        if (strcmp(appoint_dept, "00") == 0)
+        get_safe_string("请输入挂号科室（可留空）：", appoint_dept, MAX_NAME_LEN);
+        if (strcmp(appoint_dept, "Q") == 0 || strcmp(appoint_dept, "q") == 0)
         {
-            printf("操作取消！\n");
+            printf("提示：已返回菜单页。\n");
             // 恢复原症状
             strncpy(patient->symptom, old_symptom, MAX_SYMPTOM_LEN - 1);
             patient->symptom[MAX_SYMPTOM_LEN - 1] = '\0';
             patient->is_emergency = old_is_emergency;
             return;
         }
-        if (strcmp(appoint_dept, "0") == 0)
+        if (strcmp(appoint_dept, "B") == 0 || strcmp(appoint_dept, "b") == 0)
             goto input_symptom;
         
         // 如果输入了科室，显示该科室的医生列表
@@ -3310,17 +3442,17 @@ static void handle_patient_self_registration()
         strcpy(appointment_slot, "晚上");
         printf("当前为夜间模式，自动设置挂号时段为: %s\n", appointment_slot);
     } else {
-        get_safe_string("请输入挂号时段(输入 0 回退上一步，输入 00 退出): ", appointment_slot, MAX_NAME_LEN);
-        if (strcmp(appointment_slot, "00") == 0)
+        get_safe_string("请输入挂号时段：", appointment_slot, MAX_NAME_LEN);
+        if (strcmp(appointment_slot, "Q") == 0 || strcmp(appointment_slot, "q") == 0)
         {
-            printf("操作取消！\n");
+            printf("提示：已返回菜单页。\n");
             // 恢复原症状
             strncpy(patient->symptom, old_symptom, MAX_SYMPTOM_LEN - 1);
             patient->symptom[MAX_SYMPTOM_LEN - 1] = '\0';
             patient->is_emergency = old_is_emergency;
             return;
         }
-        if (strcmp(appointment_slot, "0") == 0)
+        if (strcmp(appointment_slot, "B") == 0 || strcmp(appointment_slot, "b") == 0)
         {
             if (is_emergency_case)
                 goto input_symptom;
@@ -3337,17 +3469,17 @@ static void handle_patient_self_registration()
     }
     
     // 医生输入环节（急诊也保留选择权）
-    get_safe_string("请输入意向医生编号(直接回车留空表示由值班医生接诊)(输入 0 回退上一步，输入 00 退出): ", appoint_doctor, MAX_NAME_LEN);
-    if (strcmp(appoint_doctor, "00") == 0)
+    get_safe_string("请输入意向医生编号（直接回车留空表示由值班医生接诊）：", appoint_doctor, MAX_NAME_LEN);
+    if (strcmp(appoint_doctor, "Q") == 0 || strcmp(appoint_doctor, "q") == 0)
     {
-        printf("操作取消！\n");
+        printf("提示：已返回菜单页。\n");
         // 恢复原症状
         strncpy(patient->symptom, old_symptom, MAX_SYMPTOM_LEN - 1);
         patient->symptom[MAX_SYMPTOM_LEN - 1] = '\0';
         patient->is_emergency = old_is_emergency;
         return;
     }
-    if (strcmp(appoint_doctor, "0") == 0)
+    if (strcmp(appoint_doctor, "B") == 0 || strcmp(appoint_doctor, "b") == 0)
         goto input_slot;
     
     // ==========================================
