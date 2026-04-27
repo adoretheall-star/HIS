@@ -763,8 +763,25 @@ static void admin_medicine_menu()
                 system("pause");
                 break;
             case 2:
-                get_safe_string("请输入查询关键词: ", keyword, MAX_NAME_LEN);
-                search_medicine_by_keyword(keyword);
+                printf("\n================ 查询药品 ===============-\n");
+                printf("提示：输入 'Q' 退出查询，输入其他内容继续查询\n\n");
+                
+                while (1)
+                {
+                    get_safe_string("请输入查询关键词: ", keyword, MAX_NAME_LEN);
+                    
+                    // 检查是否退出
+                    if (my_strcasecmp(keyword, "Q") == 0)
+                    {
+                        printf("\n已退出药品查询\n");
+                        break;
+                    }
+                    
+                    search_medicine_by_keyword(keyword);
+                    printf("\n------------------------------------------\n");
+                    printf("输入 'Q' 退出查询，输入其他内容继续查询\n");
+                    printf("------------------------------------------\n");
+                }
                 system("pause");
                 break;
             case 3:
@@ -2554,6 +2571,13 @@ static void handle_internal_appointment_register()
         goto input_date;
     }
     
+    // 检查日期格式是否合法
+    if (!is_valid_date_string(appointment_date))
+    {
+        printf("⚠️ 预约日期格式非法，请使用 YYYY-MM-DD 格式重新输入！\n");
+        goto input_date;
+    }
+    
     // 夜间模式下自动设置为晚上
     input_slot:
     if (is_night_shift()) {
@@ -3328,6 +3352,14 @@ static void handle_patient_self_appointment_register()
     if (strlen(appointment_date) == 0)
     {
         printf("预约日期不能为空，请重新输入：");
+        get_safe_string("", appointment_date, MAX_NAME_LEN);
+        goto input_date;
+    }
+    
+    // 检查日期格式是否合法
+    if (!is_valid_date_string(appointment_date))
+    {
+        printf("预约日期格式非法，请使用 YYYY-MM-DD 格式重新输入：");
         get_safe_string("", appointment_date, MAX_NAME_LEN);
         goto input_date;
     }
@@ -5326,6 +5358,13 @@ static void patient_self_service_menu()
                     
                     if (validate_patient_id(patient_id))
                     {
+                        // 检查患者是否存在
+                        PatientNode* patient = find_patient_by_id(g_patient_list, patient_id);
+                        if (patient == NULL)
+                        {
+                            printf("⚠️ 未找到该患者，请重新输入患者编号！\n");
+                            continue;
+                        }
                         break;
                     }
                     else
@@ -5437,6 +5476,13 @@ static void patient_self_service_menu()
                     
                     if (validate_patient_id(patient_id))
                     {
+                        // 检查患者是否存在
+                        PatientNode* patient = find_patient_by_id(g_patient_list, patient_id);
+                        if (patient == NULL)
+                        {
+                            printf("⚠️ 未找到该患者，请重新输入患者编号！\n");
+                            continue;
+                        }
                         break;
                     }
                     else
@@ -5624,6 +5670,13 @@ static void patient_self_service_menu()
                     
                     if (validate_patient_id(patient_id))
                     {
+                        // 检查患者是否存在
+                        PatientNode* patient = find_patient_by_id(g_patient_list, patient_id);
+                        if (patient == NULL)
+                        {
+                            printf("⚠️ 未找到该患者，请重新输入患者编号！\n");
+                            continue;
+                        }
                         break;
                     }
                     else
@@ -5715,7 +5768,14 @@ static void patient_self_service_menu()
                     // 检查患者编号格式是否合法
                     if (validate_patient_id(patient_id))
                     {
-                        break; // 格式正确，退出循环
+                        // 检查患者是否存在
+                        PatientNode* patient = find_patient_by_id(g_patient_list, patient_id);
+                        if (patient == NULL)
+                        {
+                            printf("⚠️ 未找到该患者，请重新输入患者编号！\n");
+                            continue;
+                        }
+                        break; // 格式正确且患者存在，退出循环
                     }
                     else
                     {
@@ -5812,6 +5872,13 @@ static void patient_self_service_menu()
                     
                     if (validate_patient_id(patient_id))
                     {
+                        // 检查患者是否存在
+                        PatientNode* patient = find_patient_by_id(g_patient_list, patient_id);
+                        if (patient == NULL)
+                        {
+                            printf("⚠️ 未找到该患者，请重新输入患者编号！\n");
+                            continue;
+                        }
                         break;
                     }
                     else
