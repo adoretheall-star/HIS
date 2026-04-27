@@ -29,6 +29,16 @@ void show_admin_dashboard(void);
 // 显示资源预警查看
 void show_resource_warnings(void);
 
+// 显示系统预警查看（整合所有7种预警类型）
+void show_system_alerts(void);
+
+// 预警管理相关函数
+void admin_alert_menu(void);
+void show_event_alerts(void);
+void show_medicine_alerts(void);
+void show_inpatient_alerts(void);
+void show_bed_resource_alerts(void);
+
 // 显示负载监控查看
 void show_load_monitoring(void);
 

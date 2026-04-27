@@ -13,7 +13,6 @@
 #include "list_ops.h"
 #include "appointment.h"
 #include "utils.h"
-#include "data_io.h"
 #include "patient_service.h"
 
 // 智能分诊权重规则结构体
@@ -1363,9 +1362,6 @@ int query_patient_consult_history_verified(const char* patient_id, const char* i
     
     // 检查并作废过期的待缴费订单
     check_and_void_expired_orders(patient);
-    
-    // 保存患者数据更改
-    save_patient_list(g_patient_list);
     
     // 第五步：遍历现有接诊记录链表（最新在前）
     ConsultRecordNode* head = g_consult_record_list;
