@@ -8,6 +8,7 @@
 #include <string.h>
 #include "global.h" 
 #include "list_ops.h"
+#include "data_io.h"
 
 // 🚀 极其重要：在这里为 global.h 中声明的全局头指针真正分配内存空间！
 // 如果不写这几行，整个系统就会报“未解析的外部符号”错误。
@@ -360,7 +361,7 @@ WardNode* init_ward_list()
     return head;
 }
 
-WardNode* create_ward_node(const char* room_id, const char* bed_id, WardType ward_type) 
+WardNode* create_ward_node(const char* room_id, const char* bed_id, WardType ward_type, const char* dept) 
 {
     WardNode* new_node = (WardNode*)malloc(sizeof(WardNode));
     if (!new_node) return NULL;
@@ -368,9 +369,11 @@ WardNode* create_ward_node(const char* room_id, const char* bed_id, WardType war
     new_node->room_id[MAX_ID_LEN - 1] = '\0';
     strncpy(new_node->bed_id, bed_id, MAX_ID_LEN - 1);
     new_node->bed_id[MAX_ID_LEN - 1] = '\0';
-    new_node->ward_type = ward_type; // 初始化病房类型
-    new_node->is_occupied = 0; // 默认空闲
-    new_node->patient_id[0] = '\0'; // 暂无病人
+    new_node->ward_type = ward_type;
+    strncpy(new_node->dept, dept ? dept : "", MAX_NAME_LEN - 1);
+    new_node->dept[MAX_NAME_LEN - 1] = '\0';
+    new_node->is_occupied = 0;
+    new_node->patient_id[0] = '\0';
     new_node->prev = NULL; new_node->next = NULL;
     return new_node;
 }
@@ -610,6 +613,8 @@ InpatientRecord* create_inpatient_record_node(
 
     strncpy(new_node->bed_id, bed_id, MAX_ID_LEN - 1);
     new_node->bed_id[MAX_ID_LEN - 1] = '\0';
+
+    new_node->original_bed_id[0] = '\0';
 
     new_node->ward_type = ward_type;
     new_node->recommended_ward_type = recommended_ward_type;
@@ -1156,6 +1161,8 @@ void push_system_alert(const char* msg)
     
     curr->next = new_node;
     new_node->prev = curr;
+
+    save_alert_list(g_alert_list);
 }
 
 // ==========================================

@@ -50,7 +50,7 @@ MedicineNode* find_medicine_by_id(MedicineNode* head, const char* target_id);
 // ==========================================
 //四、病房链表操作
 WardNode* init_ward_list();
-WardNode* create_ward_node(const char* room_id, const char* bed_id, WardType ward_type);
+WardNode* create_ward_node(const char* room_id, const char* bed_id, WardType ward_type, const char* dept);
 void insert_ward_tail(WardNode* head, WardNode* new_node);
 WardNode* find_ward_by_id(WardNode* head, const char* target_bed_id);
 // ==========================================

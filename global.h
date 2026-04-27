@@ -227,6 +227,7 @@ typedef struct WardNode
     char room_id[MAX_ID_LEN];      // 病房编号 / 房间号
     char bed_id[MAX_ID_LEN];       // 床位编号 (如: W-101)
     WardType ward_type;            // 病房类型 (普通病房/ICU)
+    char dept[MAX_NAME_LEN];       // 所属科室
     int is_occupied;               // 0: 空闲, 1: 占用
     char patient_id[MAX_ID_LEN];   // 住在上面的患者编号 (空闲时清空)
     
@@ -240,6 +241,7 @@ typedef struct InpatientRecord
     char inpatient_id[MAX_ID_LEN];     // 住院流水号
     char patient_id[MAX_ID_LEN];       // 患者编号
     char bed_id[MAX_ID_LEN];           // 床位编号
+    char original_bed_id[MAX_ID_LEN];  // 初分床位（转床后仍保留）
     WardType ward_type;                // 病房类型
     WardType recommended_ward_type;    // 推荐病房类型
     int estimated_days;                // 预计住院天数

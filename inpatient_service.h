@@ -108,6 +108,23 @@ void show_patient_settlement_status(const char* patient_id);
  */
 void show_deposit_warnings();
 
+/**
+ * @brief 根据住院号查询住院记录
+ * @param inpatient_id 住院号（如 I-001）
+ */
+void show_inpatient_record_by_inpatient_id(const char* inpatient_id);
+
+/**
+ * @brief 根据科室查询住院患者
+ * @param dept 科室名称
+ */
+void show_hospitalized_patients_by_dept(const char* dept);
+
+/**
+ * @brief 显示已出院患者列表
+ */
+void show_discharged_patients(void);
+
 // ==========================================
 // 4. 辅助校验函数
 // ==========================================
