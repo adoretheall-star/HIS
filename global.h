@@ -25,11 +25,11 @@
 // ==========================================
 typedef enum //权限管理
 {
-    ROLE_ADMIN = 1,   //管理者   
-    ROLE_NURSE = 2,   //护士   
-    ROLE_DOCTOR = 3,  //医生   
-    ROLE_PATIENT = 4, //患者   
-    ROLE_PHARMACIST = 5 //药房管理人员 
+    ROLE_ADMIN = 0,   //管理者 (数据文件中为0)  
+    ROLE_DOCTOR = 1,  //医生 (数据文件中为1)
+    ROLE_NURSE = 2,   //护士 (数据文件中为2)
+    ROLE_PHARMACIST = 3, //药房管理人员 (数据文件中为3)
+    ROLE_PATIENT = 4 //患者 
 } RoleType;
 
 typedef enum //就医状态

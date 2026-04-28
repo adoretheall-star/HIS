@@ -6,8 +6,8 @@
 #include "global.h"
 #include "list_ops.h"
 
-// 调试开关，默认关闭
-#define DATA_IO_DEBUG 0
+// 调试开关，开启
+#define DATA_IO_DEBUG 1
 
 #define DATA_DIR "data/"
 
@@ -95,8 +95,14 @@ int save_patient_list(PatientNode* head) {
 
 int load_patient_list(PatientNode** head) {
     ensure_data_dir();
-    FILE* fp = fopen(DATA_DIR "patients.txt", "r");
-    if (fp == NULL) return 0;
+    char file_path[256];
+    snprintf(file_path, sizeof(file_path), "%spatients.txt", DATA_DIR);
+    printf("DEBUG: 正在读取患者文件: %s\n", file_path);
+    FILE* fp = fopen(file_path, "r");
+    if (fp == NULL) {
+        printf("DEBUG: 无法打开患者文件: %s\n", file_path);
+        return 0;
+    }
 
     // 跳过表头
     char header_buffer[512];
@@ -122,8 +128,9 @@ int load_patient_list(PatientNode** head) {
 
         char* fields[30];
         int field_count = split_line_by_delimiter(line, '|', fields, 30);
-
+        
         if (field_count < 27) {
+            printf("DEBUG: 字段数不足，跳过此行: %s (字段数: %d)\n", line, field_count);
             continue;
         }
 

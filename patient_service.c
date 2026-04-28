@@ -1337,7 +1337,7 @@ int query_patient_consult_history_verified(const char* patient_id, const char* i
             }
             
             // 检查结果（当前系统暂不支持单独检查结果记录，简化处理）
-            printf("检查结果: 暂无检查结果（课设简化版）\n");
+            printf("检查结果: 暂无检查结果\n");
             
             printf("--------------------------------------------------\n\n");
         }

@@ -2371,25 +2371,202 @@ static void handle_internal_appointment_register()
     char appointment_slot[MAX_NAME_LEN];
     char appoint_doctor[MAX_NAME_LEN];
     char appoint_dept[MAX_NAME_LEN];
+    PatientNode* patient = NULL;
+    
     printf("\n================ 预约登记 ================\n");
-    get_safe_string("请输入患者编号: ", patient_id, MAX_ID_LEN);
-    get_safe_string("请输入预约日期: ", appointment_date, MAX_NAME_LEN);
+    printf("温馨提示：请确保您输入的是患者本人信息\n");
+    printf("提示：输入 B 返回上一步，输入 Q 取消本次操作\n\n");
+    
+    // 患者编号输入环节
+    input_patient_id:
+    printf("【当前步骤：填写患者编号】\n");
+    get_safe_string("请输入患者编号：", patient_id, MAX_ID_LEN);
+    if (strcmp(patient_id, "Q") == 0 || strcmp(patient_id, "q") == 0)
+    {
+        printf("⚠️ 已取消本次预约登记。\n");
+        system("pause");
+        return;
+    }
+    if (strcmp(patient_id, "B") == 0 || strcmp(patient_id, "b") == 0)
+    {
+        printf("当前已是第一步，返回上一级菜单\n");
+        system("pause");
+        return;
+    }
+    // 患者编号校验（死循环）
+    while (1)
+    {
+        if (strcmp(patient_id, "Q") == 0 || strcmp(patient_id, "q") == 0)
+        {
+            printf("⚠️ 已取消本次预约登记。\n");
+            system("pause");
+            return;
+        }
+        if (strcmp(patient_id, "B") == 0 || strcmp(patient_id, "b") == 0)
+        {
+            printf("当前已是第一步，返回上一级菜单\n");
+            system("pause");
+            return;
+        }
+        if (strlen(patient_id) == 0)
+        {
+            printf("患者编号不能为空，请重新输入：");
+            get_safe_string("", patient_id, MAX_ID_LEN);
+            continue;
+        }
+        patient = find_patient_by_id(g_patient_list, patient_id);
+        if (patient == NULL)
+        {
+            printf("未找到该患者，请重新输入：");
+            get_safe_string("", patient_id, MAX_ID_LEN);
+            continue;
+        }
+        break;
+    }
+    
+    printf("\n患者信息确认：%s\n", patient->name);
+    
+    // 预约日期输入环节
+    input_date:
+    printf("\n【当前步骤：填写预约日期】\n");
+    get_safe_string("请输入预约日期（YYYY-MM-DD）：", appointment_date, MAX_NAME_LEN);
+    if (strcmp(appointment_date, "Q") == 0 || strcmp(appointment_date, "q") == 0)
+    {
+        printf("⚠️ 已取消本次预约登记。\n");
+        system("pause");
+        return;
+    }
+    if (strcmp(appointment_date, "B") == 0 || strcmp(appointment_date, "b") == 0)
+        goto input_patient_id;
+    // 日期校验
+    char error_msg[256];
+    if (!is_appointment_date_valid(appointment_date, error_msg, sizeof(error_msg)))
+    {
+        printf("⚠️ %s\n", error_msg);
+        goto input_date;
+    }
+    
+    // 预约时段输入环节
+    input_slot:
+    printf("\n【当前步骤：选择预约时段】\n");
     // 夜间模式下自动设置为晚上
     if (is_night_shift()) {
         strcpy(appointment_slot, "晚上");
         printf("当前为夜间模式，自动设置预约时段为: %s\n", appointment_slot);
     } else {
-        get_safe_string("请输入预约时段: ", appointment_slot, MAX_NAME_LEN);
+        printf("请选择预约时段：\n");
+        printf("  [1] 上午\n");
+        printf("  [2] 下午\n");
+        printf("  [3] 晚上\n");
+        printf("请输入选项编号：");
+        
+        char slot_choice[MAX_NAME_LEN];
+        get_safe_string("", slot_choice, MAX_NAME_LEN);
+        
+        if (strcmp(slot_choice, "Q") == 0 || strcmp(slot_choice, "q") == 0)
+        {
+            printf("⚠️ 已取消本次预约登记。\n");
+            system("pause");
+            return;
+        }
+        if (strcmp(slot_choice, "B") == 0 || strcmp(slot_choice, "b") == 0)
+            goto input_date;
+        
+        // 选项校验
+        if (strlen(slot_choice) != 1 || slot_choice[0] < '1' || slot_choice[0] > '3')
+        {
+            printf("\n⚠️ 预约时段输入无效，请输入 1、2 或 3。\n\n");
+            goto input_slot;
+        }
+        
+        // 映射选项到时段
+        switch (slot_choice[0]) {
+            case '1': strcpy(appointment_slot, "上午"); break;
+            case '2': strcpy(appointment_slot, "下午"); break;
+            case '3': strcpy(appointment_slot, "晚上"); break;
+        }
+        printf("您选择的是：%s\n", appointment_slot);
     }
-    get_safe_string("请输入预约科室(可留空): ", appoint_dept, MAX_NAME_LEN);
     
-    // 如果输入了科室，显示该科室的医生列表
+    // ====== 预约日期+时段联合校验 ======
+    {
+        char slot_error_msg[256];
+        if (!is_appointment_slot_valid(appointment_date, appointment_slot, slot_error_msg, sizeof(slot_error_msg)))
+        {
+            printf("\n%s\n", slot_error_msg);
+            printf("按回车键继续...\n");
+            getchar();
+            goto input_slot;
+        }
+    }
+    
+    // ====== 提前重复预约校验 ======
+    {
+        char existing_apt_id[MAX_ID_LEN];
+        if (check_duplicate_appointment_early(patient_id, appointment_date, appointment_slot, existing_apt_id, sizeof(existing_apt_id)))
+        {
+            printf("\n⚠️ 该患者已存在该时段的有效预约（预约号：%s），不能重复预约！\n", existing_apt_id);
+            printf("按回车键继续...\n");
+            getchar();
+            goto input_slot;
+        }
+    }
+    
+    // 科室输入环节
+    input_dept:
+    printf("\n【当前步骤：填写预约科室】\n");
+    get_safe_string("请输入预约科室（可留空）：", appoint_dept, MAX_NAME_LEN);
+    if (strcmp(appoint_dept, "Q") == 0 || strcmp(appoint_dept, "q") == 0)
+    {
+        printf("⚠️ 已取消本次预约登记。\n");
+        system("pause");
+        return;
+    }
+    if (strcmp(appoint_dept, "B") == 0 || strcmp(appoint_dept, "b") == 0)
+        goto input_slot;
+    
+    // 如果输入了科室，验证科室存在性和值班医生情况
     if (strlen(appoint_dept) > 0)
     {
+        // 第一步：检查科室是否存在
+        if (!department_exists(appoint_dept))
+        {
+            printf("\n⚠️ 输入的科室不存在，请重新输入。\n");
+            goto input_dept;
+        }
+        // 第二步：检查是否有值班医生
+        if (!has_on_duty_doctor_in_department(appoint_dept))
+        {
+            printf("\n⚠️ 【%s】当前暂无医生值班，请重新选择其他科室。\n", appoint_dept);
+            goto input_dept;
+        }
+        // 第三步：显示医生列表
         display_doctors_by_dept(appoint_dept);
     }
     
-    get_safe_string("请输入预约医生编号(可留空): ", appoint_doctor, MAX_NAME_LEN);
+    // 医生输入环节
+    input_doctor:
+    printf("\n【当前步骤：填写预约医生编号】\n");
+    get_safe_string("请输入预约医生编号（可留空）：", appoint_doctor, MAX_NAME_LEN);
+    if (strcmp(appoint_doctor, "Q") == 0 || strcmp(appoint_doctor, "q") == 0)
+    {
+        printf("⚠️ 已取消本次预约登记。\n");
+        system("pause");
+        return;
+    }
+    if (strcmp(appoint_doctor, "B") == 0 || strcmp(appoint_doctor, "b") == 0)
+        goto input_dept;
+    
+    // 校验科室和医生至少填写一个
+    if (strlen(appoint_dept) == 0 && strlen(appoint_doctor) == 0)
+    {
+        printf("\n⚠️ 预约医生和预约科室至少需要填写一个，请重新填写。\n");
+        printf("按回车键继续...\n");
+        getchar();
+        goto input_dept;
+    }
+    
+    // 执行预约登记
     AppointmentNode* new_appt = register_appointment(
         patient_id,
         appointment_date,
@@ -2400,6 +2577,28 @@ static void handle_internal_appointment_register()
     if (new_appt != NULL)
     {
         printf("\n✅ 预约成功！预约编号：%s\n", new_appt->appointment_id);
+        printf("预约日期：%s\n", new_appt->appointment_date);
+        printf("预约时段：%s\n", new_appt->appointment_slot);
+        
+        if (strlen(new_appt->appoint_doctor) > 0)
+        {
+            DoctorNode* doctor = find_doctor_by_id(g_doctor_list, new_appt->appoint_doctor);
+            if (doctor != NULL)
+            {
+                printf("预约科室：%s\n", doctor->department);
+                printf("预约医生：%s %s\n", doctor->id, doctor->name);
+            }
+            else
+            {
+                printf("预约医生：%s\n", new_appt->appoint_doctor);
+            }
+        }
+        else if (strlen(new_appt->appoint_dept) > 0)
+        {
+            printf("预约科室：%s\n", new_appt->appoint_dept);
+        }
+        
+        printf("预约状态：%s\n", get_appointment_display_status(new_appt));
     }
     system("pause");
 }
@@ -2465,29 +2664,43 @@ static void handle_patient_self_basic_record_query()
     char id_card[MAX_ID_LEN];
     
     printf("\n================ 基础病历查询 ================\n");
+    printf("提示：输入 B 返回上一步，输入 Q 取消本次操作\n\n");
     
     // 患者编号输入环节
     input_patient_id:
-    get_safe_string("请输入患者编号(输入 0 回退上一步，输入 00 退出): ", patient_id, MAX_ID_LEN);
-    if (strcmp(patient_id, "00") == 0)
+    get_safe_string("请输入患者编号：", patient_id, MAX_ID_LEN);
+    if (strcmp(patient_id, "Q") == 0 || strcmp(patient_id, "q") == 0)
     {
-        printf("操作取消！\n");
+        printf("⚠️ 操作取消！\n");
+        return;
+    }
+    if (strcmp(patient_id, "B") == 0 || strcmp(patient_id, "b") == 0)
+    {
+        printf("已返回上一步。\n");
         return;
     }
     // 患者编号校验（死循环）
     while (1)
     {
-        if (strcmp(patient_id, "0") == 0)
-            goto input_patient_id;
+        if (strcmp(patient_id, "Q") == 0 || strcmp(patient_id, "q") == 0)
+        {
+            printf("⚠️ 操作取消！\n");
+            return;
+        }
+        if (strcmp(patient_id, "B") == 0 || strcmp(patient_id, "b") == 0)
+        {
+            printf("已返回上一步。\n");
+            return;
+        }
         if (strlen(patient_id) == 0)
         {
-            printf("患者编号不能为空，请重新输入：");
+            printf("⚠️ 患者编号不能为空，请重新输入。\n");
             get_safe_string("", patient_id, MAX_ID_LEN);
             continue;
         }
         if (find_patient_by_id(g_patient_list, patient_id) == NULL)
         {
-            printf("未找到该患者，请重新输入：");
+            printf("⚠️ 未找到该患者，请重新输入。\n");
             get_safe_string("", patient_id, MAX_ID_LEN);
             continue;
         }
@@ -2495,26 +2708,34 @@ static void handle_patient_self_basic_record_query()
     }
     
     // 身份证号输入环节
-    get_safe_string("请输入身份证号(输入 0 回退上一步，输入 00 退出): ", id_card, MAX_ID_LEN);
-    if (strcmp(id_card, "00") == 0)
+    input_id_card:
+    get_safe_string("请输入身份证号：", id_card, MAX_ID_LEN);
+    if (strcmp(id_card, "Q") == 0 || strcmp(id_card, "q") == 0)
     {
-        printf("操作取消！\n");
+        printf("⚠️ 操作取消！\n");
         return;
     }
-    if (strcmp(id_card, "0") == 0)
+    if (strcmp(id_card, "B") == 0 || strcmp(id_card, "b") == 0)
         goto input_patient_id;
     // 身份证号校验（死循环）
     while (1)
     {
+        if (strcmp(id_card, "Q") == 0 || strcmp(id_card, "q") == 0)
+        {
+            printf("⚠️ 操作取消！\n");
+            return;
+        }
+        if (strcmp(id_card, "B") == 0 || strcmp(id_card, "b") == 0)
+            goto input_patient_id;
         if (strlen(id_card) == 0)
         {
-            printf("身份证号不能为空，请重新输入：");
+            printf("⚠️ 身份证号不能为空，请重新输入。\n");
             get_safe_string("", id_card, MAX_ID_LEN);
             continue;
         }
         if (!validate_id_card(id_card))
         {
-            printf("身份证号格式不合法，请重新输入：");
+            printf("⚠️ 身份证号格式不合法，请重新输入。\n");
             get_safe_string("", id_card, MAX_ID_LEN);
             continue;
         }
@@ -2531,16 +2752,91 @@ static void handle_patient_self_visit_overview_query()
     char id_card[MAX_ID_LEN];
     
     printf("\n================ 查询自己的就诊概览 ================\n");
-    get_safe_string("请输入患者编号: ", patient_id, MAX_ID_LEN);
-    get_safe_string("请输入身份证号: ", id_card, MAX_ID_LEN);
+    printf("提示：输入 B 返回上一步，输入 Q 取消本次操作\n\n");
+    
+    // 患者编号输入环节
+    input_patient_id:
+    get_safe_string("请输入患者编号：", patient_id, MAX_ID_LEN);
+    if (strcmp(patient_id, "Q") == 0 || strcmp(patient_id, "q") == 0)
+    {
+        printf("⚠️ 操作取消！\n");
+        return;
+    }
+    if (strcmp(patient_id, "B") == 0 || strcmp(patient_id, "b") == 0)
+    {
+        printf("已返回上一步。\n");
+        return;
+    }
+    // 患者编号校验
+    while (1)
+    {
+        if (strcmp(patient_id, "Q") == 0 || strcmp(patient_id, "q") == 0)
+        {
+            printf("⚠️ 操作取消！\n");
+            return;
+        }
+        if (strcmp(patient_id, "B") == 0 || strcmp(patient_id, "b") == 0)
+        {
+            printf("已返回上一步。\n");
+            return;
+        }
+        if (strlen(patient_id) == 0)
+        {
+            printf("⚠️ 患者编号不能为空，请重新输入。\n");
+            get_safe_string("", patient_id, MAX_ID_LEN);
+            continue;
+        }
+        if (find_patient_by_id(g_patient_list, patient_id) == NULL)
+        {
+            printf("⚠️ 未找到该患者，请重新输入。\n");
+            get_safe_string("", patient_id, MAX_ID_LEN);
+            continue;
+        }
+        break;
+    }
+    
+    // 身份证号输入环节
+    input_id_card:
+    get_safe_string("请输入身份证号：", id_card, MAX_ID_LEN);
+    if (strcmp(id_card, "Q") == 0 || strcmp(id_card, "q") == 0)
+    {
+        printf("⚠️ 操作取消！\n");
+        return;
+    }
+    if (strcmp(id_card, "B") == 0 || strcmp(id_card, "b") == 0)
+        goto input_patient_id;
+    // 身份证号校验
+    while (1)
+    {
+        if (strcmp(id_card, "Q") == 0 || strcmp(id_card, "q") == 0)
+        {
+            printf("⚠️ 操作取消！\n");
+            return;
+        }
+        if (strcmp(id_card, "B") == 0 || strcmp(id_card, "b") == 0)
+            goto input_patient_id;
+        if (strlen(id_card) == 0)
+        {
+            printf("⚠️ 身份证号不能为空，请重新输入。\n");
+            get_safe_string("", id_card, MAX_ID_LEN);
+            continue;
+        }
+        if (!validate_id_card(id_card))
+        {
+            printf("⚠️ 身份证号格式不合法，请重新输入。\n");
+            get_safe_string("", id_card, MAX_ID_LEN);
+            continue;
+        }
+        break;
+    }
     
     // 身份核验：检查患者编号和身份证号是否匹配
     PatientNode* patient = find_patient_by_id_card(id_card);
     if (patient == NULL || strcmp(patient->id, patient_id) != 0)
     {
         printf("\n❌ 身份核验失败！患者编号与身份证号不匹配\n");
-        system("pause");
-        return;
+        printf("请重新输入。\n");
+        goto input_patient_id;
     }
     
     printf("\n身份核验成功！欢迎，%s\n", patient->name);
@@ -2554,10 +2850,84 @@ static void handle_patient_self_consult_history_query()
     char id_card[MAX_ID_LEN];
     
     printf("\n================ 查询自己的历史就诊记录 ================\n");
+    printf("提示：输入 B 返回上一步，输入 Q 取消本次操作\n\n");
     printf("温馨提示：请确保您输入的是本人信息\n");
     
-    get_safe_string("请输入患者编号: ", patient_id, MAX_ID_LEN);
-    get_safe_string("请输入身份证号: ", id_card, MAX_ID_LEN);
+    // 患者编号输入环节
+    input_patient_id:
+    get_safe_string("请输入患者编号：", patient_id, MAX_ID_LEN);
+    if (strcmp(patient_id, "Q") == 0 || strcmp(patient_id, "q") == 0)
+    {
+        printf("⚠️ 操作取消！\n");
+        return;
+    }
+    if (strcmp(patient_id, "B") == 0 || strcmp(patient_id, "b") == 0)
+    {
+        printf("已返回上一步。\n");
+        return;
+    }
+    // 患者编号校验
+    while (1)
+    {
+        if (strcmp(patient_id, "Q") == 0 || strcmp(patient_id, "q") == 0)
+        {
+            printf("⚠️ 操作取消！\n");
+            return;
+        }
+        if (strcmp(patient_id, "B") == 0 || strcmp(patient_id, "b") == 0)
+        {
+            printf("已返回上一步。\n");
+            return;
+        }
+        if (strlen(patient_id) == 0)
+        {
+            printf("⚠️ 患者编号不能为空，请重新输入。\n");
+            get_safe_string("", patient_id, MAX_ID_LEN);
+            continue;
+        }
+        if (find_patient_by_id(g_patient_list, patient_id) == NULL)
+        {
+            printf("⚠️ 未找到该患者，请重新输入。\n");
+            get_safe_string("", patient_id, MAX_ID_LEN);
+            continue;
+        }
+        break;
+    }
+    
+    // 身份证号输入环节
+    input_id_card:
+    get_safe_string("请输入身份证号：", id_card, MAX_ID_LEN);
+    if (strcmp(id_card, "Q") == 0 || strcmp(id_card, "q") == 0)
+    {
+        printf("⚠️ 操作取消！\n");
+        return;
+    }
+    if (strcmp(id_card, "B") == 0 || strcmp(id_card, "b") == 0)
+        goto input_patient_id;
+    // 身份证号校验
+    while (1)
+    {
+        if (strcmp(id_card, "Q") == 0 || strcmp(id_card, "q") == 0)
+        {
+            printf("⚠️ 操作取消！\n");
+            return;
+        }
+        if (strcmp(id_card, "B") == 0 || strcmp(id_card, "b") == 0)
+            goto input_patient_id;
+        if (strlen(id_card) == 0)
+        {
+            printf("⚠️ 身份证号不能为空，请重新输入。\n");
+            get_safe_string("", id_card, MAX_ID_LEN);
+            continue;
+        }
+        if (!validate_id_card(id_card))
+        {
+            printf("⚠️ 身份证号格式不合法，请重新输入。\n");
+            get_safe_string("", id_card, MAX_ID_LEN);
+            continue;
+        }
+        break;
+    }
     
     query_patient_consult_history_verified(patient_id, id_card);
     system("pause");
@@ -2579,20 +2949,34 @@ static void handle_patient_self_appointment_register()
     
     printf("\n================ 自助预约登记 ================\n");
     printf("温馨提示：请确保您输入的是本人信息\n");
+    printf("提示：输入 B 返回上一步，输入 Q 取消本次操作\n\n");
     
     // 患者编号输入环节
     input_patient_id:
-    get_safe_string("请输入您的患者编号(输入 0 回退上一步，输入 00 退出): ", patient_id, MAX_ID_LEN);
-    if (strcmp(patient_id, "00") == 0)
+    get_safe_string("请输入您的患者编号：", patient_id, MAX_ID_LEN);
+    if (strcmp(patient_id, "Q") == 0 || strcmp(patient_id, "q") == 0)
     {
-        printf("操作取消！\n");
+        printf("⚠️ 已取消本次预约登记。\n");
+        return;
+    }
+    if (strcmp(patient_id, "B") == 0 || strcmp(patient_id, "b") == 0)
+    {
+        printf("当前已是第一步，返回上一级菜单\n");
         return;
     }
     // 患者编号校验（死循环）
     while (1)
     {
-        if (strcmp(patient_id, "0") == 0)
-            goto input_patient_id;
+        if (strcmp(patient_id, "Q") == 0 || strcmp(patient_id, "q") == 0)
+        {
+            printf("⚠️ 已取消本次预约登记。\n");
+            return;
+        }
+        if (strcmp(patient_id, "B") == 0 || strcmp(patient_id, "b") == 0)
+        {
+            printf("当前已是第一步，返回上一级菜单\n");
+            return;
+        }
         if (strlen(patient_id) == 0)
         {
             printf("患者编号不能为空，请重新输入：");
@@ -2611,17 +2995,24 @@ static void handle_patient_self_appointment_register()
     
     // 身份证号输入环节
     input_id_card:
-    get_safe_string("请输入您的身份证号（身份核验）(输入 0 回退上一步，输入 00 退出): ", id_card, MAX_ID_LEN);
-    if (strcmp(id_card, "00") == 0)
+    get_safe_string("请输入您的身份证号（身份核验）：", id_card, MAX_ID_LEN);
+    if (strcmp(id_card, "Q") == 0 || strcmp(id_card, "q") == 0)
     {
-        printf("操作取消！\n");
+        printf("⚠️ 已取消本次预约登记。\n");
         return;
     }
-    if (strcmp(id_card, "0") == 0)
+    if (strcmp(id_card, "B") == 0 || strcmp(id_card, "b") == 0)
         goto input_patient_id;
     // 身份证号校验（死循环）
     while (1)
     {
+        if (strcmp(id_card, "Q") == 0 || strcmp(id_card, "q") == 0)
+        {
+            printf("⚠️ 已取消本次预约登记。\n");
+            return;
+        }
+        if (strcmp(id_card, "B") == 0 || strcmp(id_card, "b") == 0)
+            goto input_patient_id;
         if (strlen(id_card) == 0)
         {
             printf("身份证号不能为空，请重新输入：");
@@ -2649,19 +3040,19 @@ static void handle_patient_self_appointment_register()
     
     // 预约日期输入环节
     input_date:
-    get_safe_string("请输入预约日期(输入 0 回退上一步，输入 00 退出): ", appointment_date, MAX_NAME_LEN);
-    if (strcmp(appointment_date, "00") == 0)
+    get_safe_string("请输入预约日期：", appointment_date, MAX_NAME_LEN);
+    if (strcmp(appointment_date, "Q") == 0 || strcmp(appointment_date, "q") == 0)
     {
-        printf("操作取消！\n");
+        printf("⚠️ 已取消本次预约登记。\n");
         return;
     }
-    if (strcmp(appointment_date, "0") == 0)
+    if (strcmp(appointment_date, "B") == 0 || strcmp(appointment_date, "b") == 0)
         goto input_id_card;
     // 日期校验
-    if (strlen(appointment_date) == 0)
+    char error_msg[256];
+    if (!is_appointment_date_valid(appointment_date, error_msg, sizeof(error_msg)))
     {
-        printf("预约日期不能为空，请重新输入：");
-        get_safe_string("", appointment_date, MAX_NAME_LEN);
+        printf("⚠️ %s\n", error_msg);
         goto input_date;
     }
     
@@ -2672,60 +3063,119 @@ static void handle_patient_self_appointment_register()
         strcpy(appointment_slot, "晚上");
         printf("当前为夜间模式，自动设置预约时段为: %s\n", appointment_slot);
     } else {
-        get_safe_string("请输入预约时段(输入 0 回退上一步，输入 00 退出): ", appointment_slot, MAX_NAME_LEN);
-        if (strcmp(appointment_slot, "00") == 0)
+        printf("\n请选择预约时段：\n");
+        printf("  [1] 上午\n");
+        printf("  [2] 下午\n");
+        printf("  [3] 晚上\n");
+        printf("请输入选项编号：");
+        
+        char slot_choice[MAX_NAME_LEN];
+        get_safe_string("", slot_choice, MAX_NAME_LEN);
+        
+        if (strcmp(slot_choice, "Q") == 0 || strcmp(slot_choice, "q") == 0)
         {
-            printf("操作取消！\n");
+            printf("⚠️ 已取消本次预约登记。\n");
             return;
         }
-        if (strcmp(appointment_slot, "0") == 0)
+        if (strcmp(slot_choice, "B") == 0 || strcmp(slot_choice, "b") == 0)
             goto input_date;
-        // 时段校验
-        if (strlen(appointment_slot) == 0)
+        
+        // 选项校验
+        if (strlen(slot_choice) != 1 || slot_choice[0] < '1' || slot_choice[0] > '3')
         {
-            printf("预约时段不能为空，请重新输入：");
-            get_safe_string("", appointment_slot, MAX_NAME_LEN);
+            printf("\n⚠️ 预约时段输入无效，请输入 1、2 或 3。\n\n");
+            goto input_slot;
+        }
+        
+        // 映射选项到时段
+        switch (slot_choice[0]) {
+            case '1': strcpy(appointment_slot, "上午"); break;
+            case '2': strcpy(appointment_slot, "下午"); break;
+            case '3': strcpy(appointment_slot, "晚上"); break;
+        }
+        printf("您选择的是：%s\n", appointment_slot);
+    }
+
+    // ====== 预约日期+时段联合校验 ======
+    {
+        char slot_error_msg[256];
+        if (!is_appointment_slot_valid(appointment_date, appointment_slot, slot_error_msg, sizeof(slot_error_msg)))
+        {
+            printf("\n%s\n", slot_error_msg);
+            printf("按回车键继续...\n");
+            getchar();
             goto input_slot;
         }
     }
-    
-    // 症状输入环节
-    input_symptom:
-    get_safe_string("请输入本次症状描述(可留空)(输入 0 回退上一步，输入 00 退出): ", current_symptom, MAX_SYMPTOM_LEN);
-    if (strcmp(current_symptom, "00") == 0)
+
+    // ====== 提前重复预约校验 ======
+    char existing_apt_id[MAX_ID_LEN];
+    if (check_duplicate_appointment_early(patient_id, appointment_date, appointment_slot, existing_apt_id, sizeof(existing_apt_id)))
     {
-        printf("操作取消！\n");
+        printf("\n⚠️ 您已存在该时段的有效预约（预约号：%s），不能重复预约！\n", existing_apt_id);
+        printf("按回车键继续...\n");
+        getchar();
         return;
     }
-    if (strcmp(current_symptom, "0") == 0)
-        goto input_slot;
+
+    // 症状输入环节
+    input_symptom:
+    get_safe_string("请输入本次症状描述(可留空)：", current_symptom, MAX_SYMPTOM_LEN);
+    if (strcmp(current_symptom, "Q") == 0 || strcmp(current_symptom, "q") == 0)
+    {
+        printf("⚠️ 已取消本次预约登记。\n");
+        return;
+    }
+    if (strcmp(current_symptom, "B") == 0 || strcmp(current_symptom, "b") == 0)
+        goto input_date;
     
     // 科室输入环节
     input_dept:
-    get_safe_string("请输入预约科室(可留空)(输入 0 回退上一步，输入 00 退出): ", appoint_dept, MAX_NAME_LEN);
-    if (strcmp(appoint_dept, "00") == 0)
+    get_safe_string("请输入预约科室(可留空)：", appoint_dept, MAX_NAME_LEN);
+    if (strcmp(appoint_dept, "Q") == 0 || strcmp(appoint_dept, "q") == 0)
     {
-        printf("操作取消！\n");
+        printf("⚠️ 已取消本次预约登记。\n");
         return;
     }
-    if (strcmp(appoint_dept, "0") == 0)
+    if (strcmp(appoint_dept, "B") == 0 || strcmp(appoint_dept, "b") == 0)
         goto input_symptom;
     
-    // 如果输入了科室，显示该科室的医生列表
+    // 如果输入了科室，验证科室存在性和值班医生情况
     if (strlen(appoint_dept) > 0)
     {
+        // 第一步：检查科室是否存在
+        if (!department_exists(appoint_dept))
+        {
+            printf("\n⚠️ 输入的科室不存在，请重新输入。\n");
+            goto input_dept;
+        }
+        // 第二步：检查是否有值班医生
+        if (!has_on_duty_doctor_in_department(appoint_dept))
+        {
+            printf("\n⚠️ 【%s】当前暂无医生值班，请重新选择其他科室。\n", appoint_dept);
+            goto input_dept;
+        }
+        // 第三步：显示医生列表
         display_doctors_by_dept(appoint_dept);
     }
     
     // 医生输入环节
-    get_safe_string("请输入预约医生编号(可留空)(输入 0 回退上一步，输入 00 退出): ", appoint_doctor, MAX_NAME_LEN);
-    if (strcmp(appoint_doctor, "00") == 0)
+    get_safe_string("请输入预约医生编号(可留空)：", appoint_doctor, MAX_NAME_LEN);
+    if (strcmp(appoint_doctor, "Q") == 0 || strcmp(appoint_doctor, "q") == 0)
     {
-        printf("操作取消！\n");
+        printf("⚠️ 已取消本次预约登记。\n");
         return;
     }
-    if (strcmp(appoint_doctor, "0") == 0)
+    if (strcmp(appoint_doctor, "B") == 0 || strcmp(appoint_doctor, "b") == 0)
         goto input_dept;
+    
+    // 检查科室和医生是否同时为空
+    if (is_blank_string(appoint_dept) && is_blank_string(appoint_doctor))
+    {
+        printf("\n⚠️ 预约医生和预约科室至少需要填写一个！\n");
+        printf("请重新填写预约科室和预约医生信息。\n\n");
+        goto input_dept;
+    }
     
     safe_copy_string(old_symptom, MAX_SYMPTOM_LEN, patient->symptom);
     old_is_emergency = patient->is_emergency;
@@ -2800,6 +3250,28 @@ static void handle_patient_self_appointment_register()
         new_appt->reg_fee = reg_fee;
         new_appt->fee_paid = 1;
         printf("\n✅ 自助预约登记成功！预约编号：%s\n", new_appt->appointment_id);
+        printf("预约日期：%s\n", new_appt->appointment_date);
+        printf("预约时段：%s\n", new_appt->appointment_slot);
+        
+        if (strlen(new_appt->appoint_doctor) > 0)
+        {
+            DoctorNode* doctor = find_doctor_by_id(g_doctor_list, new_appt->appoint_doctor);
+            if (doctor != NULL)
+            {
+                printf("预约科室：%s\n", doctor->department);
+                printf("预约医生：%s %s\n", doctor->id, doctor->name);
+            }
+            else
+            {
+                printf("预约医生：%s\n", new_appt->appoint_doctor);
+            }
+        }
+        else if (strlen(new_appt->appoint_dept) > 0)
+        {
+            printf("预约科室：%s\n", new_appt->appoint_dept);
+        }
+        
+        printf("预约状态：%s\n", get_appointment_display_status(new_appt));
     }
     else
     {
@@ -3416,7 +3888,8 @@ static void handle_patient_self_registration()
         strcpy(appointment_slot, "晚上");
         printf("当前为夜间模式，自动设置挂号时段为: %s\n", appointment_slot);
     } else {
-        get_safe_string("请输入挂号时段：", appointment_slot, MAX_NAME_LEN);
+        printf("\n【当前步骤：填写挂号时段】\n");
+        get_safe_string("请输入挂号时段（可输入：上午/下午/晚上）：", appointment_slot, MAX_NAME_LEN);
         if (strcmp(appointment_slot, "Q") == 0 || strcmp(appointment_slot, "q") == 0)
         {
             printf("提示：已返回菜单页。\n");
@@ -3440,13 +3913,37 @@ static void handle_patient_self_registration()
             get_safe_string("", appointment_slot, MAX_NAME_LEN);
             goto input_slot;
         }
+        // 时段格式校验
+        if (strcmp(appointment_slot, "上午") != 0 && 
+            strcmp(appointment_slot, "下午") != 0 && 
+            strcmp(appointment_slot, "晚上") != 0)
+        {
+            printf("⚠️ 挂号时段格式不正确，请输入：上午、下午或晚上\n");
+            goto input_slot;
+        }
+    }
+    
+    // ==========================================
+    // 前置校验：检查该患者该日期该时段是否已有有效预约/挂号
+    // ==========================================
+    {
+        char existing_appointment_id[MAX_ID_LEN];
+        if (check_duplicate_appointment_early(patient_id, appointment_date, appointment_slot, existing_appointment_id, sizeof(existing_appointment_id)))
+        {
+            printf("\n⚠️ 您已存在该时段的有效预约（预约号：%s），不能重复挂号/预约！\n", existing_appointment_id);
+            printf("请选择其他时段。\n");
+            goto input_slot;
+        }
     }
     
     // 医生输入环节（急诊也保留选择权）
-    get_safe_string("请输入意向医生编号（直接回车留空表示由值班医生接诊）：", appoint_doctor, MAX_NAME_LEN);
+    input_doctor:
+    printf("\n【当前步骤：填写意向医生编号】\n");
+    get_safe_string("请输入意向医生编号（可留空，直接回车表示由值班医生接诊）：", appoint_doctor, MAX_NAME_LEN);
     if (strcmp(appoint_doctor, "Q") == 0 || strcmp(appoint_doctor, "q") == 0)
     {
         printf("提示：已返回菜单页。\n");
+        
         // 恢复原症状
         strncpy(patient->symptom, old_symptom, MAX_SYMPTOM_LEN - 1);
         patient->symptom[MAX_SYMPTOM_LEN - 1] = '\0';
@@ -3558,51 +4055,165 @@ static void handle_patient_self_registration()
 
 static void handle_patient_self_appointment_cancel()
 {
-    char patient_id[MAX_ID_LEN];
-    char id_card[MAX_ID_LEN];
-    char appointment_id[MAX_ID_LEN];
+    char patient_id[MAX_ID_LEN] = "";
+    char id_card[MAX_ID_LEN] = "";
+    char appointment_id[MAX_ID_LEN] = "";
     
-    printf("\n================ 自助预约取消 ================\n");
-    printf("温馨提示：请确保您输入的是本人信息\n");
+    int step = 1;  // 1: 输入患者编号, 2: 输入身份证号, 3: 输入预约编号
+    int loop = 1;
     
-    get_safe_string("请输入您的患者编号: ", patient_id, MAX_ID_LEN);
-    get_safe_string("请输入您的身份证号（身份核验）: ", id_card, MAX_ID_LEN);
-    
-    // 身份核验：检查患者编号和身份证号是否匹配
-    PatientNode* patient = find_patient_by_id_card(id_card);
-    if (patient == NULL || strcmp(patient->id, patient_id) != 0)
+    while (loop)
     {
-        printf("\n❌ 身份核验失败！患者编号与身份证号不匹配\n");
-        system("pause");
-        return;
+        system("cls");
+        printf("\n================ 自助预约取消 ================\n");
+        printf("提示：输入 B 返回上一步，输入 Q 取消本次操作\n");
+        printf("------------------------------------------------------------\n");
+        
+        switch (step)
+        {
+            case 1:  // 步骤1：输入患者编号
+            {
+                get_safe_string("请输入您的患者编号: ", patient_id, MAX_ID_LEN);
+                
+                // 处理 B/Q
+                if (strcmp(patient_id, "B") == 0 || strcmp(patient_id, "b") == 0)
+                {
+                    return;  // 返回患者自助服务菜单
+                }
+                if (strcmp(patient_id, "Q") == 0 || strcmp(patient_id, "q") == 0)
+                {
+                    return;  // 取消本次操作，返回患者自助服务菜单
+                }
+                
+                // 校验患者编号不能为空
+                if (strlen(patient_id) == 0)
+                {
+                    printf("⚠ 患者编号不能为空，请重新输入。\n");
+                    system("pause");
+                    break;
+                }
+                
+                step = 2;  // 进入步骤2
+                break;
+            }
+            
+            case 2:  // 步骤2：输入身份证号
+            {
+                printf("患者编号：%s\n", patient_id);
+                get_safe_string("请输入您的身份证号（身份核验）: ", id_card, MAX_ID_LEN);
+                
+                // 处理 B/Q
+                if (strcmp(id_card, "B") == 0 || strcmp(id_card, "b") == 0)
+                {
+                    step = 1;  // 返回步骤1
+                    break;
+                }
+                if (strcmp(id_card, "Q") == 0 || strcmp(id_card, "q") == 0)
+                {
+                    return;  // 取消本次操作，返回患者自助服务菜单
+                }
+                
+                // 校验身份证号不能为空
+                if (strlen(id_card) == 0)
+                {
+                    printf("⚠ 身份核验失败，请重新输入。\n");
+                    system("pause");
+                    break;
+                }
+                
+                // 身份核验：检查患者编号和身份证号是否匹配
+                PatientNode* patient = find_patient_by_id_card(id_card);
+                if (patient == NULL || strcmp(patient->id, patient_id) != 0)
+                {
+                    printf("⚠ 身份核验失败，请重新输入。\n");
+                    system("pause");
+                    break;
+                }
+                
+                // 进入步骤3：显示可取消预约列表
+                step = 3;
+                break;
+            }
+            
+            case 3:  // 步骤3：显示可取消预约列表并输入预约编号
+            {
+                printf("患者编号：%s\n", patient_id);
+                
+                // 显示可取消预约列表
+                int cancelable_count = show_cancelable_appointments_for_patient(patient_id);
+                
+                // 如果没有可取消的预约，返回上级菜单
+                if (cancelable_count == 0)
+                {
+                    system("pause");
+                    return;
+                }
+                
+                get_safe_string("请输入要取消的预约编号: ", appointment_id, MAX_ID_LEN);
+                
+                // 处理 B/Q
+                if (strcmp(appointment_id, "B") == 0 || strcmp(appointment_id, "b") == 0)
+                {
+                    // 返回重新显示预约列表（保持在步骤3）
+                    break;
+                }
+                if (strcmp(appointment_id, "Q") == 0 || strcmp(appointment_id, "q") == 0)
+                {
+                    return;  // 取消本次操作，返回患者自助服务菜单
+                }
+                
+                // 校验预约编号是否属于该患者且可取消
+                AppointmentNode* appointment = find_appointment_by_id(g_appointment_list, appointment_id);
+                if (appointment == NULL)
+                {
+                    printf("⚠ 输入的预约编号无效或不可取消，请重新输入。\n");
+                    system("pause");
+                    break;
+                }
+                
+                if (strcmp(appointment->patient_id, patient_id) != 0)
+                {
+                    printf("⚠ 输入的预约编号无效或不可取消，请重新输入。\n");
+                    system("pause");
+                    break;
+                }
+                
+                if (!is_appointment_cancelable(appointment))
+                {
+                    printf("⚠ 输入的预约编号无效或不可取消，请重新输入。\n");
+                    system("pause");
+                    break;
+                }
+                
+                // 调用取消函数并检查返回值
+                int result = cancel_appointment(appointment_id);
+                if (result == 1)
+                {
+                    printf("\n✅ 预约取消成功！\n");
+                    printf("预约编号：%s\n", appointment->appointment_id);
+                    printf("预约日期：%s\n", appointment->appointment_date);
+                    printf("预约时段：%s\n", appointment->appointment_slot);
+                    
+                    const char* dept = appointment->appoint_dept;
+                    if (strlen(appointment->appoint_doctor) > 0)
+                    {
+                        DoctorNode* doctor = find_doctor_by_id(g_doctor_list, appointment->appoint_doctor);
+                        if (doctor != NULL && strlen(doctor->department) > 0)
+                        {
+                            dept = doctor->department;
+                        }
+                    }
+                    printf("预约科室：%s\n", dept);
+                    printf("当前状态：已取消\n");
+                }
+                // 失败信息已在cancel_appointment函数内部打印
+                
+                system("pause");
+                loop = 0;  // 结束流程
+                break;
+            }
+        }
     }
-    
-    get_safe_string("请输入要取消的预约编号: ", appointment_id, MAX_ID_LEN);
-    
-    // 校验预约是否属于当前患者
-    AppointmentNode* appointment = find_appointment_by_id(g_appointment_list, appointment_id);
-    if (appointment == NULL)
-    {
-        printf("\n❌ 未找到对应预约记录！\n");
-        system("pause");
-        return;
-    }
-    
-    if (strcmp(appointment->patient_id, patient_id) != 0)
-    {
-        printf("\n❌ 无权取消他人预约！\n");
-        system("pause");
-        return;
-    }
-    
-    // 调用取消函数并检查返回值
-    int result = cancel_appointment(appointment_id);
-    if (result == 1)
-    {
-        printf("\n✅ 自助预约取消成功！\n");
-    }
-    // 失败信息已在cancel_appointment函数内部打印
-    system("pause");
 }
 
 static void handle_patient_archive_query_by_id()
@@ -4043,6 +4654,7 @@ static void patient_self_service_menu()
         printf("  [11] 发起服务投诉\n");
         printf("  [12] 查看投诉进度\n");
         printf("  [13] 就诊满意度评价\n");
+        printf("  [14] 预约签到转挂号\n");
         printf("  [0] 返回上一级\n");
         printf("------------------------------------------------------\n");
         switch (get_safe_int("👉 请输入操作编号: "))
@@ -4057,21 +4669,110 @@ static void patient_self_service_menu()
                 handle_patient_self_registration();
                 break;
             case 4:
-                get_safe_string("请输入您的患者编号: ", patient_id, MAX_ID_LEN);
-                get_safe_string("请输入您的身份证号（身份核验）: ", id_card, MAX_ID_LEN);
-                
-                // 身份核验：检查患者编号和身份证号是否匹配
-                PatientNode* patient = find_patient_by_id_card(id_card);
-                if (patient == NULL || strcmp(patient->id, patient_id) != 0)
                 {
-                    printf("\n❌ 身份核验失败！患者编号与身份证号不匹配\n");
-                    system("pause");
-                    break;
+                    printf("\n================ 查询自己的预约 ================\n");
+                    printf("提示：输入 B 返回上一步，输入 Q 取消本次操作\n\n");
+                    
+                    char local_patient_id[MAX_ID_LEN];
+                    char local_id_card[MAX_ID_LEN];
+                    
+                    // 患者编号输入环节
+                    input_apt_patient_id:
+                    get_safe_string("请输入患者编号：", local_patient_id, MAX_ID_LEN);
+                    if (strcmp(local_patient_id, "Q") == 0 || strcmp(local_patient_id, "q") == 0)
+                    {
+                        printf("⚠️ 操作取消！\n");
+                        break;
+                    }
+                    if (strcmp(local_patient_id, "B") == 0 || strcmp(local_patient_id, "b") == 0)
+                    {
+                        printf("已返回上一步。\n");
+                        break;
+                    }
+                    // 患者编号校验
+                    while (1)
+                    {
+                        if (strcmp(local_patient_id, "Q") == 0 || strcmp(local_patient_id, "q") == 0)
+                        {
+                            printf("⚠️ 操作取消！\n");
+                            break;
+                        }
+                        if (strcmp(local_patient_id, "B") == 0 || strcmp(local_patient_id, "b") == 0)
+                        {
+                            printf("已返回上一步。\n");
+                            break;
+                        }
+                        if (strlen(local_patient_id) == 0)
+                        {
+                            printf("⚠️ 患者编号不能为空，请重新输入。\n");
+                            get_safe_string("", local_patient_id, MAX_ID_LEN);
+                            continue;
+                        }
+                        if (find_patient_by_id(g_patient_list, local_patient_id) == NULL)
+                        {
+                            printf("⚠️ 未找到该患者，请重新输入。\n");
+                            get_safe_string("", local_patient_id, MAX_ID_LEN);
+                            continue;
+                        }
+                        break;
+                    }
+                    if (strcmp(local_patient_id, "Q") == 0 || strcmp(local_patient_id, "q") == 0 ||
+                        strcmp(local_patient_id, "B") == 0 || strcmp(local_patient_id, "b") == 0)
+                        break;
+                    
+                    // 身份证号输入环节
+                    input_apt_id_card:
+                    get_safe_string("请输入身份证号：", local_id_card, MAX_ID_LEN);
+                    if (strcmp(local_id_card, "Q") == 0 || strcmp(local_id_card, "q") == 0)
+                    {
+                        printf("⚠️ 操作取消！\n");
+                        break;
+                    }
+                    if (strcmp(local_id_card, "B") == 0 || strcmp(local_id_card, "b") == 0)
+                        goto input_apt_patient_id;
+                    // 身份证号校验
+                    while (1)
+                    {
+                        if (strcmp(local_id_card, "Q") == 0 || strcmp(local_id_card, "q") == 0)
+                        {
+                            printf("⚠️ 操作取消！\n");
+                            break;
+                        }
+                        if (strcmp(local_id_card, "B") == 0 || strcmp(local_id_card, "b") == 0)
+                            goto input_apt_patient_id;
+                        if (strlen(local_id_card) == 0)
+                        {
+                            printf("⚠️ 身份证号不能为空，请重新输入。\n");
+                            get_safe_string("", local_id_card, MAX_ID_LEN);
+                            continue;
+                        }
+                        if (!validate_id_card(local_id_card))
+                        {
+                            printf("⚠️ 身份证号格式不合法，请重新输入。\n");
+                            get_safe_string("", local_id_card, MAX_ID_LEN);
+                            continue;
+                        }
+                        break;
+                    }
+                    if (strcmp(local_id_card, "Q") == 0 || strcmp(local_id_card, "q") == 0 ||
+                        strcmp(local_id_card, "B") == 0 || strcmp(local_id_card, "b") == 0)
+                        break;
+                    
+                    // 身份核验：检查患者编号和身份证号是否匹配
+                    PatientNode* patient = find_patient_by_id_card(local_id_card);
+                    
+                    if (patient == NULL || strcmp(patient->id, local_patient_id) != 0)
+                    {
+                        printf("\n❌ 身份核验失败！患者编号与身份证号不匹配\n");
+                        printf("请重新输入。\n");
+                        goto input_apt_patient_id;
+                    }
+                    
+                    printf("\n身份核验成功！欢迎，%s\n", patient->name);
+                    query_appointments_by_patient_id(local_patient_id);
+                    printf("按任意键继续...");
+                    get_single_char("");
                 }
-                
-                printf("\n身份核验成功！欢迎，%s\n", patient->name);
-                query_appointments_by_patient_id(patient_id);
-                system("pause");
                 break;
             case 5:
                 handle_patient_self_appointment_cancel();
@@ -4086,45 +4787,132 @@ static void patient_self_service_menu()
                 handle_patient_self_consult_history_query();
                 break;
             case 9:
-                get_safe_string("请输入您的患者编号: ", patient_id, MAX_ID_LEN);
-                get_safe_string("请输入您的身份证号（身份核验）: ", id_card, MAX_ID_LEN);
-                
-                // 身份核验
-                PatientNode* check_patient = find_patient_by_id_card(id_card);
-                if (check_patient == NULL || strcmp(check_patient->id, patient_id) != 0)
                 {
-                    printf("\n❌ 身份核验失败！患者编号与身份证号不匹配\n");
-                    system("pause");
-                    break;
-                }
-                
-                printf("\n身份核验成功！欢迎，%s\n", check_patient->name);
-                printf("\n================ 检查报告列表 ================\n");
-                
-                // 统计并显示患者的检查记录
-                int check_count = 0;
-                CheckRecordNode* curr = g_check_record_list->next;
-                while (curr != NULL)
-                {
-                    if (strcmp(curr->patient_id, patient_id) == 0)
+                    printf("\n================ 查询检查报告 ================\n");
+                    printf("提示：输入 B 返回上一步，输入 Q 取消本次操作\n\n");
+                    
+                    char local_patient_id[MAX_ID_LEN];
+                    char local_id_card[MAX_ID_LEN];
+                    
+                    // 患者编号输入环节
+                    input_check_patient_id:
+                    get_safe_string("请输入患者编号：", local_patient_id, MAX_ID_LEN);
+                    if (strcmp(local_patient_id, "Q") == 0 || strcmp(local_patient_id, "q") == 0)
                     {
-                        check_count++;
-                        printf("\n【检查报告 %d】\n", check_count);
-                        printf("检查项目：%s\n", curr->item_name);
-                        printf("检查科室：%s\n", curr->dept);
-                        printf("检查时间：%s\n", curr->check_time[0] != '\0' ? curr->check_time : "待安排");
-                        printf("检查状态：%s\n", curr->is_completed ? "已完成" : "待检查");
-                        printf("检查结果：%s\n", curr->result);
-                        printf("----------------------------------------\n");
+                        printf("⚠️ 操作取消！\n");
+                        break;
                     }
-                    curr = curr->next;
+                    if (strcmp(local_patient_id, "B") == 0 || strcmp(local_patient_id, "b") == 0)
+                    {
+                        printf("已返回上一步。\n");
+                        break;
+                    }
+                    // 患者编号校验
+                    while (1)
+                    {
+                        if (strcmp(local_patient_id, "Q") == 0 || strcmp(local_patient_id, "q") == 0)
+                        {
+                            printf("⚠️ 操作取消！\n");
+                            break;
+                        }
+                        if (strcmp(local_patient_id, "B") == 0 || strcmp(local_patient_id, "b") == 0)
+                        {
+                            printf("已返回上一步。\n");
+                            break;
+                        }
+                        if (strlen(local_patient_id) == 0)
+                        {
+                            printf("⚠️ 患者编号不能为空，请重新输入。\n");
+                            get_safe_string("", local_patient_id, MAX_ID_LEN);
+                            continue;
+                        }
+                        if (find_patient_by_id(g_patient_list, local_patient_id) == NULL)
+                        {
+                            printf("⚠️ 未找到该患者，请重新输入。\n");
+                            get_safe_string("", local_patient_id, MAX_ID_LEN);
+                            continue;
+                        }
+                        break;
+                    }
+                    if (strcmp(local_patient_id, "Q") == 0 || strcmp(local_patient_id, "q") == 0 ||
+                        strcmp(local_patient_id, "B") == 0 || strcmp(local_patient_id, "b") == 0)
+                        break;
+                    
+                    // 身份证号输入环节
+                    input_check_id_card:
+                    get_safe_string("请输入身份证号：", local_id_card, MAX_ID_LEN);
+                    if (strcmp(local_id_card, "Q") == 0 || strcmp(local_id_card, "q") == 0)
+                    {
+                        printf("⚠️ 操作取消！\n");
+                        break;
+                    }
+                    if (strcmp(local_id_card, "B") == 0 || strcmp(local_id_card, "b") == 0)
+                        goto input_check_patient_id;
+                    // 身份证号校验
+                    while (1)
+                    {
+                        if (strcmp(local_id_card, "Q") == 0 || strcmp(local_id_card, "q") == 0)
+                        {
+                            printf("⚠️ 操作取消！\n");
+                            break;
+                        }
+                        if (strcmp(local_id_card, "B") == 0 || strcmp(local_id_card, "b") == 0)
+                            goto input_check_patient_id;
+                        if (strlen(local_id_card) == 0)
+                        {
+                            printf("⚠️ 身份证号不能为空，请重新输入。\n");
+                            get_safe_string("", local_id_card, MAX_ID_LEN);
+                            continue;
+                        }
+                        if (!validate_id_card(local_id_card))
+                        {
+                            printf("⚠️ 身份证号格式不合法，请重新输入。\n");
+                            get_safe_string("", local_id_card, MAX_ID_LEN);
+                            continue;
+                        }
+                        break;
+                    }
+                    if (strcmp(local_id_card, "Q") == 0 || strcmp(local_id_card, "q") == 0 ||
+                        strcmp(local_id_card, "B") == 0 || strcmp(local_id_card, "b") == 0)
+                        break;
+                    
+                    // 身份核验
+                    PatientNode* check_patient = find_patient_by_id_card(local_id_card);
+                    if (check_patient == NULL || strcmp(check_patient->id, local_patient_id) != 0)
+                    {
+                        printf("\n❌ 身份核验失败！患者编号与身份证号不匹配\n");
+                        printf("请重新输入。\n");
+                        goto input_check_patient_id;
+                    }
+                    
+                    printf("\n身份核验成功！欢迎，%s\n", check_patient->name);
+                    printf("\n================ 检查报告列表 ================\n");
+                    
+                    // 统计并显示患者的检查记录
+                    int check_count = 0;
+                    CheckRecordNode* curr = g_check_record_list->next;
+                    while (curr != NULL)
+                    {
+                        if (strcmp(curr->patient_id, local_patient_id) == 0)
+                        {
+                            check_count++;
+                            printf("\n【检查报告 %d】\n", check_count);
+                            printf("检查项目：%s\n", curr->item_name);
+                            printf("检查科室：%s\n", curr->dept);
+                            printf("检查时间：%s\n", curr->check_time[0] != '\0' ? curr->check_time : "待安排");
+                            printf("检查状态：%s\n", curr->is_completed ? "已完成" : "待检查");
+                            printf("检查结果：%s\n", curr->result);
+                            printf("----------------------------------------\n");
+                        }
+                        curr = curr->next;
+                    }
+                    
+                    if (check_count == 0)
+                    {
+                        printf("暂无检查记录\n");
+                    }
+                    system("pause");
                 }
-                
-                if (check_count == 0)
-                {
-                    printf("暂无检查记录\n");
-                }
-                system("pause");
                 break;
             case 10:
                 get_safe_string("请输入您的患者编号: ", patient_id, MAX_ID_LEN);
@@ -4161,21 +4949,108 @@ static void patient_self_service_menu()
                 system("pause");
                 break;
             case 12:
-                get_safe_string("请输入您的患者编号: ", patient_id, MAX_ID_LEN);
-                get_safe_string("请输入您的身份证号（身份核验）: ", id_card, MAX_ID_LEN);
-                
-                // 身份核验
-                PatientNode* query_patient = find_patient_by_id_card(id_card);
-                if (query_patient == NULL || strcmp(query_patient->id, patient_id) != 0)
                 {
-                    printf("\n❌ 身份核验失败！患者编号与身份证号不匹配\n");
+                    printf("\n================ 查看投诉进度 ================\n");
+                    printf("提示：输入 B 返回上一步，输入 Q 取消本次操作\n\n");
+                    
+                    char local_patient_id[MAX_ID_LEN];
+                    char local_id_card[MAX_ID_LEN];
+                    
+                    // 患者编号输入环节
+                    input_complaint_patient_id:
+                    get_safe_string("请输入患者编号：", local_patient_id, MAX_ID_LEN);
+                    if (strcmp(local_patient_id, "Q") == 0 || strcmp(local_patient_id, "q") == 0)
+                    {
+                        printf("⚠️ 操作取消！\n");
+                        break;
+                    }
+                    if (strcmp(local_patient_id, "B") == 0 || strcmp(local_patient_id, "b") == 0)
+                    {
+                        printf("已返回上一步。\n");
+                        break;
+                    }
+                    // 患者编号校验
+                    while (1)
+                    {
+                        if (strcmp(local_patient_id, "Q") == 0 || strcmp(local_patient_id, "q") == 0)
+                        {
+                            printf("⚠️ 操作取消！\n");
+                            break;
+                        }
+                        if (strcmp(local_patient_id, "B") == 0 || strcmp(local_patient_id, "b") == 0)
+                        {
+                            printf("已返回上一步。\n");
+                            break;
+                        }
+                        if (strlen(local_patient_id) == 0)
+                        {
+                            printf("⚠️ 患者编号不能为空，请重新输入。\n");
+                            get_safe_string("", local_patient_id, MAX_ID_LEN);
+                            continue;
+                        }
+                        if (find_patient_by_id(g_patient_list, local_patient_id) == NULL)
+                        {
+                            printf("⚠️ 未找到该患者，请重新输入。\n");
+                            get_safe_string("", local_patient_id, MAX_ID_LEN);
+                            continue;
+                        }
+                        break;
+                    }
+                    if (strcmp(local_patient_id, "Q") == 0 || strcmp(local_patient_id, "q") == 0 ||
+                        strcmp(local_patient_id, "B") == 0 || strcmp(local_patient_id, "b") == 0)
+                        break;
+                    
+                    // 身份证号输入环节
+                    input_complaint_id_card:
+                    get_safe_string("请输入身份证号：", local_id_card, MAX_ID_LEN);
+                    if (strcmp(local_id_card, "Q") == 0 || strcmp(local_id_card, "q") == 0)
+                    {
+                        printf("⚠️ 操作取消！\n");
+                        break;
+                    }
+                    if (strcmp(local_id_card, "B") == 0 || strcmp(local_id_card, "b") == 0)
+                        goto input_complaint_patient_id;
+                    // 身份证号校验
+                    while (1)
+                    {
+                        if (strcmp(local_id_card, "Q") == 0 || strcmp(local_id_card, "q") == 0)
+                        {
+                            printf("⚠️ 操作取消！\n");
+                            break;
+                        }
+                        if (strcmp(local_id_card, "B") == 0 || strcmp(local_id_card, "b") == 0)
+                            goto input_complaint_patient_id;
+                        if (strlen(local_id_card) == 0)
+                        {
+                            printf("⚠️ 身份证号不能为空，请重新输入。\n");
+                            get_safe_string("", local_id_card, MAX_ID_LEN);
+                            continue;
+                        }
+                        if (!validate_id_card(local_id_card))
+                        {
+                            printf("⚠️ 身份证号格式不合法，请重新输入。\n");
+                            get_safe_string("", local_id_card, MAX_ID_LEN);
+                            continue;
+                        }
+                        break;
+                    }
+                    if (strcmp(local_id_card, "Q") == 0 || strcmp(local_id_card, "q") == 0 ||
+                        strcmp(local_id_card, "B") == 0 || strcmp(local_id_card, "b") == 0)
+                        break;
+                    
+                    // 身份核验
+                    PatientNode* query_patient = find_patient_by_id_card(local_id_card);
+                    if (query_patient == NULL || strcmp(query_patient->id, local_patient_id) != 0)
+                    {
+                        printf("\n❌ 身份核验失败！患者编号与身份证号不匹配\n");
+                        printf("请重新输入。\n");
+                        goto input_complaint_patient_id;
+                    }
+                    
+                    printf("\n身份核验成功！欢迎，%s\n", query_patient->name);
+                    query_patient_complaints(local_patient_id);
                     system("pause");
-                    break;
                 }
-                
-                printf("\n身份核验成功！欢迎，%s\n", query_patient->name);
-                query_patient_complaints(patient_id);
-                system("pause");
                 break;
             case 13:
                 get_safe_string("请输入您的患者编号: ", patient_id, MAX_ID_LEN);
@@ -4193,6 +5068,145 @@ static void patient_self_service_menu()
                 printf("\n身份核验成功！欢迎，%s\n", eval_patient->name);
                 submit_patient_evaluation(patient_id);
                 system("pause");
+                break;
+            case 14:
+                {
+                    printf("\n================ 预约签到转挂号 ================\n");
+                    printf("提示：输入 B 返回上一步，输入 Q 取消本次操作\n\n");
+                    
+                    char local_patient_id[MAX_ID_LEN];
+                    char local_id_card[MAX_ID_LEN];
+                    char appointment_id[MAX_ID_LEN];
+                    
+                    // 患者编号输入环节
+                    input_checkin_patient_id:
+                    get_safe_string("请输入患者编号：", local_patient_id, MAX_ID_LEN);
+                    if (strcmp(local_patient_id, "Q") == 0 || strcmp(local_patient_id, "q") == 0)
+                    {
+                        printf("⚠️ 操作取消！\n");
+                        break;
+                    }
+                    if (strcmp(local_patient_id, "B") == 0 || strcmp(local_patient_id, "b") == 0)
+                    {
+                        printf("已返回上一步。\n");
+                        break;
+                    }
+                    // 患者编号校验
+                    while (1)
+                    {
+                        if (strcmp(local_patient_id, "Q") == 0 || strcmp(local_patient_id, "q") == 0)
+                        {
+                            printf("⚠️ 操作取消！\n");
+                            break;
+                        }
+                        if (strcmp(local_patient_id, "B") == 0 || strcmp(local_patient_id, "b") == 0)
+                        {
+                            printf("已返回上一步。\n");
+                            break;
+                        }
+                        if (strlen(local_patient_id) == 0)
+                        {
+                            printf("⚠️ 患者编号不能为空，请重新输入。\n");
+                            get_safe_string("", local_patient_id, MAX_ID_LEN);
+                            continue;
+                        }
+                        if (find_patient_by_id(g_patient_list, local_patient_id) == NULL)
+                        {
+                            printf("⚠️ 未找到该患者，请重新输入。\n");
+                            get_safe_string("", local_patient_id, MAX_ID_LEN);
+                            continue;
+                        }
+                        break;
+                    }
+                    if (strcmp(local_patient_id, "Q") == 0 || strcmp(local_patient_id, "q") == 0 ||
+                        strcmp(local_patient_id, "B") == 0 || strcmp(local_patient_id, "b") == 0)
+                        break;
+                    
+                    // 身份证号输入环节
+                    input_checkin_id_card:
+                    get_safe_string("请输入身份证号：", local_id_card, MAX_ID_LEN);
+                    if (strcmp(local_id_card, "Q") == 0 || strcmp(local_id_card, "q") == 0)
+                    {
+                        printf("⚠️ 操作取消！\n");
+                        break;
+                    }
+                    if (strcmp(local_id_card, "B") == 0 || strcmp(local_id_card, "b") == 0)
+                        goto input_checkin_patient_id;
+                    // 身份证号校验
+                    while (1)
+                    {
+                        if (strcmp(local_id_card, "Q") == 0 || strcmp(local_id_card, "q") == 0)
+                        {
+                            printf("⚠️ 操作取消！\n");
+                            break;
+                        }
+                        if (strcmp(local_id_card, "B") == 0 || strcmp(local_id_card, "b") == 0)
+                            goto input_checkin_patient_id;
+                        if (strlen(local_id_card) == 0)
+                        {
+                            printf("⚠️ 身份证号不能为空，请重新输入。\n");
+                            get_safe_string("", local_id_card, MAX_ID_LEN);
+                            continue;
+                        }
+                        if (!validate_id_card(local_id_card))
+                        {
+                            printf("⚠️ 身份证号格式不合法，请重新输入。\n");
+                            get_safe_string("", local_id_card, MAX_ID_LEN);
+                            continue;
+                        }
+                        break;
+                    }
+                    if (strcmp(local_id_card, "Q") == 0 || strcmp(local_id_card, "q") == 0 ||
+                        strcmp(local_id_card, "B") == 0 || strcmp(local_id_card, "b") == 0)
+                        break;
+                    
+                    // 身份核验
+                    PatientNode* checkin_patient = find_patient_by_id_card(local_id_card);
+                    if (checkin_patient == NULL || strcmp(checkin_patient->id, local_patient_id) != 0)
+                    {
+                        printf("\n❌ 身份核验失败！患者编号与身份证号不匹配\n");
+                        printf("请重新输入。\n");
+                        goto input_checkin_patient_id;
+                    }
+                    
+                    printf("\n身份核验成功！欢迎，%s\n", checkin_patient->name);
+                    
+                    // 预约编号输入环节
+                    input_checkin_appointment_id:
+                    get_safe_string("请输入预约编号：", appointment_id, MAX_ID_LEN);
+                    if (strcmp(appointment_id, "Q") == 0 || strcmp(appointment_id, "q") == 0)
+                    {
+                        printf("⚠️ 操作取消！\n");
+                        break;
+                    }
+                    if (strcmp(appointment_id, "B") == 0 || strcmp(appointment_id, "b") == 0)
+                        goto input_checkin_id_card;
+                    // 预约编号校验
+                    while (1)
+                    {
+                        if (strcmp(appointment_id, "Q") == 0 || strcmp(appointment_id, "q") == 0)
+                        {
+                            printf("⚠️ 操作取消！\n");
+                            break;
+                        }
+                        if (strcmp(appointment_id, "B") == 0 || strcmp(appointment_id, "b") == 0)
+                            goto input_checkin_id_card;
+                        if (strlen(appointment_id) == 0)
+                        {
+                            printf("⚠️ 预约编号不能为空，请重新输入。\n");
+                            get_safe_string("", appointment_id, MAX_ID_LEN);
+                            continue;
+                        }
+                        break;
+                    }
+                    if (strcmp(appointment_id, "Q") == 0 || strcmp(appointment_id, "q") == 0 ||
+                        strcmp(appointment_id, "B") == 0 || strcmp(appointment_id, "b") == 0)
+                        break;
+                    
+                    // 执行签到转挂号
+                    check_in_appointment(appointment_id);
+                    system("pause");
+                }
                 break;
             case 0:
                 running = 0;
@@ -4301,12 +5315,22 @@ int main()
     g_inpatient_list = create_inpatient_record_head();
 
     // 加载存档数据
-    #if LOGIN_DEBUG
     printf("DEBUG: 开始加载数据...\n");
-    #endif
     int load_result = load_all_data();
-    #if LOGIN_DEBUG
     printf("DEBUG: 数据加载完成，结果: %d\n", load_result);
+    
+    // 检查患者链表状态
+    if (g_patient_list->next == NULL) {
+        printf("DEBUG: 患者链表为空\n");
+    } else {
+        printf("DEBUG: 患者链表不为空\n");
+        // 打印第一个患者信息
+        PatientNode* first_patient = g_patient_list->next;
+        if (first_patient != NULL) {
+            printf("DEBUG: 第一个患者: ID=%s, 姓名=%s, 身份证=%s\n", 
+                   first_patient->id, first_patient->name, first_patient->id_card);
+        }
+    }
     
     // 检查账号链表状态
     if (g_account_list->next == NULL) {
@@ -4320,7 +5344,6 @@ int main()
                    first_account->username, first_account->password, first_account->role);
         }
     }
-    #endif
 
     // ==============================================
     // 仅当没有读取到管理员账号时，才注入系统初始数据

@@ -530,3 +530,376 @@ char get_single_char(const char* prompt)
     }
     return ' ';
 }
+
+// 15. 检查日期格式是否正确 (YYYY-MM-DD)
+int is_valid_date_format(const char* date_str)
+{
+    // 检查空指针
+    if (date_str == NULL)
+    {
+        return 0;
+    }
+
+    // 检查长度
+    if (strlen(date_str) != 10)
+    {
+        return 0;
+    }
+
+    // 检查格式：YYYY-MM-DD
+    if (date_str[4] != '-' || date_str[7] != '-')
+    {
+        return 0;
+    }
+
+    // 检查所有字符是否为数字（除了第5位和第8位）
+    int i;
+    for (i = 0; i < 10; i++)
+    {
+        if (i == 4 || i == 7)
+        {
+            continue; // 跳过横杠位置
+        }
+        if (!isdigit((unsigned char)date_str[i]))
+        {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+// 16. 检查日期是否真实存在
+int is_real_date(int year, int month, int day)
+{
+    // 检查年份
+    if (year <= 0)
+    {
+        return 0;
+    }
+
+    // 检查月份
+    if (month < 1 || month > 12)
+    {
+        return 0;
+    }
+
+    // 检查日期
+    if (day < 1 || day > 31)
+    {
+        return 0;
+    }
+
+    // 检查月份天数
+    int days_in_month[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    
+    // 处理闰年
+    if (month == 2)
+    {
+        if ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0))
+        {
+            days_in_month[2] = 29;
+        }
+    }
+
+    // 检查日期是否在合法范围内
+    if (day > days_in_month[month])
+    {
+        return 0;
+    }
+
+    return 1;
+}
+
+// 17. 解析日期字符串为年月日
+int parse_date(const char* date_str, int* year, int* month, int* day)
+{
+    if (!is_valid_date_format(date_str))
+    {
+        return 0;
+    }
+
+    if (sscanf(date_str, "%d-%d-%d", year, month, day) != 3)
+    {
+        return 0;
+    }
+
+    return 1;
+}
+
+// 18. 比较两个日期，返回 1 表示 d1 > d2，0 表示相等，-1 表示 d1 < d2
+int compare_date(int y1, int m1, int d1, int y2, int m2, int d2)
+{
+    if (y1 > y2)
+    {
+        return 1;
+    }
+    else if (y1 < y2)
+    {
+        return -1;
+    }
+    else
+    {
+        if (m1 > m2)
+        {
+            return 1;
+        }
+        else if (m1 < m2)
+        {
+            return -1;
+        }
+        else
+        {
+            if (d1 > d2)
+            {
+                return 1;
+            }
+            else if (d1 < d2)
+            {
+                return -1;
+            }
+            else
+            {
+                return 0;
+            }
+        }
+    }
+}
+
+// 19. 获取今天的日期
+int get_today_date(int* year, int* month, int* day)
+{
+    time_t now = time(NULL);
+    struct tm* local_time = localtime(&now);
+    if (local_time == NULL)
+    {
+        return 0;
+    }
+
+    *year = local_time->tm_year + 1900; // tm_year 是从1900开始的
+    *month = local_time->tm_mon + 1;     // tm_mon 是从0开始的
+    *day = local_time->tm_mday;
+
+    return 1;
+}
+
+// 20. 检查预约日期是否有效，并返回错误信息
+int is_appointment_date_valid(const char* date_str, char* error_msg, size_t error_size)
+{
+    // 1. 检查是否为空
+    if (strlen(date_str) == 0)
+    {
+        snprintf(error_msg, error_size, "预约日期不能为空，请重新输入。");
+        return 0;
+    }
+
+    // 2. 检查格式是否正确
+    if (!is_valid_date_format(date_str))
+    {
+        snprintf(error_msg, error_size, "预约日期格式错误，请按 YYYY-MM-DD 格式输入。");
+        return 0;
+    }
+
+    // 3. 解析日期
+    int year, month, day;
+    if (!parse_date(date_str, &year, &month, &day))
+    {
+        snprintf(error_msg, error_size, "预约日期格式错误，请按 YYYY-MM-DD 格式输入。");
+        return 0;
+    }
+
+    // 4. 检查日期是否真实存在
+    if (!is_real_date(year, month, day))
+    {
+        snprintf(error_msg, error_size, "预约日期无效，请输入真实存在的日期。");
+        return 0;
+    }
+
+    // 5. 获取今天的日期
+    int today_year, today_month, today_day;
+    if (!get_today_date(&today_year, &today_month, &today_day))
+    {
+        snprintf(error_msg, error_size, "无法获取当前日期，请稍后再试。");
+        return 0;
+    }
+
+    // 6. 检查日期是否早于今天
+    if (compare_date(year, month, day, today_year, today_month, today_day) < 0)
+    {
+        snprintf(error_msg, error_size, "预约日期不能早于当前日期，请重新输入。");
+        return 0;
+    }
+
+    // 7. 计算30天后的日期
+    struct tm future_tm;
+    future_tm.tm_year = today_year - 1900;
+    future_tm.tm_mon = today_month - 1;
+    future_tm.tm_mday = today_day + 30;
+    future_tm.tm_hour = 0;
+    future_tm.tm_min = 0;
+    future_tm.tm_sec = 0;
+    future_tm.tm_isdst = -1; // 自动处理夏令时
+
+    time_t future_time = mktime(&future_tm);
+    struct tm* future_local = localtime(&future_time);
+    int future_year = future_local->tm_year + 1900;
+    int future_month = future_local->tm_mon + 1;
+    int future_day = future_local->tm_mday;
+
+    // 8. 检查日期是否超出30天范围
+    if (compare_date(year, month, day, future_year, future_month, future_day) > 0)
+    {
+        snprintf(error_msg, error_size, "预约日期超出可预约范围（30天内），请重新输入。");
+        return 0;
+    }
+
+    // 所有检查通过
+    return 1;
+}
+
+// 20.5. 检查预约时段是否有效（日期+时段联合校验）
+// 判断当预约日期为今天时，所选时段是否已经过去
+int is_appointment_slot_valid(const char* date_str, const char* slot, char* error_msg, size_t error_size)
+{
+    // 1. 参数检查
+    if (date_str == NULL || slot == NULL || strlen(date_str) == 0 || strlen(slot) == 0)
+    {
+        snprintf(error_msg, error_size, "参数无效。");
+        return 0;
+    }
+
+    // 2. 获取今天的日期
+    int today_year, today_month, today_day;
+    if (!get_today_date(&today_year, &today_month, &today_day))
+    {
+        snprintf(error_msg, error_size, "无法获取当前日期，请稍后再试。");
+        return 0;
+    }
+
+    // 3. 解析预约日期
+    int year, month, day;
+    if (!parse_date(date_str, &year, &month, &day))
+    {
+        snprintf(error_msg, error_size, "预约日期格式错误。");
+        return 0;
+    }
+
+    // 4. 如果预约日期 > 今天，时段都有效
+    if (compare_date(year, month, day, today_year, today_month, today_day) > 0)
+    {
+        return 1;
+    }
+
+    // 5. 如果预约日期 < 今天，已经被日期校验拦截，这里不再处理
+    if (compare_date(year, month, day, today_year, today_month, today_day) < 0)
+    {
+        snprintf(error_msg, error_size, "预约日期不能早于今天。");
+        return 0;
+    }
+
+    // 6. 预约日期 == 今天，需要检查时段是否已过
+    // 获取当前时间
+    time_t current_time = time(NULL);
+    struct tm* local_time = localtime(&current_time);
+    int current_hour = local_time->tm_hour;
+
+    // 判断当前处于哪个时段
+    // 上午：08:00 - 12:00
+    // 下午：12:00 - 17:00
+    // 晚上：17:00 - 08:00（第二天）
+    const char* current_slot = "上午";
+    if (current_hour >= 12 && current_hour < 17)
+    {
+        current_slot = "下午";
+    }
+    else if (current_hour >= 17 || current_hour < 8)
+    {
+        current_slot = "晚上";
+    }
+
+    // 时段优先级：上午 < 下午 < 晚上
+    // 如果用户选择的时段早于当前时段，则该时段已过
+    int slot_order = 0;  // 上午=0, 下午=1, 晚上=2
+    int current_order = 0;
+
+    if (strcmp(slot, "上午") == 0) slot_order = 0;
+    else if (strcmp(slot, "下午") == 0) slot_order = 1;
+    else if (strcmp(slot, "晚上") == 0) slot_order = 2;
+    else {
+        snprintf(error_msg, error_size, "无效的时段：%s", slot);
+        return 0;
+    }
+
+    if (strcmp(current_slot, "上午") == 0) current_order = 0;
+    else if (strcmp(current_slot, "下午") == 0) current_order = 1;
+    else if (strcmp(current_slot, "晚上") == 0) current_order = 2;
+
+    // 检查时段是否已过
+    if (slot_order < current_order)
+    {
+        snprintf(error_msg, error_size, "⚠ 当前已是%s，不能再预约今天%s号，请重新选择有效时段。", current_slot, slot);
+        return 0;
+    }
+
+    // 所有检查通过
+    return 1;
+}
+
+// 21. 计算字符串的显示宽度（中文算2个宽度）
+int get_display_width(const char* str)
+{
+    if (str == NULL) return 0;
+    
+    int width = 0;
+    const unsigned char* p = (const unsigned char*)str;
+    
+    while (*p != '\0')
+    {
+        if (*p < 128)
+        {
+            // ASCII字符，宽度为1
+            width++;
+            p++;
+        }
+        else
+        {
+            // 中文字符或其他多字节字符，宽度为2
+            width += 2;
+            // 跳过UTF-8编码的后续字节
+            if (*p >= 0xE0) p += 3;
+            else if (*p >= 0xC0) p += 2;
+            else p++;
+        }
+    }
+    
+    return width;
+}
+
+// 22. 按指定宽度打印文本并补空格
+void print_padded_text(const char* str, int target_width)
+{
+    if (str == NULL) str = "";
+
+    int current_width = get_display_width(str);
+    printf("%s", str);
+
+    // 计算需要补的空格数
+    int spaces = target_width - current_width;
+    if (spaces > 0)
+    {
+        for (int i = 0; i < spaces; i++)
+        {
+            printf(" ");
+        }
+    }
+}
+
+// 23. 打印指定长度的分隔线
+void print_line_separator(int length)
+{
+    for (int i = 0; i < length; i++)
+    {
+        printf("-");
+    }
+    printf("\n");
+}

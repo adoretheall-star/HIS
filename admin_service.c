@@ -84,54 +84,6 @@ static int parse_date_string(const char* date_str, struct tm* tm_out);
 // 计算两个日期之间的天数差
 static int days_between_dates(const char* start_date, const char* end_date);
 
-// 计算字符串的显示宽度（中文算2个宽度）
-static int get_display_width(const char* str)
-{
-    if (str == NULL) return 0;
-    
-    int width = 0;
-    const unsigned char* p = (const unsigned char*)str;
-    
-    while (*p != '\0')
-    {
-        if (*p < 128)
-        {
-            // ASCII 字符，宽度 1
-            width++;
-        }
-        else
-        {
-            // 非 ASCII 字符（如中文），宽度 2
-            width += 2;
-            // 跳过后续字节（UTF-8 编码）
-            if (*p >= 0xE0) p += 2; // 3字节UTF-8
-            else p += 1; // 2字节UTF-8
-        }
-        p++;
-    }
-    
-    return width;
-}
-
-// 按指定宽度打印文本并补空格
-static void print_padded_text(const char* str, int target_width)
-{
-    if (str == NULL) str = "";
-
-    int current_width = get_display_width(str);
-    printf("%s", str);
-
-    // 计算需要补的空格数
-    int spaces = target_width - current_width;
-    if (spaces > 0)
-    {
-        for (int i = 0; i < spaces; i++)
-        {
-            printf(" ");
-        }
-    }
-}
-
 // 前置声明
 static void show_expiring_medicine_warning(void);
 
