@@ -1,9 +1,8 @@
-#define _CRT_SECURE_NO_WARNINGS
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <math.h> // 用于 isnan, isinf 函数
+#include <math.h> // 鐢ㄤ簬 isnan, isinf 鍑芥暟
 #include "admin_service.h"
 #include "list_ops.h"
 #include "medicine_service.h"
@@ -11,21 +10,21 @@
 #include "patient_service.h"
 #include "utils.h"
 
-// 病房费率定义
-#define GENERAL_WARD_RATE 120.0  // 普通病房每天费用
-#define ICU_WARD_RATE 500.0      // ICU每天费用
-#define ISOLATION_WARD_RATE 300.0  // 隔离病房每天费用
-#define SINGLE_WARD_RATE 400.0    // 单人病房每天费用
+// 鐥呮埧璐圭巼瀹氫箟
+#define GENERAL_WARD_RATE 120.0  // 鏅€氱梾鎴挎瘡澶╄垂鐢?
+#define ICU_WARD_RATE 500.0      // ICU姣忓ぉ璐圭敤
+#define ISOLATION_WARD_RATE 300.0  // 闅旂鐥呮埧姣忓ぉ璐圭敤
+#define SINGLE_WARD_RATE 400.0    // 鍗曚汉鐥呮埧姣忓ぉ璐圭敤
 
-// 当前登录用户
+// 褰撳墠鐧诲綍鐢ㄦ埛
 AccountNode* g_current_account = NULL;
 DoctorNode* g_current_doctor = NULL;
 PatientNode* g_current_patient = NULL;
 
-// 外部函数声明
+// 澶栭儴鍑芥暟澹版槑
 extern void query_patient_complaints(const char* patient_id);
 
-// 大小写不敏感的字符串比较函数
+// 澶у皬鍐欎笉鏁忔劅鐨勫瓧绗︿覆姣旇緝鍑芥暟
 int my_strcasecmp(const char* s1, const char* s2)
 {
     if (s1 == NULL || s2 == NULL)
@@ -38,7 +37,7 @@ int my_strcasecmp(const char* s1, const char* s2)
         char c1 = *s1;
         char c2 = *s2;
         
-        // 转换为小写进行比较
+        // 杞崲涓哄皬鍐欒繘琛屾瘮杈?
         if (c1 >= 'A' && c1 <= 'Z')
         {
             c1 += 'a' - 'A';
@@ -60,7 +59,7 @@ int my_strcasecmp(const char* s1, const char* s2)
     return *s1 - *s2;
 }
 
-// 获取病房类型的费用
+// 鑾峰彇鐥呮埧绫诲瀷鐨勮垂鐢?
 static double get_ward_rate(WardType ward_type)
 {
     switch (ward_type) {
@@ -76,11 +75,11 @@ static double get_ward_rate(WardType ward_type)
     }
 }
 
-// 前置声明
+// 鍓嶇疆澹版槑
 static void show_expiring_medicine_warning(void);
 static int days_between_dates(const char* start_date, const char* end_date);
 
-// 检查药品是否近效期
+// 妫€鏌ヨ嵂鍝佹槸鍚﹁繎鏁堟湡
 static int is_medicine_expiring_soon(const char* expiry_date)
 {
     if (expiry_date == NULL)
@@ -88,21 +87,21 @@ static int is_medicine_expiring_soon(const char* expiry_date)
         return 0;
     }
     
-    // 简单的近效期检查：假设当前日期为 2024-01-01，检查是否在 30 天内过期
-    // 实际项目中应该使用当前系统日期进行比较
+    // 绠€鍗曠殑杩戞晥鏈熸鏌ワ細鍋囪褰撳墠鏃ユ湡涓?2024-01-01锛屾鏌ユ槸鍚﹀湪 30 澶╁唴杩囨湡
+    // 瀹為檯椤圭洰涓簲璇ヤ娇鐢ㄥ綋鍓嶇郴缁熸棩鏈熻繘琛屾瘮杈?
     const char* current_date = "2024-01-01";
     int days_diff = days_between_dates(current_date, expiry_date);
     
     return (days_diff >= 0 && days_diff <= 30);
 }
 
-// 近效期药品预警
+// 杩戞晥鏈熻嵂鍝侀璀?
 static void show_expiring_medicine_warning(void)
 {
     int count = 0;
     int total_width = 80;
     
-    // 检查近效期药品
+    // 妫€鏌ヨ繎鏁堟湡鑽搧
     if (g_medicine_list != NULL && g_medicine_list->next != NULL)
     {
         MedicineNode* curr = g_medicine_list->next;
@@ -116,32 +115,32 @@ static void show_expiring_medicine_warning(void)
         }
     }
     
-    // 输出统计信息
+    // 杈撳嚭缁熻淇℃伅
     printf("\n======================================================\n");
-    printf("                  近效期药品预警\n");
+    printf("                  杩戞晥鏈熻嵂鍝侀璀n");
     printf("======================================================\n");
     
     if (count > 0)
     {
-        printf("⚠️ 发现 %d 种近效期药品，请及时处理！\n", count);
+        printf("鈿狅笍 鍙戠幇 %d 绉嶈繎鏁堟湡鑽搧锛岃鍙婃椂澶勭悊锛乗n", count);
     }
     else
     {
-        printf("✅ 没有发现近效期药品。\n");
+        printf("鉁?娌℃湁鍙戠幇杩戞晥鏈熻嵂鍝併€俓n");
     }
     
     printf("======================================================\n");
-    printf("按任意键返回...\n");
+    printf("鎸変换鎰忛敭杩斿洖...\n");
     get_single_char("");
 }
 
-// 解析日期字符串为 tm 结构
+// 瑙ｆ瀽鏃ユ湡瀛楃涓蹭负 tm 缁撴瀯
 static int parse_date_string(const char* date_str, struct tm* tm_out);
 
-// 计算两个日期之间的天数差
+// 璁＄畻涓や釜鏃ユ湡涔嬮棿鐨勫ぉ鏁板樊
 static int days_between_dates(const char* start_date, const char* end_date);
 
-// 计算字符串的显示宽度（中文算2个宽度）
+// 璁＄畻瀛楃涓茬殑鏄剧ず瀹藉害锛堜腑鏂囩畻2涓搴︼級
 static int get_display_width(const char* str)
 {
     if (str == NULL) return 0;
@@ -153,16 +152,16 @@ static int get_display_width(const char* str)
     {
         if (*p < 128)
         {
-            // ASCII 字符，宽度 1
+            // ASCII 瀛楃锛屽搴?1
             width++;
         }
         else
         {
-            // 非 ASCII 字符（如中文），宽度 2
+            // 闈?ASCII 瀛楃锛堝涓枃锛夛紝瀹藉害 2
             width += 2;
-            // 跳过后续字节（UTF-8 编码）
-            if (*p >= 0xE0) p += 2; // 3字节UTF-8
-            else p += 1; // 2字节UTF-8
+            // 璺宠繃鍚庣画瀛楄妭锛圲TF-8 缂栫爜锛?
+            if (*p >= 0xE0) p += 2; // 3瀛楄妭UTF-8
+            else p += 1; // 2瀛楄妭UTF-8
         }
         p++;
     }
@@ -170,7 +169,7 @@ static int get_display_width(const char* str)
     return width;
 }
 
-// 按指定宽度打印文本并补空格
+// 鎸夋寚瀹氬搴︽墦鍗版枃鏈苟琛ョ┖鏍?
 static void print_padded_text(const char* str, int target_width)
 {
     if (str == NULL) str = "";
@@ -178,7 +177,7 @@ static void print_padded_text(const char* str, int target_width)
     int current_width = get_display_width(str);
     printf("%s", str);
 
-    // 计算需要补的空格数
+    // 璁＄畻闇€瑕佽ˉ鐨勭┖鏍兼暟
     int spaces = target_width - current_width;
     if (spaces > 0)
     {
@@ -189,7 +188,7 @@ static void print_padded_text(const char* str, int target_width)
     }
 }
 
-// 根据病房类型估算日费用
+// 鏍规嵁鐥呮埧绫诲瀷浼扮畻鏃ヨ垂鐢?
 static double estimate_daily_cost_by_ward_type(WardType ward_type)
 {
     switch (ward_type)
@@ -203,16 +202,16 @@ static double estimate_daily_cost_by_ward_type(WardType ward_type)
     }
 }
 
-// 查看所有员工账号
+// 鏌ョ湅鎵€鏈夊憳宸ヨ处鍙?
 void show_all_accounts(void)
 {
     AccountNode* curr = NULL;
     int count = 0;
     
-    // 第一步：统计每一列的最大显示宽度
-    int username_width = get_display_width("登录账号");
-    int real_name_width = get_display_width("真实姓名");
-    int role_width = get_display_width("角色");
+    // 绗竴姝ワ細缁熻姣忎竴鍒楃殑鏈€澶ф樉绀哄搴?
+    int username_width = get_display_width("鐧诲綍璐﹀彿");
+    int real_name_width = get_display_width("鐪熷疄濮撳悕");
+    int role_width = get_display_width("瑙掕壊");
     
     if (g_account_list != NULL && g_account_list->next != NULL)
     {
@@ -223,19 +222,19 @@ void show_all_accounts(void)
             switch (curr->role)
             {
                 case ROLE_ADMIN:
-                    role_name = "管理员";
+                    role_name = "绠＄悊鍛?;
                     break;
                 case ROLE_NURSE:
-                    role_name = "护士";
+                    role_name = "鎶ゅ＋";
                     break;
                 case ROLE_DOCTOR:
-                    role_name = "医生";
+                    role_name = "鍖荤敓";
                     break;
                 case ROLE_PHARMACIST:
-                    role_name = "药师";
+                    role_name = "鑽笀";
                     break;
                 default:
-                    role_name = "未知";
+                    role_name = "鏈煡";
                     break;
             }
             
@@ -254,44 +253,44 @@ void show_all_accounts(void)
         }
     }
     
-    // 第二步：按动态列宽输出表格
+    // 绗簩姝ワ細鎸夊姩鎬佸垪瀹借緭鍑鸿〃鏍?
     if (g_account_list == NULL || g_account_list->next == NULL)
     {
-        printf("当前暂无员工账号数据\n");
+        printf("褰撳墠鏆傛棤鍛樺伐璐﹀彿鏁版嵁\n");
         return;
     }
     
-    // 计算总宽度并输出边框
-    int total_width = username_width + real_name_width + role_width + 8; // 8是列间距总和
+    // 璁＄畻鎬诲搴﹀苟杈撳嚭杈规
+    int total_width = username_width + real_name_width + role_width + 8; // 8鏄垪闂磋窛鎬诲拰
     
     printf("\n");
     for (int i = 0; i < total_width; i++) printf("=");
     printf("\n");
     
-    // 输出标题
-    int title_width = get_display_width("员工列表");
+    // 杈撳嚭鏍囬
+    int title_width = get_display_width("鍛樺伐鍒楄〃");
     int title_padding = (total_width - title_width) / 2;
     for (int i = 0; i < title_padding; i++) printf(" ");
-    printf("员工列表");
+    printf("鍛樺伐鍒楄〃");
     for (int i = 0; i < total_width - title_width - title_padding; i++) printf(" ");
     printf("\n");
     
     for (int i = 0; i < total_width; i++) printf("=");
     printf("\n");
     
-    // 输出表头
-    print_padded_text("登录账号", username_width);
-    printf("    "); // 4个空格的列间距
-    print_padded_text("真实姓名", real_name_width);
-    printf("    "); // 4个空格的列间距
-    print_padded_text("角色", role_width);
+    // 杈撳嚭琛ㄥご
+    print_padded_text("鐧诲綍璐﹀彿", username_width);
+    printf("    "); // 4涓┖鏍肩殑鍒楅棿璺?
+    print_padded_text("鐪熷疄濮撳悕", real_name_width);
+    printf("    "); // 4涓┖鏍肩殑鍒楅棿璺?
+    print_padded_text("瑙掕壊", role_width);
     printf("\n");
     
-    // 输出表头下横线
+    // 杈撳嚭琛ㄥご涓嬫í绾?
     for (int i = 0; i < total_width; i++) printf("-");
     printf("\n");
     
-    // 输出数据行
+    // 杈撳嚭鏁版嵁琛?
     curr = g_account_list->next;
     while (curr != NULL)
     {
@@ -299,26 +298,26 @@ void show_all_accounts(void)
         switch (curr->role)
         {
             case ROLE_ADMIN:
-                role_name = "管理员";
+                role_name = "绠＄悊鍛?;
                 break;
             case ROLE_NURSE:
-                role_name = "护士";
+                role_name = "鎶ゅ＋";
                 break;
             case ROLE_DOCTOR:
-                role_name = "医生";
+                role_name = "鍖荤敓";
                 break;
             case ROLE_PHARMACIST:
-                role_name = "药师";
+                role_name = "鑽笀";
                 break;
             default:
-                role_name = "未知";
+                role_name = "鏈煡";
                 break;
         }
         
         print_padded_text(curr->username, username_width);
-        printf("    "); // 4个空格的列间距
+        printf("    "); // 4涓┖鏍肩殑鍒楅棿璺?
         print_padded_text(curr->real_name, real_name_width);
-        printf("    "); // 4个空格的列间距
+        printf("    "); // 4涓┖鏍肩殑鍒楅棿璺?
         print_padded_text(role_name, role_width);
         printf("\n");
         
@@ -326,13 +325,13 @@ void show_all_accounts(void)
         curr = curr->next;
     }
     
-    // 输出底部横线
+    // 杈撳嚭搴曢儴妯嚎
     for (int i = 0; i < total_width; i++) printf("-");
     printf("\n");
     
-    // 输出员工总数
+    // 杈撳嚭鍛樺伐鎬绘暟
     char count_str[50];
-    snprintf(count_str, sizeof(count_str), "员工总数：%d", count);
+    snprintf(count_str, sizeof(count_str), "鍛樺伐鎬绘暟锛?d", count);
     int count_width = get_display_width(count_str);
     int count_padding = (total_width - count_width) / 2;
     for (int i = 0; i < count_padding; i++) printf(" ");
@@ -343,7 +342,7 @@ void show_all_accounts(void)
     printf("\n");
 }
 
-// 注册新员工账号
+// 娉ㄥ唽鏂板憳宸ヨ处鍙?
 int register_account(const char* username, const char* password, const char* real_name, const char* gender, RoleType role)
 {
     if (username == NULL || password == NULL || real_name == NULL)
@@ -351,13 +350,13 @@ int register_account(const char* username, const char* password, const char* rea
         return 0;
     }
 
-    // 检查账号是否已存在
+    // 妫€鏌ヨ处鍙锋槸鍚﹀凡瀛樺湪
     if (find_account_by_username(g_account_list, username) != NULL)
     {
         return 0;
     }
 
-    // 创建新账号节点
+    // 鍒涘缓鏂拌处鍙疯妭鐐?
     AccountNode* new_node = (AccountNode*)malloc(sizeof(AccountNode));
     if (new_node == NULL)
     {
@@ -373,7 +372,7 @@ int register_account(const char* username, const char* password, const char* rea
     new_node->role = role;
     new_node->next = NULL;
 
-    // 添加到链表
+    // 娣诲姞鍒伴摼琛?
     if (g_account_list == NULL)
     {
         g_account_list = (AccountNode*)malloc(sizeof(AccountNode));
@@ -397,7 +396,7 @@ int register_account(const char* username, const char* password, const char* rea
     return 1;
 }
 
-// 验证账号
+// 楠岃瘉璐﹀彿
 int verify_account(const char* username, const char* password, int* role)
 {
     AccountNode* account = find_account_by_username(g_account_list, username);
@@ -419,7 +418,7 @@ int verify_account(const char* username, const char* password, int* role)
     return 1;
 }
 
-// 修改员工资料
+// 淇敼鍛樺伐璧勬枡
 int update_account_basic_info(const char* username, const char* new_real_name, const char* new_password, RoleType new_role)
 {
     AccountNode* account = find_account_by_username(g_account_list, username);
@@ -445,7 +444,7 @@ int update_account_basic_info(const char* username, const char* new_real_name, c
     return 1;
 }
 
-// 删除员工账号
+// 鍒犻櫎鍛樺伐璐﹀彿
 int delete_account(const char* username)
 {
     if (username == NULL || g_account_list == NULL || g_account_list->next == NULL)
@@ -471,7 +470,7 @@ int delete_account(const char* username)
     return 0;
 }
 
-// 查看所有医生及其值班状态
+// 鏌ョ湅鎵€鏈夊尰鐢熷強鍏跺€肩彮鐘舵€?
 void show_all_doctors_with_duty_status(void)
 {
     AccountNode* curr = NULL;
@@ -479,21 +478,21 @@ void show_all_doctors_with_duty_status(void)
 
     if (g_account_list == NULL || g_account_list->next == NULL)
     {
-        printf("当前暂无医生数据\n");
+        printf("褰撳墠鏆傛棤鍖荤敓鏁版嵁\n");
         return;
     }
 
-    // 第一步：统计每一列的最大显示宽度
-    int username_width = get_display_width("登录账号");
-    int real_name_width = get_display_width("真实姓名");
-    int duty_width = get_display_width("值班状态");
+    // 绗竴姝ワ細缁熻姣忎竴鍒楃殑鏈€澶ф樉绀哄搴?
+    int username_width = get_display_width("鐧诲綍璐﹀彿");
+    int real_name_width = get_display_width("鐪熷疄濮撳悕");
+    int duty_width = get_display_width("鍊肩彮鐘舵€?);
 
     curr = g_account_list->next;
     while (curr != NULL)
     {
         if (curr->role == ROLE_DOCTOR)
         {
-            const char* duty_status = curr->is_on_duty ? "在岗" : "休息";
+            const char* duty_status = curr->is_on_duty ? "鍦ㄥ矖" : "浼戞伅";
 
             int current_username_width = get_display_width(curr->username);
             int current_real_name_width = get_display_width(curr->real_name);
@@ -511,43 +510,43 @@ void show_all_doctors_with_duty_status(void)
         curr = curr->next;
     }
 
-    // 第二步：按动态列宽输出表格
+    // 绗簩姝ワ細鎸夊姩鎬佸垪瀹借緭鍑鸿〃鏍?
     int total_width = username_width + real_name_width + duty_width + 8;
 
     printf("\n");
     for (int i = 0; i < total_width; i++) printf("=");
     printf("\n");
 
-    // 输出标题
-    int title_width = get_display_width("医生值班状态");
+    // 杈撳嚭鏍囬
+    int title_width = get_display_width("鍖荤敓鍊肩彮鐘舵€?);
     int title_padding = (total_width - title_width) / 2;
     for (int i = 0; i < title_padding; i++) printf(" ");
-    printf("医生值班状态");
+    printf("鍖荤敓鍊肩彮鐘舵€?);
     for (int i = 0; i < total_width - title_width - title_padding; i++) printf(" ");
     printf("\n");
 
     for (int i = 0; i < total_width; i++) printf("=");
     printf("\n");
 
-    // 输出表头
-    print_padded_text("登录账号", username_width);
+    // 杈撳嚭琛ㄥご
+    print_padded_text("鐧诲綍璐﹀彿", username_width);
     printf("    ");
-    print_padded_text("真实姓名", real_name_width);
+    print_padded_text("鐪熷疄濮撳悕", real_name_width);
     printf("    ");
-    print_padded_text("值班状态", duty_width);
+    print_padded_text("鍊肩彮鐘舵€?, duty_width);
     printf("\n");
 
-    // 输出表头下横线
+    // 杈撳嚭琛ㄥご涓嬫í绾?
     for (int i = 0; i < total_width; i++) printf("-");
     printf("\n");
 
-    // 输出数据行
+    // 杈撳嚭鏁版嵁琛?
     curr = g_account_list->next;
     while (curr != NULL)
     {
         if (curr->role == ROLE_DOCTOR)
         {
-            const char* duty_status = curr->is_on_duty ? "在岗" : "休息";
+            const char* duty_status = curr->is_on_duty ? "鍦ㄥ矖" : "浼戞伅";
 
             print_padded_text(curr->username, username_width);
             printf("    ");
@@ -559,13 +558,13 @@ void show_all_doctors_with_duty_status(void)
         curr = curr->next;
     }
 
-    // 输出底部横线
+    // 杈撳嚭搴曢儴妯嚎
     for (int i = 0; i < total_width; i++) printf("-");
     printf("\n");
 
-    // 输出统计信息
+    // 杈撳嚭缁熻淇℃伅
     char count_str[50];
-    snprintf(count_str, sizeof(count_str), "医生总数：%d", count);
+    snprintf(count_str, sizeof(count_str), "鍖荤敓鎬绘暟锛?d", count);
     int count_width = get_display_width(count_str);
     int count_padding = (total_width - count_width) / 2;
     for (int i = 0; i < count_padding; i++) printf(" ");
@@ -576,7 +575,7 @@ void show_all_doctors_with_duty_status(void)
     printf("\n");
 }
 
-// 查看所有护士及其值班状态
+// 鏌ョ湅鎵€鏈夋姢澹強鍏跺€肩彮鐘舵€?
 void show_all_nurses_with_duty_status(void)
 {
     AccountNode* curr = NULL;
@@ -584,21 +583,21 @@ void show_all_nurses_with_duty_status(void)
 
     if (g_account_list == NULL || g_account_list->next == NULL)
     {
-        printf("当前暂无护士数据\n");
+        printf("褰撳墠鏆傛棤鎶ゅ＋鏁版嵁\n");
         return;
     }
 
-    // 第一步：统计每一列的最大显示宽度
-    int username_width = get_display_width("登录账号");
-    int real_name_width = get_display_width("真实姓名");
-    int duty_width = get_display_width("值班状态");
+    // 绗竴姝ワ細缁熻姣忎竴鍒楃殑鏈€澶ф樉绀哄搴?
+    int username_width = get_display_width("鐧诲綍璐﹀彿");
+    int real_name_width = get_display_width("鐪熷疄濮撳悕");
+    int duty_width = get_display_width("鍊肩彮鐘舵€?);
 
     curr = g_account_list->next;
     while (curr != NULL)
     {
         if (curr->role == ROLE_NURSE)
         {
-            const char* duty_status = curr->is_on_duty ? "在岗" : "休息";
+            const char* duty_status = curr->is_on_duty ? "鍦ㄥ矖" : "浼戞伅";
 
             int current_username_width = get_display_width(curr->username);
             int current_real_name_width = get_display_width(curr->real_name);
@@ -616,43 +615,43 @@ void show_all_nurses_with_duty_status(void)
         curr = curr->next;
     }
 
-    // 第二步：按动态列宽输出表格
+    // 绗簩姝ワ細鎸夊姩鎬佸垪瀹借緭鍑鸿〃鏍?
     int total_width = username_width + real_name_width + duty_width + 8;
 
     printf("\n");
     for (int i = 0; i < total_width; i++) printf("=");
     printf("\n");
 
-    // 输出标题
-    int title_width = get_display_width("护士值班状态");
+    // 杈撳嚭鏍囬
+    int title_width = get_display_width("鎶ゅ＋鍊肩彮鐘舵€?);
     int title_padding = (total_width - title_width) / 2;
     for (int i = 0; i < title_padding; i++) printf(" ");
-    printf("护士值班状态");
+    printf("鎶ゅ＋鍊肩彮鐘舵€?);
     for (int i = 0; i < total_width - title_width - title_padding; i++) printf(" ");
     printf("\n");
 
     for (int i = 0; i < total_width; i++) printf("=");
     printf("\n");
 
-    // 输出表头
-    print_padded_text("登录账号", username_width);
+    // 杈撳嚭琛ㄥご
+    print_padded_text("鐧诲綍璐﹀彿", username_width);
     printf("    ");
-    print_padded_text("真实姓名", real_name_width);
+    print_padded_text("鐪熷疄濮撳悕", real_name_width);
     printf("    ");
-    print_padded_text("值班状态", duty_width);
+    print_padded_text("鍊肩彮鐘舵€?, duty_width);
     printf("\n");
 
-    // 输出表头下横线
+    // 杈撳嚭琛ㄥご涓嬫í绾?
     for (int i = 0; i < total_width; i++) printf("-");
     printf("\n");
 
-    // 输出数据行
+    // 杈撳嚭鏁版嵁琛?
     curr = g_account_list->next;
     while (curr != NULL)
     {
         if (curr->role == ROLE_NURSE)
         {
-            const char* duty_status = curr->is_on_duty ? "在岗" : "休息";
+            const char* duty_status = curr->is_on_duty ? "鍦ㄥ矖" : "浼戞伅";
 
             print_padded_text(curr->username, username_width);
             printf("    ");
@@ -664,13 +663,13 @@ void show_all_nurses_with_duty_status(void)
         curr = curr->next;
     }
 
-    // 输出底部横线
+    // 杈撳嚭搴曢儴妯嚎
     for (int i = 0; i < total_width; i++) printf("-");
     printf("\n");
 
-    // 输出统计信息
+    // 杈撳嚭缁熻淇℃伅
     char count_str[50];
-    snprintf(count_str, sizeof(count_str), "护士总数：%d", count);
+    snprintf(count_str, sizeof(count_str), "鎶ゅ＋鎬绘暟锛?d", count);
     int count_width = get_display_width(count_str);
     int count_padding = (total_width - count_width) / 2;
     for (int i = 0; i < count_padding; i++) printf(" ");
@@ -681,7 +680,7 @@ void show_all_nurses_with_duty_status(void)
     printf("\n");
 }
 
-// 查看所有药师及其值班状态
+// 鏌ョ湅鎵€鏈夎嵂甯堝強鍏跺€肩彮鐘舵€?
 void show_all_pharmacists_with_duty_status(void)
 {
     AccountNode* curr = NULL;
@@ -689,21 +688,21 @@ void show_all_pharmacists_with_duty_status(void)
 
     if (g_account_list == NULL || g_account_list->next == NULL)
     {
-        printf("当前暂无药师数据\n");
+        printf("褰撳墠鏆傛棤鑽笀鏁版嵁\n");
         return;
     }
 
-    // 第一步：统计每一列的最大显示宽度
-    int username_width = get_display_width("登录账号");
-    int real_name_width = get_display_width("真实姓名");
-    int duty_width = get_display_width("值班状态");
+    // 绗竴姝ワ細缁熻姣忎竴鍒楃殑鏈€澶ф樉绀哄搴?
+    int username_width = get_display_width("鐧诲綍璐﹀彿");
+    int real_name_width = get_display_width("鐪熷疄濮撳悕");
+    int duty_width = get_display_width("鍊肩彮鐘舵€?);
 
     curr = g_account_list->next;
     while (curr != NULL)
     {
         if (curr->role == ROLE_PHARMACIST)
         {
-            const char* duty_status = curr->is_on_duty ? "在岗" : "休息";
+            const char* duty_status = curr->is_on_duty ? "鍦ㄥ矖" : "浼戞伅";
 
             int current_username_width = get_display_width(curr->username);
             int current_real_name_width = get_display_width(curr->real_name);
@@ -721,43 +720,43 @@ void show_all_pharmacists_with_duty_status(void)
         curr = curr->next;
     }
 
-    // 第二步：按动态列宽输出表格
+    // 绗簩姝ワ細鎸夊姩鎬佸垪瀹借緭鍑鸿〃鏍?
     int total_width = username_width + real_name_width + duty_width + 8;
 
     printf("\n");
     for (int i = 0; i < total_width; i++) printf("=");
     printf("\n");
 
-    // 输出标题
-    int title_width = get_display_width("药师值班状态");
+    // 杈撳嚭鏍囬
+    int title_width = get_display_width("鑽笀鍊肩彮鐘舵€?);
     int title_padding = (total_width - title_width) / 2;
     for (int i = 0; i < title_padding; i++) printf(" ");
-    printf("药师值班状态");
+    printf("鑽笀鍊肩彮鐘舵€?);
     for (int i = 0; i < total_width - title_width - title_padding; i++) printf(" ");
     printf("\n");
 
     for (int i = 0; i < total_width; i++) printf("=");
     printf("\n");
 
-    // 输出表头
-    print_padded_text("登录账号", username_width);
+    // 杈撳嚭琛ㄥご
+    print_padded_text("鐧诲綍璐﹀彿", username_width);
     printf("    ");
-    print_padded_text("真实姓名", real_name_width);
+    print_padded_text("鐪熷疄濮撳悕", real_name_width);
     printf("    ");
-    print_padded_text("值班状态", duty_width);
+    print_padded_text("鍊肩彮鐘舵€?, duty_width);
     printf("\n");
 
-    // 输出表头下横线
+    // 杈撳嚭琛ㄥご涓嬫í绾?
     for (int i = 0; i < total_width; i++) printf("-");
     printf("\n");
 
-    // 输出数据行
+    // 杈撳嚭鏁版嵁琛?
     curr = g_account_list->next;
     while (curr != NULL)
     {
         if (curr->role == ROLE_PHARMACIST)
         {
-            const char* duty_status = curr->is_on_duty ? "在岗" : "休息";
+            const char* duty_status = curr->is_on_duty ? "鍦ㄥ矖" : "浼戞伅";
 
             print_padded_text(curr->username, username_width);
             printf("    ");
@@ -769,13 +768,13 @@ void show_all_pharmacists_with_duty_status(void)
         curr = curr->next;
     }
 
-    // 输出底部横线
+    // 杈撳嚭搴曢儴妯嚎
     for (int i = 0; i < total_width; i++) printf("-");
     printf("\n");
 
-    // 输出统计信息
+    // 杈撳嚭缁熻淇℃伅
     char count_str[50];
-    snprintf(count_str, sizeof(count_str), "药师总数：%d", count);
+    snprintf(count_str, sizeof(count_str), "鑽笀鎬绘暟锛?d", count);
     int count_width = get_display_width(count_str);
     int count_padding = (total_width - count_width) / 2;
     for (int i = 0; i < count_padding; i++) printf(" ");
@@ -786,7 +785,7 @@ void show_all_pharmacists_with_duty_status(void)
     printf("\n");
 }
 
-// 更新医生值班状态
+// 鏇存柊鍖荤敓鍊肩彮鐘舵€?
 int update_doctor_duty_status(const char* username, int is_on_duty)
 {
     AccountNode* account = find_account_by_username(g_account_list, username);
@@ -799,7 +798,7 @@ int update_doctor_duty_status(const char* username, int is_on_duty)
     return 1;
 }
 
-// 更新护士值班状态
+// 鏇存柊鎶ゅ＋鍊肩彮鐘舵€?
 int update_nurse_duty_status(const char* username, int is_on_duty)
 {
     AccountNode* account = find_account_by_username(g_account_list, username);
@@ -812,7 +811,7 @@ int update_nurse_duty_status(const char* username, int is_on_duty)
     return 1;
 }
 
-// 更新药师值班状态
+// 鏇存柊鑽笀鍊肩彮鐘舵€?
 int update_pharmacist_duty_status(const char* username, int is_on_duty)
 {
     AccountNode* account = find_account_by_username(g_account_list, username);
@@ -825,7 +824,7 @@ int update_pharmacist_duty_status(const char* username, int is_on_duty)
     return 1;
 }
 
-// 显示管理员操作面板
+// 鏄剧ず绠＄悊鍛樻搷浣滈潰鏉?
 void show_admin_dashboard(void)
 {
     int patient_count = 0;
@@ -837,14 +836,14 @@ void show_admin_dashboard(void)
     int nurse_count = 0;
     int pharmacist_count = 0;
 
-    // 统计患者数量和待发药患者数量
+    // 缁熻鎮ｈ€呮暟閲忓拰寰呭彂鑽偅鑰呮暟閲?
     if (g_patient_list != NULL && g_patient_list->next != NULL)
     {
         PatientNode* curr = g_patient_list->next;
         while (curr != NULL)
         {
             patient_count++;
-            // STATUS_WAIT_MED = 5 表示"已缴费待取药"
+            // STATUS_WAIT_MED = 5 琛ㄧず"宸茬即璐瑰緟鍙栬嵂"
             if (curr->status == STATUS_WAIT_MED)
             {
                 waiting_dispense_count++;
@@ -853,7 +852,7 @@ void show_admin_dashboard(void)
         }
     }
 
-    // 统计药品数量、低库存数量和近效期药品数量
+    // 缁熻鑽搧鏁伴噺銆佷綆搴撳瓨鏁伴噺鍜岃繎鏁堟湡鑽搧鏁伴噺
     if (g_medicine_list != NULL && g_medicine_list->next != NULL)
     {
         MedicineNode* curr = g_medicine_list->next;
@@ -865,7 +864,7 @@ void show_admin_dashboard(void)
                 low_stock_count++;
             }
             
-            // 检查是否为近效期药品（30天内过期）
+            // 妫€鏌ユ槸鍚︿负杩戞晥鏈熻嵂鍝侊紙30澶╁唴杩囨湡锛?
             if (strlen(curr->expiry_date) > 0)
             {
                 time_t now = time(NULL);
@@ -887,7 +886,7 @@ void show_admin_dashboard(void)
         }
     }
 
-    // 统计医生、护士和药师数量
+    // 缁熻鍖荤敓銆佹姢澹拰鑽笀鏁伴噺
     if (g_account_list != NULL && g_account_list->next != NULL)
     {
         AccountNode* curr = g_account_list->next;
@@ -912,20 +911,20 @@ void show_admin_dashboard(void)
     }
 
     printf("\n==============================================================\n");
-    printf("                      管理统计面板\n");
+    printf("                      绠＄悊缁熻闈㈡澘\n");
     printf("==============================================================\n");
-    printf("患者总数：%d\n", patient_count);
-    printf("当前待发药患者数量：%d\n", waiting_dispense_count);
-    printf("药品总数：%d\n", medicine_count);
-    printf("低库存药品数量：%d\n", low_stock_count);
-    printf("近效期药品数量：%d\n", expiring_medicine_count);
-    printf("医生总数：%d\n", doctor_count);
-    printf("护士总数：%d\n", nurse_count);
-    printf("药师总数：%d\n", pharmacist_count);
+    printf("鎮ｈ€呮€绘暟锛?d\n", patient_count);
+    printf("褰撳墠寰呭彂鑽偅鑰呮暟閲忥細%d\n", waiting_dispense_count);
+    printf("鑽搧鎬绘暟锛?d\n", medicine_count);
+    printf("浣庡簱瀛樿嵂鍝佹暟閲忥細%d\n", low_stock_count);
+    printf("杩戞晥鏈熻嵂鍝佹暟閲忥細%d\n", expiring_medicine_count);
+    printf("鍖荤敓鎬绘暟锛?d\n", doctor_count);
+    printf("鎶ゅ＋鎬绘暟锛?d\n", nurse_count);
+    printf("鑽笀鎬绘暟锛?d\n", pharmacist_count);
     printf("==============================================================\n");
 }
 
-// 解析日期字符串为 tm 结构
+// 瑙ｆ瀽鏃ユ湡瀛楃涓蹭负 tm 缁撴瀯
 static int parse_date_string(const char* date_str, struct tm* tm_out)
 {
     if (date_str == NULL || tm_out == NULL)
@@ -948,12 +947,12 @@ static int parse_date_string(const char* date_str, struct tm* tm_out)
     tm_out->tm_year = year - 1900;
     tm_out->tm_mon = month - 1;
     tm_out->tm_mday = day;
-    tm_out->tm_hour = 12; // 避免夏令时问题
+    tm_out->tm_hour = 12; // 閬垮厤澶忎护鏃堕棶棰?
 
     return 1;
 }
 
-// 计算两个日期之间的天数差
+// 璁＄畻涓や釜鏃ユ湡涔嬮棿鐨勫ぉ鏁板樊
 static int days_between_dates(const char* start_date, const char* end_date)
 {
     struct tm start_tm;
@@ -979,22 +978,22 @@ static int days_between_dates(const char* start_date, const char* end_date)
     return (int)(seconds / (60 * 60 * 24));
 }
 
-// 低库存药品预警
+// 浣庡簱瀛樿嵂鍝侀璀?
 static void show_low_stock_warning(void)
 {
     int count = 0;
     
-    // 第一步：统计每一列的最大显示宽度
-    int id_width = get_display_width("药品编号");
-    int name_width = get_display_width("商品名");
-    int generic_name_width = get_display_width("通用名");
-    int alias_width = get_display_width("别名");
-    int stock_width = get_display_width("当前库存");
-    int price_width = get_display_width("单价");
-    int medicare_width = get_display_width("医保类型");
-    int expiry_width = get_display_width("效期");
+    // 绗竴姝ワ細缁熻姣忎竴鍒楃殑鏈€澶ф樉绀哄搴?
+    int id_width = get_display_width("鑽搧缂栧彿");
+    int name_width = get_display_width("鍟嗗搧鍚?);
+    int generic_name_width = get_display_width("閫氱敤鍚?);
+    int alias_width = get_display_width("鍒悕");
+    int stock_width = get_display_width("褰撳墠搴撳瓨");
+    int price_width = get_display_width("鍗曚环");
+    int medicare_width = get_display_width("鍖讳繚绫诲瀷");
+    int expiry_width = get_display_width("鏁堟湡");
     
-    // 统计低库存药品并计算列宽
+    // 缁熻浣庡簱瀛樿嵂鍝佸苟璁＄畻鍒楀
     if (g_medicine_list != NULL && g_medicine_list->next != NULL)
     {
         MedicineNode* curr = g_medicine_list->next;
@@ -1008,16 +1007,16 @@ static void show_low_stock_warning(void)
                 switch (curr->m_type)
                 {
                     case MEDICARE_NONE:
-                        medicare_name = "无医保";
+                        medicare_name = "鏃犲尰淇?;
                         break;
                     case MEDICARE_CLASS_A:
-                        medicare_name = "甲类医保";
+                        medicare_name = "鐢茬被鍖讳繚";
                         break;
                     case MEDICARE_CLASS_B:
-                        medicare_name = "乙类医保";
+                        medicare_name = "涔欑被鍖讳繚";
                         break;
                     default:
-                        medicare_name = "未知";
+                        medicare_name = "鏈煡";
                         break;
                 }
                 
@@ -1028,7 +1027,7 @@ static void show_low_stock_warning(void)
                 int current_medicare_width = get_display_width(medicare_name);
                 int current_expiry_width = get_display_width(curr->expiry_date);
                 
-                // 处理库存和单价的宽度
+                // 澶勭悊搴撳瓨鍜屽崟浠风殑瀹藉害
                 char stock_str[20];
                 char price_str[20];
                 snprintf(stock_str, sizeof(stock_str), "%d", curr->stock);
@@ -1057,17 +1056,17 @@ static void show_low_stock_warning(void)
         }
     }
     
-    // 第二步：按动态列宽输出表格
+    // 绗簩姝ワ細鎸夊姩鎬佸垪瀹借緭鍑鸿〃鏍?
     printf("\n");
-    int total_width = id_width + name_width + generic_name_width + alias_width + stock_width + price_width + medicare_width + expiry_width + 28; // 28是列间距总和
+    int total_width = id_width + name_width + generic_name_width + alias_width + stock_width + price_width + medicare_width + expiry_width + 28; // 28鏄垪闂磋窛鎬诲拰
     for (int i = 0; i < total_width; i++) printf("=");
     printf("\n");
     
-    // 输出标题
-    int title_width = get_display_width("低库存药品预警");
+    // 杈撳嚭鏍囬
+    int title_width = get_display_width("浣庡簱瀛樿嵂鍝侀璀?);
     int title_padding = (total_width - title_width) / 2;
     for (int i = 0; i < title_padding; i++) printf(" ");
-    printf("低库存药品预警");
+    printf("浣庡簱瀛樿嵂鍝侀璀?);
     for (int i = 0; i < total_width - title_width - title_padding; i++) printf(" ");
     printf("\n");
     
@@ -1076,33 +1075,33 @@ static void show_low_stock_warning(void)
     
     if (count == 0)
     {
-        printf("当前无低库存药品预警\n");
+        printf("褰撳墠鏃犱綆搴撳瓨鑽搧棰勮\n");
     }
     else
     {
-        // 输出表头
-        print_padded_text("药品编号", id_width);
+        // 杈撳嚭琛ㄥご
+        print_padded_text("鑽搧缂栧彿", id_width);
         printf("    ");
-        print_padded_text("商品名", name_width);
+        print_padded_text("鍟嗗搧鍚?, name_width);
         printf("    ");
-        print_padded_text("通用名", generic_name_width);
+        print_padded_text("閫氱敤鍚?, generic_name_width);
         printf("    ");
-        print_padded_text("别名", alias_width);
+        print_padded_text("鍒悕", alias_width);
         printf("    ");
-        print_padded_text("当前库存", stock_width);
+        print_padded_text("褰撳墠搴撳瓨", stock_width);
         printf("    ");
-        print_padded_text("单价", price_width);
+        print_padded_text("鍗曚环", price_width);
         printf("    ");
-        print_padded_text("医保类型", medicare_width);
+        print_padded_text("鍖讳繚绫诲瀷", medicare_width);
         printf("    ");
-        print_padded_text("效期", expiry_width);
+        print_padded_text("鏁堟湡", expiry_width);
         printf("\n");
         
-        // 输出表头下横线
+        // 杈撳嚭琛ㄥご涓嬫í绾?
         for (int i = 0; i < total_width; i++) printf("-");
         printf("\n");
         
-        // 输出数据行
+        // 杈撳嚭鏁版嵁琛?
         if (g_medicine_list != NULL && g_medicine_list->next != NULL)
         {
             MedicineNode* curr = g_medicine_list->next;
@@ -1114,16 +1113,16 @@ static void show_low_stock_warning(void)
                     switch (curr->m_type)
                     {
                         case MEDICARE_NONE:
-                            medicare_name = "无医保";
+                            medicare_name = "鏃犲尰淇?;
                             break;
                         case MEDICARE_CLASS_A:
-                            medicare_name = "甲类医保";
+                            medicare_name = "鐢茬被鍖讳繚";
                             break;
                         case MEDICARE_CLASS_B:
-                            medicare_name = "乙类医保";
+                            medicare_name = "涔欑被鍖讳繚";
                             break;
                         default:
-                            medicare_name = "未知";
+                            medicare_name = "鏈煡";
                             break;
                     }
                     
@@ -1155,17 +1154,17 @@ static void show_low_stock_warning(void)
 }
 
 // ==========================================
-// 系统预警查看模块（整合所有7种预警类型）
+// 绯荤粺棰勮鏌ョ湅妯″潡锛堟暣鍚堟墍鏈?绉嶉璀︾被鍨嬶級
 // ==========================================
 
-// 颜色定义
+// 棰滆壊瀹氫箟
 #define RED "\033[31m"
 #define GREEN "\033[32m"
 #define YELLOW "\033[33m"
 #define BLUE "\033[34m"
 #define RESET "\033[0m"
 
-// 预警管理子菜单
+// 棰勮绠＄悊瀛愯彍鍗?
 void admin_alert_menu()
 {
     int running = 1;
@@ -1174,17 +1173,17 @@ void admin_alert_menu()
     {
         system("cls");
         printf("\n======================================================\n");
-        printf("                ⚠️  预警管理\n");
+        printf("                鈿狅笍  棰勮绠＄悊\n");
         printf("======================================================\n");
-        printf("  [1] 查看事件预警（恶意挂号、爽约、急诊）\n");
-        printf("  [2] 查看药品预警（低库存、临期药）\n");
-        printf("  [3] 查看住院预警（押金不足、欠费）\n");
-        printf("  [4] 查看床位资源预警\n");
-        printf("  [5] 查看所有预警（整合视图）\n");
-        printf("  [0] 返回上一级\n");
+        printf("  [1] 鏌ョ湅浜嬩欢棰勮锛堟伓鎰忔寕鍙枫€佺埥绾︺€佹€ヨ瘖锛塡n");
+        printf("  [2] 鏌ョ湅鑽搧棰勮锛堜綆搴撳瓨銆佷复鏈熻嵂锛塡n");
+        printf("  [3] 鏌ョ湅浣忛櫌棰勮锛堟娂閲戜笉瓒炽€佹瑺璐癸級\n");
+        printf("  [4] 鏌ョ湅搴婁綅璧勬簮棰勮\n");
+        printf("  [5] 鏌ョ湅鎵€鏈夐璀︼紙鏁村悎瑙嗗浘锛塡n");
+        printf("  [0] 杩斿洖涓婁竴绾n");
         printf("------------------------------------------------------\n");
         
-        switch (get_safe_int("👉 请输入操作编号: "))
+        switch (get_safe_int("馃憠 璇疯緭鍏ユ搷浣滅紪鍙? "))
         {
             case 1:
                 show_event_alerts();
@@ -1210,14 +1209,14 @@ void admin_alert_menu()
                 running = 0;
                 break;
             default:
-                printf("\n⚠️ 无效的选项，请重新输入！\n");
+                printf("\n鈿狅笍 鏃犳晥鐨勯€夐」锛岃閲嶆柊杈撳叆锛乗n");
                 system("pause");
                 break;
         }
     }
 }
 
-// 显示床位资源预警
+// 鏄剧ず搴婁綅璧勬簮棰勮
 void show_bed_resource_alerts(void)
 {
     int total_beds = 0;
@@ -1228,10 +1227,10 @@ void show_bed_resource_alerts(void)
     int icu_occupied = 0, icu_free = 0;
     
     printf("\n======================================================\n");
-    printf("                床位资源预警\n");
+    printf("                搴婁綅璧勬簮棰勮\n");
     printf("======================================================\n");
     
-    // 统计床位使用情况
+    // 缁熻搴婁綅浣跨敤鎯呭喌
     if (g_ward_list != NULL && g_ward_list->next != NULL)
     {
         WardNode* ward_curr = g_ward_list->next;
@@ -1266,7 +1265,7 @@ void show_bed_resource_alerts(void)
             }
             else if (ward_curr->ward_type == WARD_TYPE_ISOLATION)
             {
-                // 传染病隔离病房单独统计
+                // 浼犳煋鐥呴殧绂荤梾鎴垮崟鐙粺璁?
                 if (ward_curr->is_occupied)
                     occupied_beds++;
             }
@@ -1276,50 +1275,50 @@ void show_bed_resource_alerts(void)
         
         free_beds = total_beds - occupied_beds;
         
-        // 显示床位资源预警摘要
-        printf("【床位资源预警摘要】\n");
+        // 鏄剧ず搴婁綅璧勬簮棰勮鎽樿
+        printf("銆愬簥浣嶈祫婧愰璀︽憳瑕併€慭n");
         printf("------------------------------------------------------\n");
-        printf("总床位数：%d\n", total_beds);
-        printf("已占用床位：%d\n", occupied_beds);
-        printf("空闲床位：" RED "%d" RESET "\n", free_beds);
-        printf("床位使用率：%.2f%%\n", total_beds > 0 ? (float)occupied_beds / total_beds * 100 : 0);
-        printf("------------------------------------------------------\n");
-        
-        // 显示各类型病房床位情况
-        printf("【各类型病房床位情况】\n");
-        printf("------------------------------------------------------\n");
-        printf("普通病房：已占用 %d, 空闲 " RED "%d" RESET "\n", general_occupied, general_free);
-        printf("特殊病房：已占用 %d, 空闲 " RED "%d" RESET "\n", special_occupied, special_free);
-        printf("ICU：已占用 %d, 空闲 " RED "%d" RESET "\n", icu_occupied, icu_free);
+        printf("鎬诲簥浣嶆暟锛?d\n", total_beds);
+        printf("宸插崰鐢ㄥ簥浣嶏細%d\n", occupied_beds);
+        printf("绌洪棽搴婁綅锛? RED "%d" RESET "\n", free_beds);
+        printf("搴婁綅浣跨敤鐜囷細%.2f%%\n", total_beds > 0 ? (float)occupied_beds / total_beds * 100 : 0);
         printf("------------------------------------------------------\n");
         
-        // 显示床位资源预警
+        // 鏄剧ず鍚勭被鍨嬬梾鎴垮簥浣嶆儏鍐?
+        printf("銆愬悇绫诲瀷鐥呮埧搴婁綅鎯呭喌銆慭n");
+        printf("------------------------------------------------------\n");
+        printf("鏅€氱梾鎴匡細宸插崰鐢?%d, 绌洪棽 " RED "%d" RESET "\n", general_occupied, general_free);
+        printf("鐗规畩鐥呮埧锛氬凡鍗犵敤 %d, 绌洪棽 " RED "%d" RESET "\n", special_occupied, special_free);
+        printf("ICU锛氬凡鍗犵敤 %d, 绌洪棽 " RED "%d" RESET "\n", icu_occupied, icu_free);
+        printf("------------------------------------------------------\n");
+        
+        // 鏄剧ず搴婁綅璧勬簮棰勮
         if (free_beds == 0)
         {
-            printf("" RED "⚠️ 预警：所有床位已满，请及时处理！" RESET "\n");
+            printf("" RED "鈿狅笍 棰勮锛氭墍鏈夊簥浣嶅凡婊★紝璇峰強鏃跺鐞嗭紒" RESET "\n");
         }
         else if (free_beds < 5)
         {
-            printf("" RED "⚠️ 预警：床位紧张，仅剩 %d 个空闲床位！" RESET "\n", free_beds);
+            printf("" RED "鈿狅笍 棰勮锛氬簥浣嶇揣寮狅紝浠呭墿 %d 涓┖闂插簥浣嶏紒" RESET "\n", free_beds);
         }
         else
         {
-            printf("✅ 床位资源充足\n");
+            printf("鉁?搴婁綅璧勬簮鍏呰冻\n");
         }
     }
     else
     {
-        printf("当前无病房数据\n");
+        printf("褰撳墠鏃犵梾鎴挎暟鎹甛n");
     }
     
     printf("======================================================\n");
 }
 
-// 显示事件预警（恶意挂号、爽约、急诊）
+// 鏄剧ず浜嬩欢棰勮锛堟伓鎰忔寕鍙枫€佺埥绾︺€佹€ヨ瘖锛?
 void show_event_alerts(void)
 {
     printf("\n======================================================\n");
-    printf("                事件预警查看\n");
+    printf("                浜嬩欢棰勮鏌ョ湅\n");
     printf("======================================================\n");
     
     if (g_alert_list != NULL && g_alert_list->next != NULL)
@@ -1334,28 +1333,28 @@ void show_event_alerts(void)
             curr = curr->next;
             count++;
         }
-        printf("共找到 %d 条事件预警\n", count);
+        printf("鍏辨壘鍒?%d 鏉′簨浠堕璀n", count);
     }
     else
     {
-        printf("当前无事件预警\n");
+        printf("褰撳墠鏃犱簨浠堕璀n");
     }
     
     printf("======================================================\n");
 }
 
-// 显示药品预警（低库存、临期药）
+// 鏄剧ず鑽搧棰勮锛堜綆搴撳瓨銆佷复鏈熻嵂锛?
 void show_medicine_alerts(void)
 {
     int low_stock_count = 0;
     int expiring_count = 0;
     
     printf("\n======================================================\n");
-    printf("                药品预警查看\n");
+    printf("                鑽搧棰勮鏌ョ湅\n");
     printf("======================================================\n");
     
-    // 显示低库存药品预警
-    printf("【低库存药品预警】\n");
+    // 鏄剧ず浣庡簱瀛樿嵂鍝侀璀?
+    printf("銆愪綆搴撳瓨鑽搧棰勮銆慭n");
     printf("------------------------------------------------------\n");
     if (g_medicine_list != NULL && g_medicine_list->next != NULL)
     {
@@ -1364,10 +1363,10 @@ void show_medicine_alerts(void)
         {
             if (med_curr->stock < 5)
             {
-                printf("药品编号：%s\n", med_curr->id);
-                printf("商品名：%s\n", med_curr->name);
-                printf("当前库存：" RED "%d" RESET "\n", med_curr->stock);
-                printf("效期：%s\n", med_curr->expiry_date);
+                printf("鑽搧缂栧彿锛?s\n", med_curr->id);
+                printf("鍟嗗搧鍚嶏細%s\n", med_curr->name);
+                printf("褰撳墠搴撳瓨锛? RED "%d" RESET "\n", med_curr->stock);
+                printf("鏁堟湡锛?s\n", med_curr->expiry_date);
                 printf("------------------------------------------------------\n");
                 low_stock_count++;
             }
@@ -1375,18 +1374,18 @@ void show_medicine_alerts(void)
         }
         if (low_stock_count == 0)
         {
-            printf("当前无低库存药品预警\n");
+            printf("褰撳墠鏃犱綆搴撳瓨鑽搧棰勮\n");
         }
-        printf("共找到 %d 种低库存药品\n", low_stock_count);
+        printf("鍏辨壘鍒?%d 绉嶄綆搴撳瓨鑽搧\n", low_stock_count);
     }
     else
     {
-        printf("当前无药品数据\n");
+        printf("褰撳墠鏃犺嵂鍝佹暟鎹甛n");
     }
     printf("------------------------------------------------------\n");
     
-    // 显示临期药品预警
-    printf("【临期药品预警】\n");
+    // 鏄剧ず涓存湡鑽搧棰勮
+    printf("銆愪复鏈熻嵂鍝侀璀︺€慭n");
     printf("------------------------------------------------------\n");
     if (g_medicine_list != NULL && g_medicine_list->next != NULL)
     {
@@ -1401,10 +1400,10 @@ void show_medicine_alerts(void)
             int diff_days = days_between_dates(today_str, med_curr->expiry_date);
             if (diff_days >= 0 && diff_days <= 30)
             {
-                printf("药品编号：%s\n", med_curr->id);
-                printf("商品名：%s\n", med_curr->name);
-                printf("效期：%s\n", med_curr->expiry_date);
-                printf("距离过期：" RED "%d天" RESET "\n", diff_days);
+                printf("鑽搧缂栧彿锛?s\n", med_curr->id);
+                printf("鍟嗗搧鍚嶏細%s\n", med_curr->name);
+                printf("鏁堟湡锛?s\n", med_curr->expiry_date);
+                printf("璺濈杩囨湡锛? RED "%d澶? RESET "\n", diff_days);
                 printf("------------------------------------------------------\n");
                 expiring_count++;
             }
@@ -1412,29 +1411,29 @@ void show_medicine_alerts(void)
         }
         if (expiring_count == 0)
         {
-            printf("当前无临期药品预警\n");
+            printf("褰撳墠鏃犱复鏈熻嵂鍝侀璀n");
         }
-        printf("共找到 %d 种临期药品\n", expiring_count);
+        printf("鍏辨壘鍒?%d 绉嶄复鏈熻嵂鍝乗n", expiring_count);
     }
     else
     {
-        printf("当前无药品数据\n");
+        printf("褰撳墠鏃犺嵂鍝佹暟鎹甛n");
     }
     
     printf("======================================================\n");
 }
 
-// 显示住院预警（押金不足、欠费）
+// 鏄剧ず浣忛櫌棰勮锛堟娂閲戜笉瓒炽€佹瑺璐癸級
 void show_inpatient_alerts(void)
 {
     int deposit_warning_count = 0;
     
     printf("\n======================================================\n");
-    printf("                住院预警查看\n");
+    printf("                浣忛櫌棰勮鏌ョ湅\n");
     printf("======================================================\n");
     
-    // 显示押金不足预警
-    printf("【押金不足预警】\n");
+    // 鏄剧ず鎶奸噾涓嶈冻棰勮
+    printf("銆愭娂閲戜笉瓒抽璀︺€慭n");
     printf("------------------------------------------------------\n");
     if (g_inpatient_list != NULL && g_inpatient_list->next != NULL)
     {
@@ -1457,7 +1456,7 @@ void show_inpatient_alerts(void)
                         daily_rate = get_ward_rate(inpatient_curr->ward_type);
                         if (inpatient_curr->deposit_balance < daily_rate * 3)
                         {
-                            warn_msg = "押金不足";
+                            warn_msg = "鎶奸噾涓嶈冻";
                             show_warn = 1;
                         }
                     }
@@ -1466,17 +1465,17 @@ void show_inpatient_alerts(void)
                         double warning_threshold = get_ward_rate(inpatient_curr->recommended_ward_type) * 3;
                         if (inpatient_curr->deposit_balance < warning_threshold)
                         {
-                            warn_msg = "押金较少";
+                            warn_msg = "鎶奸噾杈冨皯";
                             show_warn = 1;
                         }
                     }
                     
                     if (show_warn)
                     {
-                        printf("患者编号：%s\n", inpatient_curr->patient_id);
-                        printf("患者姓名：%s\n", patient->name);
-                        printf("押金余额：" RED "%.2f 元" RESET "\n", inpatient_curr->deposit_balance);
-                        printf("预警状态：" RED "%s" RESET "\n", warn_msg);
+                        printf("鎮ｈ€呯紪鍙凤細%s\n", inpatient_curr->patient_id);
+                        printf("鎮ｈ€呭鍚嶏細%s\n", patient->name);
+                        printf("鎶奸噾浣欓锛? RED "%.2f 鍏? RESET "\n", inpatient_curr->deposit_balance);
+                        printf("棰勮鐘舵€侊細" RED "%s" RESET "\n", warn_msg);
                         printf("------------------------------------------------------\n");
                         deposit_warning_count++;
                     }
@@ -1486,35 +1485,35 @@ void show_inpatient_alerts(void)
         }
         if (deposit_warning_count == 0)
         {
-            printf("当前无押金不足预警\n");
+            printf("褰撳墠鏃犳娂閲戜笉瓒抽璀n");
         }
-        printf("共找到 %d 位患者押金不足\n", deposit_warning_count);
+        printf("鍏辨壘鍒?%d 浣嶆偅鑰呮娂閲戜笉瓒砛n", deposit_warning_count);
     }
     else
     {
-        printf("当前无住院数据\n");
+        printf("褰撳墠鏃犱綇闄㈡暟鎹甛n");
     }
     printf("------------------------------------------------------\n");
     
-    // 显示欠费患者预警（待启用）
-    printf("【欠费患者预警】\n");
+    // 鏄剧ず娆犺垂鎮ｈ€呴璀︼紙寰呭惎鐢級
+    printf("銆愭瑺璐规偅鑰呴璀︺€慭n");
     printf("------------------------------------------------------\n");
-    printf("当前版本欠费患者预警功能待收费/结算模块完全接入后启用。\n");
+    printf("褰撳墠鐗堟湰娆犺垂鎮ｈ€呴璀﹀姛鑳藉緟鏀惰垂/缁撶畻妯″潡瀹屽叏鎺ュ叆鍚庡惎鐢ㄣ€俓n");
     
     printf("======================================================\n");
 }
 
-// 显示系统预警查看
+// 鏄剧ず绯荤粺棰勮鏌ョ湅
 void show_system_alerts(void)
 {
     int has_alerts = 0;
     
     printf("\n======================================================\n");
-    printf("                  系统预警查看\n");
+    printf("                  绯荤粺棰勮鏌ョ湅\n");
     printf("======================================================\n");
     
-    // 1. 显示恶意挂号拦截、爽约拦截、急诊强制放行（来自预警队列）
-    printf("【事件预警】\n");
+    // 1. 鏄剧ず鎭舵剰鎸傚彿鎷︽埅銆佺埥绾︽嫤鎴€佹€ヨ瘖寮哄埗鏀捐锛堟潵鑷璀﹂槦鍒楋級
+    printf("銆愪簨浠堕璀︺€慭n");
     printf("------------------------------------------------------\n");
     if (g_alert_list != NULL && g_alert_list->next != NULL)
     {
@@ -1529,16 +1528,16 @@ void show_system_alerts(void)
             count++;
             has_alerts = 1;
         }
-        printf("共找到 %d 条事件预警\n", count);
+        printf("鍏辨壘鍒?%d 鏉′簨浠堕璀n", count);
     }
     else
     {
-        printf("当前无事件预警\n");
+        printf("褰撳墠鏃犱簨浠堕璀n");
     }
     printf("------------------------------------------------------\n");
     
-    // 2. 显示低库存药品预警
-    printf("【低库存药品预警】\n");
+    // 2. 鏄剧ず浣庡簱瀛樿嵂鍝侀璀?
+    printf("銆愪綆搴撳瓨鑽搧棰勮銆慭n");
     printf("------------------------------------------------------\n");
     int low_stock_count = 0;
     if (g_medicine_list != NULL && g_medicine_list->next != NULL)
@@ -1548,10 +1547,10 @@ void show_system_alerts(void)
         {
             if (med_curr->stock < 5)
             {
-                printf("药品编号：%s\n", med_curr->id);
-                printf("商品名：%s\n", med_curr->name);
-                printf("当前库存：" RED "%d" RESET "\n", med_curr->stock);
-                printf("效期：%s\n", med_curr->expiry_date);
+                printf("鑽搧缂栧彿锛?s\n", med_curr->id);
+                printf("鍟嗗搧鍚嶏細%s\n", med_curr->name);
+                printf("褰撳墠搴撳瓨锛? RED "%d" RESET "\n", med_curr->stock);
+                printf("鏁堟湡锛?s\n", med_curr->expiry_date);
                 printf("------------------------------------------------------\n");
                 low_stock_count++;
                 has_alerts = 1;
@@ -1560,18 +1559,18 @@ void show_system_alerts(void)
         }
         if (low_stock_count == 0)
         {
-            printf("当前无低库存药品预警\n");
+            printf("褰撳墠鏃犱綆搴撳瓨鑽搧棰勮\n");
         }
-        printf("共找到 %d 种低库存药品\n", low_stock_count);
+        printf("鍏辨壘鍒?%d 绉嶄綆搴撳瓨鑽搧\n", low_stock_count);
     }
     else
     {
-        printf("当前无药品数据\n");
+        printf("褰撳墠鏃犺嵂鍝佹暟鎹甛n");
     }
     printf("------------------------------------------------------\n");
     
-    // 3. 显示临期药品预警
-    printf("【临期药品预警】\n");
+    // 3. 鏄剧ず涓存湡鑽搧棰勮
+    printf("銆愪复鏈熻嵂鍝侀璀︺€慭n");
     printf("------------------------------------------------------\n");
     int expiring_count = 0;
     if (g_medicine_list != NULL && g_medicine_list->next != NULL)
@@ -1587,10 +1586,10 @@ void show_system_alerts(void)
             int diff_days = days_between_dates(today_str, med_curr->expiry_date);
             if (diff_days >= 0 && diff_days <= 30)
             {
-                printf("药品编号：%s\n", med_curr->id);
-                printf("商品名：%s\n", med_curr->name);
-                printf("效期：%s\n", med_curr->expiry_date);
-                printf("距离过期：" RED "%d天" RESET "\n", diff_days);
+                printf("鑽搧缂栧彿锛?s\n", med_curr->id);
+                printf("鍟嗗搧鍚嶏細%s\n", med_curr->name);
+                printf("鏁堟湡锛?s\n", med_curr->expiry_date);
+                printf("璺濈杩囨湡锛? RED "%d澶? RESET "\n", diff_days);
                 printf("------------------------------------------------------\n");
                 expiring_count++;
                 has_alerts = 1;
@@ -1599,18 +1598,18 @@ void show_system_alerts(void)
         }
         if (expiring_count == 0)
         {
-            printf("当前无临期药品预警\n");
+            printf("褰撳墠鏃犱复鏈熻嵂鍝侀璀n");
         }
-        printf("共找到 %d 种临期药品\n", expiring_count);
+        printf("鍏辨壘鍒?%d 绉嶄复鏈熻嵂鍝乗n", expiring_count);
     }
     else
     {
-        printf("当前无药品数据\n");
+        printf("褰撳墠鏃犺嵂鍝佹暟鎹甛n");
     }
     printf("------------------------------------------------------\n");
     
-    // 4. 显示押金不足预警
-    printf("【押金不足预警】\n");
+    // 4. 鏄剧ず鎶奸噾涓嶈冻棰勮
+    printf("銆愭娂閲戜笉瓒抽璀︺€慭n");
     printf("------------------------------------------------------\n");
     int deposit_warning_count = 0;
     if (g_inpatient_list != NULL && g_inpatient_list->next != NULL)
@@ -1634,7 +1633,7 @@ void show_system_alerts(void)
                         daily_rate = get_ward_rate(inpatient_curr->ward_type);
                         if (inpatient_curr->deposit_balance < daily_rate * 3)
                         {
-                            warn_msg = "押金不足";
+                            warn_msg = "鎶奸噾涓嶈冻";
                             show_warn = 1;
                         }
                     }
@@ -1643,17 +1642,17 @@ void show_system_alerts(void)
                         double warning_threshold = get_ward_rate(inpatient_curr->recommended_ward_type) * 3;
                         if (inpatient_curr->deposit_balance < warning_threshold)
                         {
-                            warn_msg = "押金较少";
+                            warn_msg = "鎶奸噾杈冨皯";
                             show_warn = 1;
                         }
                     }
                     
                     if (show_warn)
                     {
-                        printf("患者编号：%s\n", inpatient_curr->patient_id);
-                        printf("患者姓名：%s\n", patient->name);
-                        printf("押金余额：" RED "%.2f 元" RESET "\n", inpatient_curr->deposit_balance);
-                        printf("预警状态：" RED "%s" RESET "\n", warn_msg);
+                        printf("鎮ｈ€呯紪鍙凤細%s\n", inpatient_curr->patient_id);
+                        printf("鎮ｈ€呭鍚嶏細%s\n", patient->name);
+                        printf("鎶奸噾浣欓锛? RED "%.2f 鍏? RESET "\n", inpatient_curr->deposit_balance);
+                        printf("棰勮鐘舵€侊細" RED "%s" RESET "\n", warn_msg);
                         printf("------------------------------------------------------\n");
                         deposit_warning_count++;
                         has_alerts = 1;
@@ -1664,39 +1663,39 @@ void show_system_alerts(void)
         }
         if (deposit_warning_count == 0)
         {
-            printf("当前无押金不足预警\n");
+            printf("褰撳墠鏃犳娂閲戜笉瓒抽璀n");
         }
-        printf("共找到 %d 位患者押金不足\n", deposit_warning_count);
+        printf("鍏辨壘鍒?%d 浣嶆偅鑰呮娂閲戜笉瓒砛n", deposit_warning_count);
     }
     else
     {
-        printf("当前无住院数据\n");
+        printf("褰撳墠鏃犱綇闄㈡暟鎹甛n");
     }
     printf("------------------------------------------------------\n");
     
-    // 5. 显示欠费患者预警（待启用）
-    printf("【欠费患者预警】\n");
+    // 5. 鏄剧ず娆犺垂鎮ｈ€呴璀︼紙寰呭惎鐢級
+    printf("銆愭瑺璐规偅鑰呴璀︺€慭n");
     printf("------------------------------------------------------\n");
-    printf("当前版本欠费患者预警功能待收费/结算模块完全接入后启用。\n");
+    printf("褰撳墠鐗堟湰娆犺垂鎮ｈ€呴璀﹀姛鑳藉緟鏀惰垂/缁撶畻妯″潡瀹屽叏鎺ュ叆鍚庡惎鐢ㄣ€俓n");
     printf("------------------------------------------------------\n");
     
     printf("======================================================\n");
     if (!has_alerts)
     {
-        printf("✅ 当前无预警，系统运行正常\n");
+        printf("鉁?褰撳墠鏃犻璀︼紝绯荤粺杩愯姝ｅ父\n");
     }
     else
     {
-        printf("" RED "⚠️ 发现预警信息，请及时处理" RESET "\n");
+        printf("" RED "鈿狅笍 鍙戠幇棰勮淇℃伅锛岃鍙婃椂澶勭悊" RESET "\n");
     }
     printf("======================================================\n");
 }
 
 // ==========================================
-// 投诉管理模块
+// 鎶曡瘔绠＄悊妯″潡
 // ==========================================
 
-// 管理员投诉管理子菜单
+// 绠＄悊鍛樻姇璇夌鐞嗗瓙鑿滃崟
 void admin_complaint_menu()
 {
     int running = 1;
@@ -1705,16 +1704,16 @@ void admin_complaint_menu()
     {
         system("cls");
         printf("\n======================================================\n");
-        printf("               📝 投诉管理\n");
+        printf("               馃摑 鎶曡瘔绠＄悊\n");
         printf("======================================================\n");
-        printf("  [1] 查看已处理投诉\n");
-        printf("  [2] 处理投诉\n");
-        printf("  [3] 按患者编号查询投诉历史\n");
-        printf("  [4] 按投诉编号查询投诉详情\n");
-        printf("  [0] 返回上一级\n");
+        printf("  [1] 鏌ョ湅宸插鐞嗘姇璇塡n");
+        printf("  [2] 澶勭悊鎶曡瘔\n");
+        printf("  [3] 鎸夋偅鑰呯紪鍙锋煡璇㈡姇璇夊巻鍙瞈n");
+        printf("  [4] 鎸夋姇璇夌紪鍙锋煡璇㈡姇璇夎鎯匼n");
+        printf("  [0] 杩斿洖涓婁竴绾n");
         printf("------------------------------------------------------\n");
         
-        switch (get_safe_int("👉 请输入操作编号: "))
+        switch (get_safe_int("馃憠 璇疯緭鍏ユ搷浣滅紪鍙? "))
         {
             case 1:
                 show_all_complaints();
@@ -1736,24 +1735,24 @@ void admin_complaint_menu()
                 running = 0;
                 break;
             default:
-                printf("\n⚠️ 无效的选项，请重新输入！\n");
+                printf("\n鈿狅笍 鏃犳晥鐨勯€夐」锛岃閲嶆柊杈撳叆锛乗n");
                 system("pause");
                 break;
         }
     }
 }
 
-// 显示已处理投诉
+// 鏄剧ず宸插鐞嗘姇璇?
 void show_all_complaints()
 {
     if (g_complaint_list == NULL || g_complaint_list->next == NULL)
     {
-        printf("\n⚠️ 当前暂无投诉记录！\n");
+        printf("\n鈿狅笍 褰撳墠鏆傛棤鎶曡瘔璁板綍锛乗n");
         return;
     }
     
     printf("\n======================================================\n");
-    printf("                    已处理投诉列表\n");
+    printf("                    宸插鐞嗘姇璇夊垪琛╘n");
     printf("======================================================\n");
     
     ComplaintNode* curr = g_complaint_list->next;
@@ -1765,25 +1764,25 @@ void show_all_complaints()
         if (curr->status == 1)
         {
             has_processed = 1;
-            printf("\n【投诉工单 %d】\n", index++);
-            printf("工单编号：%s\n", curr->complaint_id);
-            printf("患者编号：%s\n", curr->patient_id);
-            printf("提交时间：%s\n", curr->submit_time);
+            printf("\n銆愭姇璇夊伐鍗?%d銆慭n", index++);
+            printf("宸ュ崟缂栧彿锛?s\n", curr->complaint_id);
+            printf("鎮ｈ€呯紪鍙凤細%s\n", curr->patient_id);
+            printf("鎻愪氦鏃堕棿锛?s\n", curr->submit_time);
             
-            printf("投诉类型：");
+            printf("鎶曡瘔绫诲瀷锛?);
             switch (curr->target_type)
             {
-                case 1: printf("对医生\n"); break;
-                case 2: printf("对护士/前台\n"); break;
-                case 3: printf("对药师\n"); break;
-                default: printf("未知\n"); break;
+                case 1: printf("瀵瑰尰鐢焅n"); break;
+                case 2: printf("瀵规姢澹?鍓嶅彴\n"); break;
+                case 3: printf("瀵硅嵂甯圽n"); break;
+                default: printf("鏈煡\n"); break;
             }
             
-            printf("被投诉人：%s（账号：%s）\n", curr->target_name, curr->target_id);
-            printf("投诉内容：%s\n", curr->content);
+            printf("琚姇璇変汉锛?s锛堣处鍙凤細%s锛塡n", curr->target_name, curr->target_id);
+            printf("鎶曡瘔鍐呭锛?s\n", curr->content);
             
-            printf("处理状态：已回复\n");
-            printf("处理意见：%s\n", curr->response);
+            printf("澶勭悊鐘舵€侊細宸插洖澶峔n");
+            printf("澶勭悊鎰忚锛?s\n", curr->response);
             printf("------------------------------------------------------\n");
         }
         curr = curr->next;
@@ -1791,24 +1790,24 @@ void show_all_complaints()
     
     if (!has_processed)
     {
-        printf("\n⚠️ 当前没有已处理的投诉！\n");
+        printf("\n鈿狅笍 褰撳墠娌℃湁宸插鐞嗙殑鎶曡瘔锛乗n");
     }
     
     printf("======================================================\n");
 }
 
-// 处理投诉
+// 澶勭悊鎶曡瘔
 void handle_complaint_response()
 {
     if (g_complaint_list == NULL || g_complaint_list->next == NULL)
     {
-        printf("\n⚠️ 当前暂无投诉记录！\n");
+        printf("\n鈿狅笍 褰撳墠鏆傛棤鎶曡瘔璁板綍锛乗n");
         return;
     }
     
-    // 先显示待处理的投诉
+    // 鍏堟樉绀哄緟澶勭悊鐨勬姇璇?
     printf("\n======================================================\n");
-    printf("                    待处理投诉\n");
+    printf("                    寰呭鐞嗘姇璇塡n");
     printf("======================================================\n");
     
     ComplaintNode* curr = g_complaint_list->next;
@@ -1820,19 +1819,19 @@ void handle_complaint_response()
         if (curr->status == 0)
         {
             has_pending = 1;
-            printf("\n【投诉工单 %d】\n", index++);
-            printf("工单编号：%s\n", curr->complaint_id);
-            printf("患者编号：%s\n", curr->patient_id);
-            printf("投诉类型：");
+            printf("\n銆愭姇璇夊伐鍗?%d銆慭n", index++);
+            printf("宸ュ崟缂栧彿锛?s\n", curr->complaint_id);
+            printf("鎮ｈ€呯紪鍙凤細%s\n", curr->patient_id);
+            printf("鎶曡瘔绫诲瀷锛?);
             switch (curr->target_type)
             {
-                case 1: printf("对医生\n"); break;
-                case 2: printf("对护士/前台\n"); break;
-                case 3: printf("对药师\n"); break;
-                default: printf("未知\n"); break;
+                case 1: printf("瀵瑰尰鐢焅n"); break;
+                case 2: printf("瀵规姢澹?鍓嶅彴\n"); break;
+                case 3: printf("瀵硅嵂甯圽n"); break;
+                default: printf("鏈煡\n"); break;
             }
-            printf("被投诉人：%s（账号：%s）\n", curr->target_name, curr->target_id);
-            printf("投诉内容：%s\n", curr->content);
+            printf("琚姇璇変汉锛?s锛堣处鍙凤細%s锛塡n", curr->target_name, curr->target_id);
+            printf("鎶曡瘔鍐呭锛?s\n", curr->content);
             printf("------------------------------------------------------\n");
         }
         curr = curr->next;
@@ -1840,15 +1839,15 @@ void handle_complaint_response()
     
     if (!has_pending)
     {
-        printf("\n✅ 当前没有待处理的投诉！\n");
+        printf("\n鉁?褰撳墠娌℃湁寰呭鐞嗙殑鎶曡瘔锛乗n");
         return;
     }
     
-    // 输入要处理的投诉编号
+    // 杈撳叆瑕佸鐞嗙殑鎶曡瘔缂栧彿
     char complaint_id[MAX_ID_LEN];
-    get_safe_string("请输入要处理的投诉工单编号: ", complaint_id, MAX_ID_LEN);
+    get_safe_string("璇疯緭鍏ヨ澶勭悊鐨勬姇璇夊伐鍗曠紪鍙? ", complaint_id, MAX_ID_LEN);
     
-    // 查找投诉
+    // 鏌ユ壘鎶曡瘔
     curr = g_complaint_list->next;
     ComplaintNode* target_complaint = NULL;
     
@@ -1864,53 +1863,53 @@ void handle_complaint_response()
     
     if (target_complaint == NULL)
     {
-        printf("\n⚠️ 未找到该投诉工单！\n");
+        printf("\n鈿狅笍 鏈壘鍒拌鎶曡瘔宸ュ崟锛乗n");
         return;
     }
     
     if (target_complaint->status != 0)
     {
-        printf("\n⚠️ 该投诉工单已经处理过了！\n");
+        printf("\n鈿狅笍 璇ユ姇璇夊伐鍗曞凡缁忓鐞嗚繃浜嗭紒\n");
         return;
     }
     
-    // 输入处理意见
+    // 杈撳叆澶勭悊鎰忚
     char response[MAX_RECORD_LEN];
-    get_safe_string("请输入处理意见: ", response, MAX_RECORD_LEN);
+    get_safe_string("璇疯緭鍏ュ鐞嗘剰瑙? ", response, MAX_RECORD_LEN);
     
-    // 更新投诉状态和回复
+    // 鏇存柊鎶曡瘔鐘舵€佸拰鍥炲
     target_complaint->status = 1;
     strncpy(target_complaint->response, response, MAX_RECORD_LEN - 1);
     target_complaint->response[MAX_RECORD_LEN - 1] = '\0';
     
-    printf("\n✅ 投诉处理成功！\n");
-    printf("工单编号：%s\n", target_complaint->complaint_id);
-    printf("处理意见：%s\n", target_complaint->response);
+    printf("\n鉁?鎶曡瘔澶勭悊鎴愬姛锛乗n");
+    printf("宸ュ崟缂栧彿锛?s\n", target_complaint->complaint_id);
+    printf("澶勭悊鎰忚锛?s\n", target_complaint->response);
 }
 
-// 按患者编号查询投诉历史
+// 鎸夋偅鑰呯紪鍙锋煡璇㈡姇璇夊巻鍙?
 void query_patient_complaints_by_id()
 {
     char patient_id[MAX_ID_LEN];
-    get_safe_string("请输入患者编号: ", patient_id, MAX_ID_LEN);
+    get_safe_string("璇疯緭鍏ユ偅鑰呯紪鍙? ", patient_id, MAX_ID_LEN);
     
-    // 调用现有的 query_patient_complaints 函数
+    // 璋冪敤鐜版湁鐨?query_patient_complaints 鍑芥暟
     query_patient_complaints(patient_id);
 }
 
-// 按投诉编号查询投诉详情
+// 鎸夋姇璇夌紪鍙锋煡璇㈡姇璇夎鎯?
 void query_complaint_by_id()
 {
     char complaint_id[MAX_ID_LEN];
-    get_safe_string("请输入投诉编号: ", complaint_id, MAX_ID_LEN);
+    get_safe_string("璇疯緭鍏ユ姇璇夌紪鍙? ", complaint_id, MAX_ID_LEN);
     
     if (g_complaint_list == NULL || g_complaint_list->next == NULL)
     {
-        printf("\n⚠️ 当前暂无投诉记录！\n");
+        printf("\n鈿狅笍 褰撳墠鏆傛棤鎶曡瘔璁板綍锛乗n");
         return;
     }
     
-    // 查找投诉
+    // 鏌ユ壘鎶曡瘔
     ComplaintNode* curr = g_complaint_list->next;
     ComplaintNode* target_complaint = NULL;
     
@@ -1926,50 +1925,50 @@ void query_complaint_by_id()
     
     if (target_complaint == NULL)
     {
-        printf("\n⚠️ 未找到该投诉工单！\n");
+        printf("\n鈿狅笍 鏈壘鍒拌鎶曡瘔宸ュ崟锛乗n");
         return;
     }
     
-    // 显示投诉详情
+    // 鏄剧ず鎶曡瘔璇︽儏
     printf("\n======================================================\n");
-    printf("                    投诉详情\n");
+    printf("                    鎶曡瘔璇︽儏\n");
     printf("======================================================\n");
-    printf("工单编号：%s\n", target_complaint->complaint_id);
-    printf("患者编号：%s\n", target_complaint->patient_id);
-    printf("提交时间：%s\n", target_complaint->submit_time);
+    printf("宸ュ崟缂栧彿锛?s\n", target_complaint->complaint_id);
+    printf("鎮ｈ€呯紪鍙凤細%s\n", target_complaint->patient_id);
+    printf("鎻愪氦鏃堕棿锛?s\n", target_complaint->submit_time);
     
-    // 打印投诉类型
-    printf("投诉类型：");
+    // 鎵撳嵃鎶曡瘔绫诲瀷
+    printf("鎶曡瘔绫诲瀷锛?);
     switch (target_complaint->target_type)
     {
-        case 1: printf("对医生\n"); break;
-        case 2: printf("对护士/前台\n"); break;
-        case 3: printf("对药师\n"); break;
-        default: printf("未知\n"); break;
+        case 1: printf("瀵瑰尰鐢焅n"); break;
+        case 2: printf("瀵规姢澹?鍓嶅彴\n"); break;
+        case 3: printf("瀵硅嵂甯圽n"); break;
+        default: printf("鏈煡\n"); break;
     }
     
-    printf("被投诉人：%s（账号：%s）\n", target_complaint->target_name, target_complaint->target_id);
-    printf("投诉内容：%s\n", target_complaint->content);
+    printf("琚姇璇変汉锛?s锛堣处鍙凤細%s锛塡n", target_complaint->target_name, target_complaint->target_id);
+    printf("鎶曡瘔鍐呭锛?s\n", target_complaint->content);
     
-    // 打印处理状态
-    printf("处理状态：");
+    // 鎵撳嵃澶勭悊鐘舵€?
+    printf("澶勭悊鐘舵€侊細");
     if (target_complaint->status == 0)
     {
-        printf("待处理\n");
+        printf("寰呭鐞哱n");
     }
     else
     {
-        printf("已回复\n");
-        printf("处理意见：%s\n", target_complaint->response);
+        printf("宸插洖澶峔n");
+        printf("澶勭悊鎰忚锛?s\n", target_complaint->response);
     }
     printf("======================================================\n");
 }
 
 // ==========================================
-// 评价管理模块
+// 璇勪环绠＄悊妯″潡
 // ==========================================
 
-// 管理员评价管理子菜单
+// 绠＄悊鍛樿瘎浠风鐞嗗瓙鑿滃崟
 void admin_evaluation_menu()
 {
     int running = 1;
@@ -1978,14 +1977,14 @@ void admin_evaluation_menu()
     {
         system("cls");
         printf("\n======================================================\n");
-        printf("               ⭐ 评价管理\n");
+        printf("               猸?璇勪环绠＄悊\n");
         printf("======================================================\n");
-        printf("  [1] 查看所有评价\n");
-        printf("  [2] 查看评价统计\n");
-        printf("  [0] 返回上一级\n");
+        printf("  [1] 鏌ョ湅鎵€鏈夎瘎浠穃n");
+        printf("  [2] 鏌ョ湅璇勪环缁熻\n");
+        printf("  [0] 杩斿洖涓婁竴绾n");
         printf("------------------------------------------------------\n");
         
-        switch (get_safe_int("👉 请输入操作编号: "))
+        switch (get_safe_int("馃憠 璇疯緭鍏ユ搷浣滅紪鍙? "))
         {
             case 1:
                 show_all_evaluations();
@@ -1999,24 +1998,24 @@ void admin_evaluation_menu()
                 running = 0;
                 break;
             default:
-                printf("\n⚠️ 无效的选项，请重新输入！\n");
+                printf("\n鈿狅笍 鏃犳晥鐨勯€夐」锛岃閲嶆柊杈撳叆锛乗n");
                 system("pause");
                 break;
         }
     }
 }
 
-// 显示所有评价
+// 鏄剧ず鎵€鏈夎瘎浠?
 void show_all_evaluations()
 {
     if (g_consult_record_list == NULL || g_consult_record_list->next == NULL)
     {
-        printf("\n⚠️ 当前暂无评价记录！\n");
+        printf("\n鈿狅笍 褰撳墠鏆傛棤璇勪环璁板綍锛乗n");
         return;
     }
     
     printf("\n======================================================\n");
-    printf("                    评价列表\n");
+    printf("                    璇勪环鍒楄〃\n");
     printf("======================================================\n");
     
     ConsultRecordNode* curr = g_consult_record_list->next;
@@ -2028,31 +2027,31 @@ void show_all_evaluations()
         if (curr->star_rating > 0)
         {
             evaluation_count++;
-            printf("\n【评价工单 %d】\n", index++);
-            printf("记录编号：%s\n", curr->record_id);
-            printf("患者编号：%s\n", curr->patient_id);
-            printf("就诊医生：%s（编号：%s）\n", 
+            printf("\n銆愯瘎浠峰伐鍗?%d銆慭n", index++);
+            printf("璁板綍缂栧彿锛?s\n", curr->record_id);
+            printf("鎮ｈ€呯紪鍙凤細%s\n", curr->patient_id);
+            printf("灏辫瘖鍖荤敓锛?s锛堢紪鍙凤細%s锛塡n", 
                    find_doctor_by_id(g_doctor_list, curr->doctor_id) ? 
-                   find_doctor_by_id(g_doctor_list, curr->doctor_id)->name : "未知", 
+                   find_doctor_by_id(g_doctor_list, curr->doctor_id)->name : "鏈煡", 
                    curr->doctor_id);
-            printf("就诊时间：%s\n", curr->consult_time);
+            printf("灏辫瘖鏃堕棿锛?s\n", curr->consult_time);
             
-            // 打印星级评价
-            printf("满意度评分：");
+            // 鎵撳嵃鏄熺骇璇勪环
+            printf("婊℃剰搴﹁瘎鍒嗭細");
             for (int i = 0; i < curr->star_rating; i++)
             {
-                printf("⭐");
+                printf("猸?);
             }
-            printf(" (%d星)\n", curr->star_rating);
+            printf(" (%d鏄?\n", curr->star_rating);
             
-            // 打印文字评价
+            // 鎵撳嵃鏂囧瓧璇勪环
             if (strlen(curr->feedback) > 0)
             {
-                printf("文字评价：%s\n", curr->feedback);
+                printf("鏂囧瓧璇勪环锛?s\n", curr->feedback);
             }
             else
             {
-                printf("文字评价：（无）\n");
+                printf("鏂囧瓧璇勪环锛氾紙鏃狅級\n");
             }
             printf("------------------------------------------------------\n");
         }
@@ -2061,26 +2060,26 @@ void show_all_evaluations()
     
     if (evaluation_count == 0)
     {
-        printf("\n⚠️ 当前暂无评价记录！\n");
+        printf("\n鈿狅笍 褰撳墠鏆傛棤璇勪环璁板綍锛乗n");
     }
     else
     {
-        printf("\n共找到 %d 条评价记录\n", evaluation_count);
+        printf("\n鍏辨壘鍒?%d 鏉¤瘎浠疯褰昞n", evaluation_count);
     }
     printf("======================================================\n");
 }
 
-// 显示评价统计
+// 鏄剧ず璇勪环缁熻
 void show_evaluation_statistics()
 {
     if (g_consult_record_list == NULL)
     {
-        printf("\n⚠️ 接诊记录链表尚未初始化！\n");
+        printf("\n鈿狅笍 鎺ヨ瘖璁板綍閾捐〃灏氭湭鍒濆鍖栵紒\n");
         return;
     }
     
     int total_evaluations = 0;
-    int star_counts[6] = {0}; // star_counts[0] 表示未评价, star_counts[1-5] 表示各星级
+    int star_counts[6] = {0}; // star_counts[0] 琛ㄧず鏈瘎浠? star_counts[1-5] 琛ㄧず鍚勬槦绾?
     float total_score = 0.0;
     
     ConsultRecordNode* curr = g_consult_record_list->next;
@@ -2100,49 +2099,49 @@ void show_evaluation_statistics()
     }
     
     printf("\n======================================================\n");
-    printf("                    评价统计\n");
+    printf("                    璇勪环缁熻\n");
     printf("======================================================\n");
-    printf("总评价数量：%d\n", total_evaluations);
+    printf("鎬昏瘎浠锋暟閲忥細%d\n", total_evaluations);
     
     if (total_evaluations > 0)
     {
         float average_score = total_score / total_evaluations;
-        printf("平均满意度：%.2f 星\n", average_score);
+        printf("骞冲潎婊℃剰搴︼細%.2f 鏄焅n", average_score);
         printf("------------------------------------------------------\n");
-        printf("各星级评价分布：\n");
-        printf("  ⭐⭐⭐⭐⭐ (5星): %d 条 (%.1f%%)\n", 
+        printf("鍚勬槦绾ц瘎浠峰垎甯冿細\n");
+        printf("  猸愨瓙猸愨瓙猸?(5鏄?: %d 鏉?(%.1f%%)\n", 
                star_counts[5], (float)star_counts[5] / total_evaluations * 100);
-        printf("  ⭐⭐⭐⭐ (4星): %d 条 (%.1f%%)\n", 
+        printf("  猸愨瓙猸愨瓙 (4鏄?: %d 鏉?(%.1f%%)\n", 
                star_counts[4], (float)star_counts[4] / total_evaluations * 100);
-        printf("  ⭐⭐⭐ (3星): %d 条 (%.1f%%)\n", 
+        printf("  猸愨瓙猸?(3鏄?: %d 鏉?(%.1f%%)\n", 
                star_counts[3], (float)star_counts[3] / total_evaluations * 100);
-        printf("  ⭐⭐ (2星): %d 条 (%.1f%%)\n", 
+        printf("  猸愨瓙 (2鏄?: %d 鏉?(%.1f%%)\n", 
                star_counts[2], (float)star_counts[2] / total_evaluations * 100);
-        printf("  ⭐ (1星): %d 条 (%.1f%%)\n", 
+        printf("  猸?(1鏄?: %d 鏉?(%.1f%%)\n", 
                star_counts[1], (float)star_counts[1] / total_evaluations * 100);
         
-        // 好评率（4星及以上）
+        // 濂借瘎鐜囷紙4鏄熷強浠ヤ笂锛?
         int positive_count = star_counts[5] + star_counts[4];
         float positive_rate = (float)positive_count / total_evaluations * 100;
         printf("------------------------------------------------------\n");
-        printf("好评率（4星及以上）：%.1f%%\n", positive_rate);
+        printf("濂借瘎鐜囷紙4鏄熷強浠ヤ笂锛夛細%.1f%%\n", positive_rate);
         
-        // 差评率（2星及以下）
+        // 宸瘎鐜囷紙2鏄熷強浠ヤ笅锛?
         int negative_count = star_counts[2] + star_counts[1];
         float negative_rate = (float)negative_count / total_evaluations * 100;
-        printf("差评率（2星及以下）：%.1f%%\n", negative_rate);
+        printf("宸瘎鐜囷紙2鏄熷強浠ヤ笅锛夛細%.1f%%\n", negative_rate);
     }
     else
     {
-        printf("\n⚠️ 当前暂无评价记录！\n");
+        printf("\n鈿狅笍 褰撳墠鏆傛棤璇勪环璁板綍锛乗n");
     }
     
     printf("======================================================\n");
     
-    // 输出统计信息
-    printf("评价总数：%d\n", total_evaluations);
+    // 杈撳嚭缁熻淇℃伅
+    printf("璇勪环鎬绘暟锛?d\n", total_evaluations);
     printf("======================================================\n");
-    printf("按任意键返回...\n");
+    printf("鎸変换鎰忛敭杩斿洖...\n");
     get_single_char("");
 }
 
@@ -2169,12 +2168,12 @@ static void print_field(const char* s, int field_width)
     if (pad > 0) printf("%*s", pad, "");
 }
 
-// 显示负载监控查看
+// 鏄剧ず璐熻浇鐩戞帶鏌ョ湅
 void show_load_monitoring(void)
 {
     system("cls");
     printf("\n================================================================================\n");
-    printf("                        公共负载监控\n");
+    printf("                        鍏叡璐熻浇鐩戞帶\n");
     printf("================================================================================\n");
 
     int doctor_count = 0;
@@ -2214,32 +2213,32 @@ void show_load_monitoring(void)
         }
     }
 
-    printf("【公共信息统计】\n");
+    printf("銆愬叕鍏变俊鎭粺璁°€慭n");
     printf("--------------------------------------------------------------------------------\n");
-    printf("医生总数：%d\n", doctor_count);
-    printf("患者总数：%d\n", patient_count);
-    printf("床位总数：%d\n", bed_count);
-    printf("已占用床位：%d\n", occupied_beds);
-    printf("空闲床位：%d\n", bed_count - occupied_beds);
+    printf("鍖荤敓鎬绘暟锛?d\n", doctor_count);
+    printf("鎮ｈ€呮€绘暟锛?d\n", patient_count);
+    printf("搴婁綅鎬绘暟锛?d\n", bed_count);
+    printf("宸插崰鐢ㄥ簥浣嶏細%d\n", occupied_beds);
+    printf("绌洪棽搴婁綅锛?d\n", bed_count - occupied_beds);
     printf("--------------------------------------------------------------------------------\n");
 
-    printf("提示：此面板数据实时更新，可作为系统运行监控参考。\n");
+    printf("鎻愮ず锛氭闈㈡澘鏁版嵁瀹炴椂鏇存柊锛屽彲浣滀负绯荤粺杩愯鐩戞帶鍙傝€冦€俓n");
     printf("================================================================================\n");
-    printf("按任意键返回...\n");
+    printf("鎸変换鎰忛敭杩斿洖...\n");
     get_single_char("");
 }
 
-// 待发药患者预警
+// 寰呭彂鑽偅鑰呴璀?
 static void show_waiting_dispense_warning(void)
 {
     int count = 0;
     int total_width = 0;
     
-    int id_width = get_display_width("患者编号");
-    int name_width = get_display_width("姓名");
-    int age_width = get_display_width("年龄");
-    int status_width = get_display_width("当前状态");
-    int dept_width = get_display_width("就诊科室");
+    int id_width = get_display_width("鎮ｈ€呯紪鍙?);
+    int name_width = get_display_width("濮撳悕");
+    int age_width = get_display_width("骞撮緞");
+    int status_width = get_display_width("褰撳墠鐘舵€?);
+    int dept_width = get_display_width("灏辫瘖绉戝");
     
     if (g_patient_list != NULL && g_patient_list->next != NULL)
     {
@@ -2254,10 +2253,10 @@ static void show_waiting_dispense_warning(void)
                 switch (curr->status)
                 {
                     case STATUS_WAIT_MED:
-                        status_name = "已缴费待取药";
+                        status_name = "宸茬即璐瑰緟鍙栬嵂";
                         break;
                     default:
-                        status_name = "未知";
+                        status_name = "鏈煡";
                         break;
                 }
                 
@@ -2282,17 +2281,17 @@ static void show_waiting_dispense_warning(void)
     total_width = id_width + name_width + age_width + status_width + dept_width + 12;
 
     printf("\n======================================================\n");
-    printf("                  待取药患者提醒\n");
+    printf("                  寰呭彇鑽偅鑰呮彁閱抃n");
     printf("======================================================\n");
-    print_padded_text("患者编号", id_width);
+    print_padded_text("鎮ｈ€呯紪鍙?, id_width);
     printf("    ");
-    print_padded_text("姓名", name_width);
+    print_padded_text("濮撳悕", name_width);
     printf("    ");
-    print_padded_text("年龄", age_width);
+    print_padded_text("骞撮緞", age_width);
     printf("    ");
-    print_padded_text("当前状态", status_width);
+    print_padded_text("褰撳墠鐘舵€?, status_width);
     printf("    ");
-    print_padded_text("就诊科室", dept_width);
+    print_padded_text("灏辫瘖绉戝", dept_width);
     printf("\n");
     
     for (int i = 0; i < total_width; i++) printf("-");
@@ -2309,10 +2308,10 @@ static void show_waiting_dispense_warning(void)
                 switch (curr->status)
                 {
                     case STATUS_WAIT_MED:
-                        status_name = "已缴费待取药";
+                        status_name = "宸茬即璐瑰緟鍙栬嵂";
                         break;
                     default:
-                        status_name = "未知";
+                        status_name = "鏈煡";
                         break;
                 }
                 
@@ -2335,7 +2334,7 @@ static void show_waiting_dispense_warning(void)
     printf("\n");
     
     char count_str[50];
-    snprintf(count_str, sizeof(count_str), "待取药患者数量：%d", count);
+    snprintf(count_str, sizeof(count_str), "寰呭彇鑽偅鑰呮暟閲忥細%d", count);
     int count_width = get_display_width(count_str);
     int count_padding = (total_width - count_width) / 2;
     for (int i = 0; i < count_padding; i++) printf(" ");
@@ -2344,16 +2343,16 @@ static void show_waiting_dispense_warning(void)
     
     for (int i = 0; i < total_width; i++) printf("=");
     printf("\n");
-    printf("按任意键返回...\n");
+    printf("鎸変换鎰忛敭杩斿洖...\n");
     get_single_char("");
 }
 
-// 函数声明
+// 鍑芥暟澹版槑
 static void show_bed_occupancy_warning(void);
 static void show_deposit_warning(void);
 static void show_arrears_warning(void);
 
-// 显示资源预警
+// 鏄剧ず璧勬簮棰勮
 void show_resource_warnings(void)
 {
     int choice;
@@ -2368,7 +2367,7 @@ void show_resource_warnings(void)
         int free_beds = 0;
         int unpaid_patient_count = 0;
 
-        // 统计低库存药品和近效期药品数量
+        // 缁熻浣庡簱瀛樿嵂鍝佸拰杩戞晥鏈熻嵂鍝佹暟閲?
         if (g_medicine_list != NULL && g_medicine_list->next != NULL)
         {
             MedicineNode* curr = g_medicine_list->next;
@@ -2388,7 +2387,7 @@ void show_resource_warnings(void)
                     low_stock_count++;
                 }
                 
-                // 检查是否为近效期药品（30天内过期）
+                // 妫€鏌ユ槸鍚︿负杩戞晥鏈熻嵂鍝侊紙30澶╁唴杩囨湡锛?
                 if (strlen(curr->expiry_date) > 0)
                 {
                     int days_left = days_between_dates(current_date, curr->expiry_date);
@@ -2402,19 +2401,19 @@ void show_resource_warnings(void)
             }
         }
 
-        // 统计押金预警住院患者数量
+        // 缁熻鎶奸噾棰勮浣忛櫌鎮ｈ€呮暟閲?
         if (g_inpatient_list != NULL && g_inpatient_list->next != NULL)
         {
             InpatientRecord* curr = g_inpatient_list->next;
             while (curr != NULL)
             {
-                // 仅统计当前仍在住院中的患者
+                // 浠呯粺璁″綋鍓嶄粛鍦ㄤ綇闄腑鐨勬偅鑰?
                 if (curr->is_active)
                 {
                     occupied_beds++;
-                    // 根据病房类型估算日费用，若押金不足3天费用则预警
+                    // 鏍规嵁鐥呮埧绫诲瀷浼扮畻鏃ヨ垂鐢紝鑻ユ娂閲戜笉瓒?澶╄垂鐢ㄥ垯棰勮
                     double daily_cost = estimate_daily_cost_by_ward_type(curr->ward_type);
-                    double threshold = daily_cost * 3; // 押金不足3天费用时预警
+                    double threshold = daily_cost * 3; // 鎶奸噾涓嶈冻3澶╄垂鐢ㄦ椂棰勮
                     if (curr->deposit_balance < threshold)
                     {
                         deposit_warning_count++;
@@ -2424,7 +2423,7 @@ void show_resource_warnings(void)
             }
         }
 
-        // 统计待发药患者数量
+        // 缁熻寰呭彂鑽偅鑰呮暟閲?
         if (g_patient_list != NULL && g_patient_list->next != NULL)
         {
             PatientNode* curr = g_patient_list->next;
@@ -2438,7 +2437,7 @@ void show_resource_warnings(void)
             }
         }
 
-        // 统计欠费/待缴费患者数量
+        // 缁熻娆犺垂/寰呯即璐规偅鑰呮暟閲?
         if (g_patient_list != NULL && g_patient_list->next != NULL)
         {
             PatientNode* curr = g_patient_list->next;
@@ -2452,32 +2451,32 @@ void show_resource_warnings(void)
             }
         }
 
-        // 计算空闲床位数（假设有100个床位）
+        // 璁＄畻绌洪棽搴婁綅鏁帮紙鍋囪鏈?00涓簥浣嶏級
         free_beds = 100 - occupied_beds;
         if (free_beds < 0) free_beds = 0;
 
         printf("\n==============================================================\n");
-        printf("                      资源预警\n");
+        printf("                      璧勬簮棰勮\n");
         printf("==============================================================\n");
-        printf("低库存药品数量：%d\n", low_stock_count);
-        printf("近效期药品数量：%d\n", expiring_medicine_count);
-        printf("待发药患者数量：%d\n", waiting_dispense_count);
-        printf("当前已占用床位数：%d\n", occupied_beds);
-        printf("当前空闲床位数：%d\n", free_beds);
-        printf("押金预警住院患者数量：%d\n", deposit_warning_count);
-        printf("欠费 / 待缴费患者数量：%d\n", unpaid_patient_count);
+        printf("浣庡簱瀛樿嵂鍝佹暟閲忥細%d\n", low_stock_count);
+        printf("杩戞晥鏈熻嵂鍝佹暟閲忥細%d\n", expiring_medicine_count);
+        printf("寰呭彂鑽偅鑰呮暟閲忥細%d\n", waiting_dispense_count);
+        printf("褰撳墠宸插崰鐢ㄥ簥浣嶆暟锛?d\n", occupied_beds);
+        printf("褰撳墠绌洪棽搴婁綅鏁帮細%d\n", free_beds);
+        printf("鎶奸噾棰勮浣忛櫌鎮ｈ€呮暟閲忥細%d\n", deposit_warning_count);
+        printf("娆犺垂 / 寰呯即璐规偅鑰呮暟閲忥細%d\n", unpaid_patient_count);
         printf("==============================================================\n");
-        printf("请选择要查看的预警详情\n");
+        printf("璇烽€夋嫨瑕佹煡鐪嬬殑棰勮璇︽儏\n");
         printf("==============================================================\n");
-        printf("[1] 低库存药品预警\n");
-        printf("[2] 近效期药品预警\n");
-        printf("[3] 待发药患者预警\n");
-        printf("[4] 床位占用预警\n");
-        printf("[5] 住院押金预警\n");
-        printf("[6] 欠费 / 待缴费预警\n");
-        printf("[0] 返回上一级\n");
+        printf("[1] 浣庡簱瀛樿嵂鍝侀璀n");
+        printf("[2] 杩戞晥鏈熻嵂鍝侀璀n");
+        printf("[3] 寰呭彂鑽偅鑰呴璀n");
+        printf("[4] 搴婁綅鍗犵敤棰勮\n");
+        printf("[5] 浣忛櫌鎶奸噾棰勮\n");
+        printf("[6] 娆犺垂 / 寰呯即璐归璀n");
+        printf("[0] 杩斿洖涓婁竴绾n");
         printf("==============================================================\n");
-        printf("请输入选择：");
+        printf("璇疯緭鍏ラ€夋嫨锛?);
         
         choice = get_safe_int("");
         
@@ -2502,11 +2501,11 @@ void show_resource_warnings(void)
                 show_arrears_warning();
                 break;
             case 0:
-                // 返回上一级
+                // 杩斿洖涓婁竴绾?
                 break;
             default:
-                printf("输入错误，请重新选择！\n");
-                printf("按任意键继续...\n");
+                printf("杈撳叆閿欒锛岃閲嶆柊閫夋嫨锛乗n");
+                printf("鎸変换鎰忛敭缁х画...\n");
                 get_single_char("");
                 break;
         }
@@ -2517,12 +2516,12 @@ void show_resource_warnings(void)
 
 
 
-// 床位占用预警
+// 搴婁綅鍗犵敤棰勮
 static void show_bed_occupancy_warning(void)
 {
     system("cls");
     printf("\n======================================================\n");
-    printf("                床位占用预警\n");
+    printf("                搴婁綅鍗犵敤棰勮\n");
     printf("======================================================\n");
 
     int occupied_count = 0;
@@ -2537,51 +2536,51 @@ static void show_bed_occupancy_warning(void)
             if (curr->is_active)
             {
                 occupied_count++;
-                printf("患者编号：%s\n", curr->patient_id);
+                printf("鎮ｈ€呯紪鍙凤細%s\n", curr->patient_id);
                 
-                // 查找患者姓名
+                // 鏌ユ壘鎮ｈ€呭鍚?
                 PatientNode* patient = find_patient_by_id(g_patient_list, curr->patient_id);
                 if (patient != NULL)
                 {
-                    printf("患者姓名：%s\n", patient->name);
+                    printf("鎮ｈ€呭鍚嶏細%s\n", patient->name);
                 }
                 else
                 {
-                    printf("患者姓名：未知\n");
+                    printf("鎮ｈ€呭鍚嶏細鏈煡\n");
                 }
                 
-                printf("当前状态：已占用\n");
+                printf("褰撳墠鐘舵€侊細宸插崰鐢╘n");
                 printf("------------------------------------------------------\n");
             }
             curr = curr->next;
         }
     }
 
-    // 计算空闲床位数（假设有100个床位）
+    // 璁＄畻绌洪棽搴婁綅鏁帮紙鍋囪鏈?00涓簥浣嶏級
     free_count = 100 - occupied_count;
     if (free_count < 0) free_count = 0;
 
     if (occupied_count == 0)
     {
-        printf("当前暂无床位占用预警。\n");
+        printf("褰撳墠鏆傛棤搴婁綅鍗犵敤棰勮銆俓n");
     }
     else
     {
-        printf("已占用床位总数：%d\n", occupied_count);
-        printf("空闲床位总数：%d\n", free_count);
+        printf("宸插崰鐢ㄥ簥浣嶆€绘暟锛?d\n", occupied_count);
+        printf("绌洪棽搴婁綅鎬绘暟锛?d\n", free_count);
     }
     
     printf("======================================================\n");
-    printf("按任意键返回...\n");
+    printf("鎸変换鎰忛敭杩斿洖...\n");
     get_single_char("");
 }
 
-// 住院押金预警
+// 浣忛櫌鎶奸噾棰勮
 static void show_deposit_warning(void)
 {
     system("cls");
     printf("\n======================================================\n");
-    printf("                住院押金预警\n");
+    printf("                浣忛櫌鎶奸噾棰勮\n");
     printf("======================================================\n");
 
     int count = 0;
@@ -2594,30 +2593,30 @@ static void show_deposit_warning(void)
         {
             if (curr->is_active)
             {
-                // 根据病房类型估算日费用，若押金不足3天费用则预警
+                // 鏍规嵁鐥呮埧绫诲瀷浼扮畻鏃ヨ垂鐢紝鑻ユ娂閲戜笉瓒?澶╄垂鐢ㄥ垯棰勮
                 double daily_cost = estimate_daily_cost_by_ward_type(curr->ward_type);
-                double threshold = daily_cost * 3; // 押金不足3天费用时预警
+                double threshold = daily_cost * 3; // 鎶奸噾涓嶈冻3澶╄垂鐢ㄦ椂棰勮
                 
                 if (curr->deposit_balance < threshold)
                 {
                     count++;
-                    printf("患者编号：%s\n", curr->patient_id);
+                    printf("鎮ｈ€呯紪鍙凤細%s\n", curr->patient_id);
                     
-                    // 查找患者姓名
+                    // 鏌ユ壘鎮ｈ€呭鍚?
                     PatientNode* patient = find_patient_by_id(g_patient_list, curr->patient_id);
                     if (patient != NULL)
                     {
-                        printf("患者姓名：%s\n", patient->name);
+                        printf("鎮ｈ€呭鍚嶏細%s\n", patient->name);
                     }
                     else
                     {
-                        printf("患者姓名：未知\n");
+                        printf("鎮ｈ€呭鍚嶏細鏈煡\n");
                     }
                     
-                    printf("当前押金：%.2f\n", curr->deposit_balance);
-                    printf("预警阈值：%.2f\n", threshold);
-                    printf("差额：%.2f\n", threshold - curr->deposit_balance);
-                    printf("当前住院状态：住院中\n");
+                    printf("褰撳墠鎶奸噾锛?.2f\n", curr->deposit_balance);
+                    printf("棰勮闃堝€硷細%.2f\n", threshold);
+                    printf("宸锛?.2f\n", threshold - curr->deposit_balance);
+                    printf("褰撳墠浣忛櫌鐘舵€侊細浣忛櫌涓璡n");
                     printf("------------------------------------------------------\n");
                 }
             }
@@ -2627,24 +2626,24 @@ static void show_deposit_warning(void)
 
     if (count == 0)
     {
-        printf("当前暂无住院押金预警。\n");
+        printf("褰撳墠鏆傛棤浣忛櫌鎶奸噾棰勮銆俓n");
     }
     else
     {
-        printf("押金预警住院患者总数：%d\n", count);
+        printf("鎶奸噾棰勮浣忛櫌鎮ｈ€呮€绘暟锛?d\n", count);
     }
     
     printf("======================================================\n");
-    printf("按任意键返回...\n");
+    printf("鎸変换鎰忛敭杩斿洖...\n");
     get_single_char("");
 }
 
-// 欠费/待缴费预警
+// 娆犺垂/寰呯即璐归璀?
 static void show_arrears_warning(void)
 {
     system("cls");
     printf("\n======================================================\n");
-    printf("              欠费 / 待缴费预警\n");
+    printf("              娆犺垂 / 寰呯即璐归璀n");
     printf("======================================================\n");
 
     int count = 0;
@@ -2658,12 +2657,12 @@ static void show_arrears_warning(void)
             if (curr->status == STATUS_UNPAID)
             {
                 count++;
-                printf("患者编号：%s\n", curr->id);
-                printf("患者姓名：%s\n", curr->name);
-                printf("当前状态：待缴费\n");
-                printf("账户余额：%.2f\n", curr->balance);
+                printf("鎮ｈ€呯紪鍙凤細%s\n", curr->id);
+                printf("鎮ｈ€呭鍚嶏細%s\n", curr->name);
+                printf("褰撳墠鐘舵€侊細寰呯即璐筡n");
+                printf("璐︽埛浣欓锛?.2f\n", curr->balance);
                 
-                // 检查是否为住院患者
+                // 妫€鏌ユ槸鍚︿负浣忛櫌鎮ｈ€?
                 int is_inpatient = 0;
                 if (g_inpatient_list != NULL && g_inpatient_list->next != NULL)
                 {
@@ -2679,8 +2678,8 @@ static void show_arrears_warning(void)
                     }
                 }
                 
-                printf("是否住院：%s\n", is_inpatient ? "是" : "否");
-                printf("备注：%s\n", curr->balance < 0 ? "欠费" : "待缴费");
+                printf("鏄惁浣忛櫌锛?s\n", is_inpatient ? "鏄? : "鍚?);
+                printf("澶囨敞锛?s\n", curr->balance < 0 ? "娆犺垂" : "寰呯即璐?);
                 printf("------------------------------------------------------\n");
             }
             curr = curr->next;
@@ -2689,23 +2688,23 @@ static void show_arrears_warning(void)
 
     if (count == 0)
     {
-        printf("当前暂无欠费 / 待缴费预警。\n");
+        printf("褰撳墠鏆傛棤娆犺垂 / 寰呯即璐归璀︺€俓n");
     }
     else
     {
-        printf("欠费 / 待缴费患者总数：%d\n", count);
+        printf("娆犺垂 / 寰呯即璐规偅鑰呮€绘暟锛?d\n", count);
     }
     
     printf("======================================================\n");
-    printf("按任意键返回...\n");
+    printf("鎸変换鎰忛敭杩斿洖...\n");
     get_single_char("");
 }
 
-// 显示公共状态统计摘要
+// 鏄剧ず鍏叡鐘舵€佺粺璁℃憳瑕?
 void show_public_status_statistics(void)
 {
     printf("\n==============================================================\n");
-    printf("                      公共状态统计摘要\n");
+    printf("                      鍏叡鐘舵€佺粺璁℃憳瑕乗n");
     printf("==============================================================\n");
     
     int patient_count = 0;
@@ -2718,7 +2717,7 @@ void show_public_status_statistics(void)
     DoctorNode* doctor_curr = NULL;
     AccountNode* account_curr = NULL;
 
-    // 统计患者数量
+    // 缁熻鎮ｈ€呮暟閲?
     if (g_patient_list != NULL && g_patient_list->next != NULL)
     {
         PatientNode* curr = g_patient_list->next;
@@ -2729,7 +2728,7 @@ void show_public_status_statistics(void)
         }
     }
     
-    // 统计医护人员数量
+    // 缁熻鍖绘姢浜哄憳鏁伴噺
     if (g_account_list != NULL && g_account_list->next != NULL)
     {
         AccountNode* curr = g_account_list->next;
@@ -2753,7 +2752,7 @@ void show_public_status_statistics(void)
         }
     }
     
-    // 统计药品数量
+    // 缁熻鑽搧鏁伴噺
     if (g_medicine_list != NULL && g_medicine_list->next != NULL)
     {
         MedicineNode* curr = g_medicine_list->next;
@@ -2764,7 +2763,7 @@ void show_public_status_statistics(void)
         }
     }
 
-    // 统计护士和药师总数
+    // 缁熻鎶ゅ＋鍜岃嵂甯堟€绘暟
     if (g_account_list != NULL && g_account_list->next != NULL)
     {
         account_curr = g_account_list->next;
@@ -2782,27 +2781,27 @@ void show_public_status_statistics(void)
         }
     }
 
-    // 显示公共状态统计摘要
+    // 鏄剧ず鍏叡鐘舵€佺粺璁℃憳瑕?
     printf("\n======================================================\n");
-    printf("                  状态统计摘要\n");
+    printf("                  鐘舵€佺粺璁℃憳瑕乗n");
     printf("======================================================\n");
-    printf("1. 患者总数：%d\n", patient_count);
-    printf("2. 医生总数：%d\n", doctor_count);
-    printf("3. 护士总数：%d\n", nurse_count);
-    printf("4. 药师总数：%d\n", pharmacist_count);
-    printf("5. 药品总数：%d\n", medicine_count);
+    printf("1. 鎮ｈ€呮€绘暟锛?d\n", patient_count);
+    printf("2. 鍖荤敓鎬绘暟锛?d\n", doctor_count);
+    printf("3. 鎶ゅ＋鎬绘暟锛?d\n", nurse_count);
+    printf("4. 鑽笀鎬绘暟锛?d\n", pharmacist_count);
+    printf("5. 鑽搧鎬绘暟锛?d\n", medicine_count);
     printf("======================================================\n");
-    printf("提示：此面板数据实时更新，仅供参考。\n");
+    printf("鎻愮ず锛氭闈㈡澘鏁版嵁瀹炴椂鏇存柊锛屼粎渚涘弬鑰冦€俓n");
     printf("======================================================\n");
 }
 
-// 显示传染病异常提醒
+// 鏄剧ず浼犳煋鐥呭紓甯告彁閱?
 void show_infectious_disease_alerts(void)
 {
     printf("\n==============================================================\n");
-    printf("                      传染病异常提醒\n");
+    printf("                      浼犳煋鐥呭紓甯告彁閱抃n");
     printf("==============================================================\n");
-    printf("当前无传染病异常提醒\n");
+    printf("褰撳墠鏃犱紶鏌撶梾寮傚父鎻愰啋\n");
     printf("==============================================================\n");
 }
 
@@ -2817,8 +2816,8 @@ void handle_medicine_register(void)
     int medicare_type = 0;
     int step = 1;
 
-    printf("\n================ 新增药品 ================\n");
-    printf("提示：输入 'B' 返回上一步，第一步输入 'B' 退出\n\n");
+    printf("\n================ 鏂板鑽搧 ================\n");
+    printf("鎻愮ず锛氳緭鍏?'B' 杩斿洖涓婁竴姝ワ紝绗竴姝ヨ緭鍏?'B' 閫€鍑篭n\n");
 
     while (step >= 1 && step <= 7)
     {
@@ -2827,19 +2826,19 @@ void handle_medicine_register(void)
             case 1:
                 while (1)
                 {
-                    if (!get_form_string("请输入商品名（输入 B 退出）: ", name, MAX_MED_NAME_LEN))
+                    if (!get_form_string("璇疯緭鍏ュ晢鍝佸悕锛堣緭鍏?B 閫€鍑猴級: ", name, MAX_MED_NAME_LEN))
                     {
                         return;
                     }
                     if (is_blank_string(name))
                     {
-                        printf("商品名不能为空，请重新输入\n");
+                        printf("鍟嗗搧鍚嶄笉鑳戒负绌猴紝璇烽噸鏂拌緭鍏n");
                         continue;
                     }
-                    // 提前检查商品名是否已存在，避免用户白填后续信息
+                    // 鎻愬墠妫€鏌ュ晢鍝佸悕鏄惁宸插瓨鍦紝閬垮厤鐢ㄦ埛鐧藉～鍚庣画淇℃伅
                     if (is_medicine_name_exists(name))
                     {
-                        printf("警告：已存在同名药品，请使用不同名称或修改已有药品\n");
+                        printf("璀﹀憡锛氬凡瀛樺湪鍚屽悕鑽搧锛岃浣跨敤涓嶅悓鍚嶇О鎴栦慨鏀瑰凡鏈夎嵂鍝乗n");
                         continue;
                     }
                     step = 2;
@@ -2850,7 +2849,7 @@ void handle_medicine_register(void)
             case 2:
                 while (1)
                 {
-                    if (!get_form_string("请输入别名（可留空，输入 B 返回上一步）: ", alias, MAX_ALIAS_LEN))
+                    if (!get_form_string("璇疯緭鍏ュ埆鍚嶏紙鍙暀绌猴紝杈撳叆 B 杩斿洖涓婁竴姝ワ級: ", alias, MAX_ALIAS_LEN))
                     {
                         step = 1;
                         break;
@@ -2863,14 +2862,14 @@ void handle_medicine_register(void)
             case 3:
                 while (1)
                 {
-                    if (!get_form_string("请输入通用名（输入 B 返回上一步）: ", generic_name, MAX_GENERIC_NAME_LEN))
+                    if (!get_form_string("璇疯緭鍏ラ€氱敤鍚嶏紙杈撳叆 B 杩斿洖涓婁竴姝ワ級: ", generic_name, MAX_GENERIC_NAME_LEN))
                     {
                         step = 2;
                         break;
                     }
                     if (is_blank_string(generic_name))
                     {
-                        printf("通用名不能为空，请重新输入\n");
+                        printf("閫氱敤鍚嶄笉鑳戒负绌猴紝璇烽噸鏂拌緭鍏n");
                         continue;
                     }
                     step = 4;
@@ -2881,7 +2880,7 @@ void handle_medicine_register(void)
             case 4:
                 while (1)
                 {
-                    if (!get_form_double("请输入药品单价（输入 B 返回上一步）: ", &price, 0, "单价必须是大于 0 的数字，请重新输入\n"))
+                    if (!get_form_double("璇疯緭鍏ヨ嵂鍝佸崟浠凤紙杈撳叆 B 杩斿洖涓婁竴姝ワ級: ", &price, 0, "鍗曚环蹇呴』鏄ぇ浜?0 鐨勬暟瀛楋紝璇烽噸鏂拌緭鍏n"))
                     {
                         step = 3;
                         break;
@@ -2894,7 +2893,7 @@ void handle_medicine_register(void)
             case 5:
                 while (1)
                 {
-                    if (!get_form_int("请输入初始库存（输入 B 返回上一步）: ", &stock, 0, 999999, "库存必须是大于等于 0 的整数，请重新输入\n"))
+                    if (!get_form_int("璇疯緭鍏ュ垵濮嬪簱瀛橈紙杈撳叆 B 杩斿洖涓婁竴姝ワ級: ", &stock, 0, 999999, "搴撳瓨蹇呴』鏄ぇ浜庣瓑浜?0 鐨勬暣鏁帮紝璇烽噸鏂拌緭鍏n"))
                     {
                         step = 4;
                         break;
@@ -2905,10 +2904,10 @@ void handle_medicine_register(void)
                 break;
 
             case 6:
-                printf("医保类型：0=非医保 1=甲类医保 2=乙类医保\n");
+                printf("鍖讳繚绫诲瀷锛?=闈炲尰淇?1=鐢茬被鍖讳繚 2=涔欑被鍖讳繚\n");
                 while (1)
                 {
-                    if (!get_form_int("请输入医保类型编号（输入 B 返回上一步）: ", &medicare_type, 0, 2, "医保类型输入非法，请重新输入\n"))
+                    if (!get_form_int("璇疯緭鍏ュ尰淇濈被鍨嬬紪鍙凤紙杈撳叆 B 杩斿洖涓婁竴姝ワ級: ", &medicare_type, 0, 2, "鍖讳繚绫诲瀷杈撳叆闈炴硶锛岃閲嶆柊杈撳叆\n"))
                     {
                         step = 5;
                         break;
@@ -2921,7 +2920,7 @@ void handle_medicine_register(void)
             case 7:
                 while (1)
                 {
-                    if (!get_form_date("请输入效期（YYYY-MM-DD，输入 B 返回上一步）: ", expiry_date, MAX_DATE_LEN))
+                    if (!get_form_date("璇疯緭鍏ユ晥鏈燂紙YYYY-MM-DD锛岃緭鍏?B 杩斿洖涓婁竴姝ワ級: ", expiry_date, MAX_DATE_LEN))
                     {
                         step = 6;
                         break;
@@ -2958,84 +2957,84 @@ void handle_medicine_basic_info_update(void)
     char new_generic_name[MAX_GENERIC_NAME_LEN];
     char new_expiry_date[MAX_DATE_LEN];
     const char* alias_ptr = NULL;
-    double new_price = -1.0; // 初始化为-1，表示不修改
+    double new_price = -1.0; // 鍒濆鍖栦负-1锛岃〃绀轰笉淇敼
 
-    printf("\n================ 修改药品基础信息 ===============-\n");
+    printf("\n================ 淇敼鑽搧鍩虹淇℃伅 ===============-\n");
 
-    // 1. 药品编号（必填）
+    // 1. 鑽搧缂栧彿锛堝繀濉級
     MedicineNode* medicine_node = NULL;
     while (1)
     {
-        get_safe_string("请输入药品编号（输入 B 返回上一级）: ", med_id, MAX_ID_LEN);
+        get_safe_string("璇疯緭鍏ヨ嵂鍝佺紪鍙凤紙杈撳叆 B 杩斿洖涓婁竴绾э級: ", med_id, MAX_ID_LEN);
         
-        // 检查是否输入B/b返回上一级
+        // 妫€鏌ユ槸鍚﹁緭鍏/b杩斿洖涓婁竴绾?
         if (strcmp(med_id, "B") == 0 || strcmp(med_id, "b") == 0)
         {
             return;
         }
         
-        // 检查是否为空
+        // 妫€鏌ユ槸鍚︿负绌?
         if (is_blank_string(med_id))
         {
-            printf("药品编号不能为空，请重新输入\n");
+            printf("鑽搧缂栧彿涓嶈兘涓虹┖锛岃閲嶆柊杈撳叆\n");
             continue;
         }
         
-        // 检查药品是否存在
+        // 妫€鏌ヨ嵂鍝佹槸鍚﹀瓨鍦?
         medicine_node = find_medicine_by_id(g_medicine_list, med_id);
         if (medicine_node == NULL)
         {
-            printf("未找到编号为 %s 的药品，修改流程结束\n", med_id);
+            printf("鏈壘鍒扮紪鍙蜂负 %s 鐨勮嵂鍝侊紝淇敼娴佺▼缁撴潫\n", med_id);
             return;
         }
         
         break;
     }
 
-    // 显示当前药品信息
-    printf("\n------------- 当前药品信息 ------------\n");
-    printf("药品编号：%s\n", medicine_node->id);
-    printf("商品名：%s\n", medicine_node->name);
-    printf("通用名：%s\n", medicine_node->generic_name);
-    printf("别名：%s\n", (medicine_node->alias[0] == '\0') ? "无" : medicine_node->alias);
-    printf("单价：%.2f\n", medicine_node->price);
-    printf("库存：%d\n", medicine_node->stock);
+    // 鏄剧ず褰撳墠鑽搧淇℃伅
+    printf("\n------------- 褰撳墠鑽搧淇℃伅 ------------\n");
+    printf("鑽搧缂栧彿锛?s\n", medicine_node->id);
+    printf("鍟嗗搧鍚嶏細%s\n", medicine_node->name);
+    printf("閫氱敤鍚嶏細%s\n", medicine_node->generic_name);
+    printf("鍒悕锛?s\n", (medicine_node->alias[0] == '\0') ? "鏃? : medicine_node->alias);
+    printf("鍗曚环锛?.2f\n", medicine_node->price);
+    printf("搴撳瓨锛?d\n", medicine_node->stock);
     
-    // 显示医保类型
+    // 鏄剧ず鍖讳繚绫诲瀷
     switch (medicine_node->m_type)
     {
         case MEDICARE_NONE:
-            printf("医保类型：非医保\n");
+            printf("鍖讳繚绫诲瀷锛氶潪鍖讳繚\n");
             break;
         case MEDICARE_CLASS_A:
-            printf("医保类型：甲类医保\n");
+            printf("鍖讳繚绫诲瀷锛氱敳绫诲尰淇漒n");
             break;
         case MEDICARE_CLASS_B:
-            printf("医保类型：乙类医保\n");
+            printf("鍖讳繚绫诲瀷锛氫箼绫诲尰淇漒n");
             break;
         default:
-            printf("医保类型：未知\n");
+            printf("鍖讳繚绫诲瀷锛氭湭鐭n");
             break;
     }
-    printf("效期：%s\n", medicine_node->expiry_date);
+    printf("鏁堟湡锛?s\n", medicine_node->expiry_date);
     printf("----------------------------------------\n");
 
-    // 2. 商品名（选填，空白字符串表示不修改）
-    get_safe_string("请输入新商品名（留空不修改，输入 B 返回上一级）: ", new_name, MAX_MED_NAME_LEN);
+    // 2. 鍟嗗搧鍚嶏紙閫夊～锛岀┖鐧藉瓧绗︿覆琛ㄧず涓嶄慨鏀癸級
+    get_safe_string("璇疯緭鍏ユ柊鍟嗗搧鍚嶏紙鐣欑┖涓嶄慨鏀癸紝杈撳叆 B 杩斿洖涓婁竴绾э級: ", new_name, MAX_MED_NAME_LEN);
     if (strcmp(new_name, "B") == 0 || strcmp(new_name, "b") == 0)
     {
         return;
     }
 
-    // 3. 通用名（选填，空白字符串表示不修改）
-    get_safe_string("请输入新通用名（留空不修改，输入 B 返回上一级）: ", new_generic_name, MAX_GENERIC_NAME_LEN);
+    // 3. 閫氱敤鍚嶏紙閫夊～锛岀┖鐧藉瓧绗︿覆琛ㄧず涓嶄慨鏀癸級
+    get_safe_string("璇疯緭鍏ユ柊閫氱敤鍚嶏紙鐣欑┖涓嶄慨鏀癸紝杈撳叆 B 杩斿洖涓婁竴绾э級: ", new_generic_name, MAX_GENERIC_NAME_LEN);
     if (strcmp(new_generic_name, "B") == 0 || strcmp(new_generic_name, "b") == 0)
     {
         return;
     }
 
-    // 4. 别名（选填，输入 B 返回上一级，空字符串表示清空）
-    get_safe_string("请输入新别名（留空不修改，输入 B 返回上一级，输入空字符串清空别名）: ", new_alias, MAX_ALIAS_LEN);
+    // 4. 鍒悕锛堥€夊～锛岃緭鍏?B 杩斿洖涓婁竴绾э紝绌哄瓧绗︿覆琛ㄧず娓呯┖锛?
+    get_safe_string("璇疯緭鍏ユ柊鍒悕锛堢暀绌轰笉淇敼锛岃緭鍏?B 杩斿洖涓婁竴绾э紝杈撳叆绌哄瓧绗︿覆娓呯┖鍒悕锛? ", new_alias, MAX_ALIAS_LEN);
     if (strcmp(new_alias, "B") == 0 || strcmp(new_alias, "b") == 0)
     {
         return;
@@ -3045,36 +3044,36 @@ void handle_medicine_basic_info_update(void)
         alias_ptr = new_alias;
     }
 
-    // 5. 单价（选填，-1 表示不修改）
+    // 5. 鍗曚环锛堥€夊～锛?1 琛ㄧず涓嶄慨鏀癸級
     while (1)
     {
         char price_str[32];
-        get_safe_string("请输入新单价（留空不修改，输入 B 返回上一级）: ", price_str, sizeof(price_str));
+        get_safe_string("璇疯緭鍏ユ柊鍗曚环锛堢暀绌轰笉淇敼锛岃緭鍏?B 杩斿洖涓婁竴绾э級: ", price_str, sizeof(price_str));
         if (strcmp(price_str, "B") == 0 || strcmp(price_str, "b") == 0)
         {
             return;
         }
         if (is_blank_string(price_str))
         {
-            new_price = -1.0; // 保持不变
+            new_price = -1.0; // 淇濇寔涓嶅彉
             break;
         }
         if (sscanf(price_str, "%lf", &new_price) != 1 || new_price <= 0)
         {
-            printf("单价必须是大于 0 的数字，请重新输入\n");
+            printf("鍗曚环蹇呴』鏄ぇ浜?0 鐨勬暟瀛楋紝璇烽噸鏂拌緭鍏n");
             continue;
         }
         break;
     }
 
-    // 6. 效期（选填，空白字符串表示不修改）
-    get_safe_string("请输入新效期（留空不修改，输入 B 返回上一级）: ", new_expiry_date, MAX_DATE_LEN);
+    // 6. 鏁堟湡锛堥€夊～锛岀┖鐧藉瓧绗︿覆琛ㄧず涓嶄慨鏀癸級
+    get_safe_string("璇疯緭鍏ユ柊鏁堟湡锛堢暀绌轰笉淇敼锛岃緭鍏?B 杩斿洖涓婁竴绾э級: ", new_expiry_date, MAX_DATE_LEN);
     if (strcmp(new_expiry_date, "B") == 0 || strcmp(new_expiry_date, "b") == 0)
     {
         return;
     }
 
-    // 调用 update_medicine_basic_info 函数
+    // 璋冪敤 update_medicine_basic_info 鍑芥暟
     update_medicine_basic_info(
         med_id,
         is_blank_string(new_name) ? NULL : new_name,
@@ -3090,19 +3089,19 @@ void handle_medicine_stock_update(void)
     char med_id[MAX_ID_LEN];
     int new_stock;
 
-    printf("\n================ 修改药品库存 ===============-\n");
-    printf("提示：输入 'B' 可返回上一级菜单\n\n");
+    printf("\n================ 淇敼鑽搧搴撳瓨 ===============-\n");
+    printf("鎻愮ず锛氳緭鍏?'B' 鍙繑鍥炰笂涓€绾ц彍鍗昞n\n");
 
     while (1)
     {
-        get_safe_string("请输入药品编号（输入 B 返回上一级）: ", med_id, MAX_ID_LEN);
+        get_safe_string("璇疯緭鍏ヨ嵂鍝佺紪鍙凤紙杈撳叆 B 杩斿洖涓婁竴绾э級: ", med_id, MAX_ID_LEN);
         if (strcmp(med_id, "B") == 0 || strcmp(med_id, "b") == 0)
         {
             return;
         }
         if (is_blank_string(med_id))
         {
-            printf("药品编号不能为空，请重新输入\n");
+            printf("鑽搧缂栧彿涓嶈兘涓虹┖锛岃閲嶆柊杈撳叆\n");
             continue;
         }
         break;
@@ -3111,14 +3110,14 @@ void handle_medicine_stock_update(void)
     while (1)
     {
         char stock_str[32];
-        get_safe_string("请输入新库存数量（输入 B 返回上一级）: ", stock_str, sizeof(stock_str));
+        get_safe_string("璇疯緭鍏ユ柊搴撳瓨鏁伴噺锛堣緭鍏?B 杩斿洖涓婁竴绾э級: ", stock_str, sizeof(stock_str));
         if (strcmp(stock_str, "B") == 0 || strcmp(stock_str, "b") == 0)
         {
             return;
         }
         if (sscanf(stock_str, "%d", &new_stock) != 1 || new_stock < 0)
         {
-            printf("库存数量必须是大于等于 0 的整数，请重新输入\n");
+            printf("搴撳瓨鏁伴噺蹇呴』鏄ぇ浜庣瓑浜?0 鐨勬暣鏁帮紝璇烽噸鏂拌緭鍏n");
             continue;
         }
         break;
@@ -3131,12 +3130,12 @@ void handle_medicine_search(void)
 {
     char keyword[MAX_MED_NAME_LEN];
 
-    printf("\n================ 查询药品 ================\n");
-    printf("输入药品编号或关键词查询，输入 Q 退出\n\n");
+    printf("\n================ 鏌ヨ鑽搧 ================\n");
+    printf("杈撳叆鑽搧缂栧彿鎴栧叧閿瘝鏌ヨ锛岃緭鍏?Q 閫€鍑篭n\n");
 
     while (1)
     {
-        printf("请输入药品编号或关键词: ");
+        printf("璇疯緭鍏ヨ嵂鍝佺紪鍙锋垨鍏抽敭璇? ");
         fflush(stdout);
         if (fgets(keyword, MAX_MED_NAME_LEN, stdin) == NULL) break;
         keyword[strcspn(keyword, "\n")] = '\0';
@@ -3145,7 +3144,7 @@ void handle_medicine_search(void)
 
         if (my_strcasecmp(keyword, "Q") == 0)
         {
-            printf("已退出药品查询\n");
+            printf("宸查€€鍑鸿嵂鍝佹煡璇n");
             break;
         }
 
@@ -3163,8 +3162,8 @@ void handle_medicine_low_stock(void)
 {
     int threshold;
 
-    printf("\n================ 低库存药品 ===============-\n");
-    threshold = get_safe_int("请输入低库存阈值: ");
+    printf("\n================ 浣庡簱瀛樿嵂鍝?===============-\n");
+    threshold = get_safe_int("璇疯緭鍏ヤ綆搴撳瓨闃堝€? ");
     show_low_stock_medicines(threshold);
 }
 
@@ -3179,8 +3178,8 @@ void handle_medicine_expiring(void)
     local_time = localtime(&now);
     strftime(today, sizeof(today), "%Y-%m-%d", local_time);
 
-    printf("\n当前系统日期：%s\n", today);
-    days_threshold = get_safe_int("请输入近效期天数阈值: ");
+    printf("\n褰撳墠绯荤粺鏃ユ湡锛?s\n", today);
+    days_threshold = get_safe_int("璇疯緭鍏ヨ繎鏁堟湡澶╂暟闃堝€? ");
     show_expiring_medicines(today, days_threshold);
 }
 
@@ -3188,37 +3187,37 @@ void handle_medicine_dispense(void)
 {
     char patient_id[MAX_ID_LEN];
 
-    printf("\n================ 发药处理 ================\n");
-    printf("提示：输入 '0' 可以回退上一步，输入 '00' 可以退出操作\n");
+    printf("\n================ 鍙戣嵂澶勭悊 ================\n");
+    printf("鎻愮ず锛氳緭鍏?'0' 鍙互鍥為€€涓婁竴姝ワ紝杈撳叆 '00' 鍙互閫€鍑烘搷浣淺n");
     show_paid_patients_waiting_for_dispense();
     printf("------------------------------------------------------\n");
     
     while (1)
     {
-        get_safe_string("请输入要发药的患者编号: ", patient_id, MAX_ID_LEN);
+        get_safe_string("璇疯緭鍏ヨ鍙戣嵂鐨勬偅鑰呯紪鍙? ", patient_id, MAX_ID_LEN);
         
-        // 检查是否退出
+        // 妫€鏌ユ槸鍚﹂€€鍑?
         if (strcmp(patient_id, "00") == 0)
         {
-            printf("操作取消！\n");
+            printf("鎿嶄綔鍙栨秷锛乗n");
             return;
         }
         
-        // 检查是否回退
+        // 妫€鏌ユ槸鍚﹀洖閫€
         if (strcmp(patient_id, "0") == 0)
         {
             return;
         }
         
-        // 检查患者编号格式是否合法
+        // 妫€鏌ユ偅鑰呯紪鍙锋牸寮忔槸鍚﹀悎娉?
         if (validate_patient_id(patient_id))
         {
             break;
         }
         else
         {
-            printf("⚠️ 患者编号格式不合法，正确格式为 P-1001，请重新输入！\n");
-            printf("提示：输入 '0' 可以回退上一步，输入 '00' 可以退出操作\n");
+            printf("鈿狅笍 鎮ｈ€呯紪鍙锋牸寮忎笉鍚堟硶锛屾纭牸寮忎负 P-1001锛岃閲嶆柊杈撳叆锛乗n");
+            printf("鎻愮ず锛氳緭鍏?'0' 鍙互鍥為€€涓婁竴姝ワ紝杈撳叆 '00' 鍙互閫€鍑烘搷浣淺n");
         }
     }
     
@@ -3231,61 +3230,61 @@ void handle_medicine_remove(void)
     MedicineNode* medicine = NULL;
     int confirm;
 
-    printf("\n================ 下架药品 ===============-\n");
-    get_safe_string("请输入要下架的药品编号: ", med_id, MAX_ID_LEN);
+    printf("\n================ 涓嬫灦鑽搧 ===============-\n");
+    get_safe_string("璇疯緭鍏ヨ涓嬫灦鐨勮嵂鍝佺紪鍙? ", med_id, MAX_ID_LEN);
 
-    // 查找药品是否存在
+    // 鏌ユ壘鑽搧鏄惁瀛樺湪
     medicine = find_medicine_by_id(g_medicine_list, med_id);
     if (medicine == NULL)
     {
-        printf("提示：未找到对应药品，下架失败。\n");
+        printf("鎻愮ず锛氭湭鎵惧埌瀵瑰簲鑽搧锛屼笅鏋跺け璐ャ€俓n");
         return;
     }
 
-    // 显示药品基本信息
-    printf("\n当前药品信息：\n");
-    printf("药品编号：%s\n", medicine->id);
-    printf("商品名：%s\n", medicine->name);
-    printf("通用名：%s\n", medicine->generic_name);
-    printf("别名：%s\n", medicine->alias[0] == '\0' ? "无" : medicine->alias);
-    printf("单价：%.2f\n", medicine->price);
-    printf("库存：%d\n", medicine->stock);
-    // 显示医保类型
+    // 鏄剧ず鑽搧鍩烘湰淇℃伅
+    printf("\n褰撳墠鑽搧淇℃伅锛歕n");
+    printf("鑽搧缂栧彿锛?s\n", medicine->id);
+    printf("鍟嗗搧鍚嶏細%s\n", medicine->name);
+    printf("閫氱敤鍚嶏細%s\n", medicine->generic_name);
+    printf("鍒悕锛?s\n", medicine->alias[0] == '\0' ? "鏃? : medicine->alias);
+    printf("鍗曚环锛?.2f\n", medicine->price);
+    printf("搴撳瓨锛?d\n", medicine->stock);
+    // 鏄剧ず鍖讳繚绫诲瀷
     switch (medicine->m_type)
     {
         case MEDICARE_NONE:
-            printf("医保类型：非医保\n");
+            printf("鍖讳繚绫诲瀷锛氶潪鍖讳繚\n");
             break;
         case MEDICARE_CLASS_A:
-            printf("医保类型：甲类医保\n");
+            printf("鍖讳繚绫诲瀷锛氱敳绫诲尰淇漒n");
             break;
         case MEDICARE_CLASS_B:
-            printf("医保类型：乙类医保\n");
+            printf("鍖讳繚绫诲瀷锛氫箼绫诲尰淇漒n");
             break;
         default:
-            printf("医保类型：未知\n");
+            printf("鍖讳繚绫诲瀷锛氭湭鐭n");
             break;
     }
-    printf("效期：%s\n", medicine->expiry_date);
+    printf("鏁堟湡锛?s\n", medicine->expiry_date);
     printf("----------------------------------------\n");
 
-    // 二次确认
-    printf("是否确定下架该药品？\n");
-    printf("[1] 确定下架\n");
-    printf("[0] 取消返回\n");
-    confirm = get_safe_int("请输入操作编号: ");
+    // 浜屾纭
+    printf("鏄惁纭畾涓嬫灦璇ヨ嵂鍝侊紵\n");
+    printf("[1] 纭畾涓嬫灦\n");
+    printf("[0] 鍙栨秷杩斿洖\n");
+    confirm = get_safe_int("璇疯緭鍏ユ搷浣滅紪鍙? ");
 
     if (confirm != 1)
     {
-        printf("提示：已取消下架操作。\n");
+        printf("鎻愮ず锛氬凡鍙栨秷涓嬫灦鎿嶄綔銆俓n");
         return;
     }
 
-    // 执行下架操作
+    // 鎵ц涓嬫灦鎿嶄綔
     remove_medicine(med_id);
 }
 
-// 初始化日志列表
+// 鍒濆鍖栨棩蹇楀垪琛?
 void init_log_list(void)
 {
     if (g_log_list == NULL)
@@ -3298,24 +3297,24 @@ void init_log_list(void)
     }
 }
 
-// 添加日志
+// 娣诲姞鏃ュ織
 void add_log(const char* operation, const char* target, const char* description)
 {
     if (operation == NULL || target == NULL || description == NULL)
         return;
     
-    // 初始化日志链表（如果未初始化）
+    // 鍒濆鍖栨棩蹇楅摼琛紙濡傛灉鏈垵濮嬪寲锛?
     if (g_log_list == NULL)
     {
         init_log_list();
     }
     
-    // 创建新日志节点
+    // 鍒涘缓鏂版棩蹇楄妭鐐?
     LogNode* new_node = (LogNode*)malloc(sizeof(LogNode));
     if (new_node == NULL)
         return;
     
-    // 设置日志时间
+    // 璁剧疆鏃ュ織鏃堕棿
     time_t now = time(NULL);
     struct tm now_tm;
     localtime_s(&now_tm, &now);
@@ -3324,7 +3323,7 @@ void add_log(const char* operation, const char* target, const char* description)
              now_tm.tm_year + 1900, now_tm.tm_mon + 1, now_tm.tm_mday,
              now_tm.tm_hour, now_tm.tm_min, now_tm.tm_sec);
     
-    // 设置日志内容
+    // 璁剧疆鏃ュ織鍐呭
     strncpy(new_node->operation, operation, sizeof(new_node->operation) - 1);
     new_node->operation[sizeof(new_node->operation) - 1] = '\0';
     
@@ -3336,7 +3335,7 @@ void add_log(const char* operation, const char* target, const char* description)
     
     new_node->next = NULL;
     
-    // 添加到链表尾部
+    // 娣诲姞鍒伴摼琛ㄥ熬閮?
     LogNode* curr = g_log_list;
     while (curr->next != NULL)
     {
@@ -3345,23 +3344,23 @@ void add_log(const char* operation, const char* target, const char* description)
     curr->next = new_node;
 }
 
-// 显示日志
+// 鏄剧ず鏃ュ織
 void show_logs(void)
 {
     printf("\n==============================================================\n");
-    printf("                      系统日志\n");
+    printf("                      绯荤粺鏃ュ織\n");
     printf("==============================================================\n");
     
     if (g_log_list == NULL || g_log_list->next == NULL)
     {
-        printf("当前无日志记录\n");
+        printf("褰撳墠鏃犳棩蹇楄褰昞n");
         printf("==============================================================\n");
         return;
     }
     printf("\n==============================================================\n");
-    printf("                        系统日志\n");
+    printf("                        绯荤粺鏃ュ織\n");
     printf("==============================================================\n");
-    print_field("时间", 20); print_field("操作", 16); print_field("目标", 8); printf("描述\n");
+    print_field("鏃堕棿", 20); print_field("鎿嶄綔", 16); print_field("鐩爣", 8); printf("鎻忚堪\n");
     printf("--------------------------------------------------------------\n");
 
     LogNode* curr = g_log_list->next;
@@ -3377,30 +3376,80 @@ void show_logs(void)
     }
     
     printf("--------------------------------------------------------------\n");
-    printf("日志总数：%d\n", count);
+    printf("鏃ュ織鎬绘暟锛?d\n", count);
     printf("==============================================================\n");
 }
 
-// 处理近效期药品检查
+// 澶勭悊鑽搧鍩烘湰淇℃伅鏇存柊
+void handle_medicine_basic_info_update(void)
+{
+    char med_id[MAX_ID_LEN];
+    char new_name[MAX_MED_NAME_LEN];
+    char new_alias[MAX_ALIAS_LEN];
+    char new_generic_name[MAX_GENERIC_NAME_LEN];
+    double new_price;
+    char new_expiry_date[MAX_DATE_LEN];
+    
+    printf("\n==============================================================\n");
+    printf("                      鏇存柊鑽搧鍩烘湰淇℃伅\n");
+    printf("==============================================================\n");
+    
+    get_safe_string("璇疯緭鍏ヨ嵂鍝佺紪鍙凤細", med_id, sizeof(med_id));
+    
+    // 妫€鏌ヨ嵂鍝佹槸鍚﹀瓨鍦?
+    MedicineNode* medicine = find_medicine_by_id(g_medicine_list, med_id);
+    if (medicine == NULL)
+    {
+        printf("鑽搧涓嶅瓨鍦紒\n");
+        printf("==============================================================\n");
+        return;
+    }
+    
+    get_safe_string("璇疯緭鍏ユ柊鐨勮嵂鍝佸悕绉帮細", new_name, sizeof(new_name));
+    get_safe_string("璇疯緭鍏ユ柊鐨勮嵂鍝佸埆鍚嶏細", new_alias, sizeof(new_alias));
+    get_safe_string("璇疯緭鍏ユ柊鐨勮嵂鍝侀€氱敤鍚嶏細", new_generic_name, sizeof(new_generic_name));
+    new_price = get_safe_double("璇疯緭鍏ユ柊鐨勮嵂鍝佷环鏍硷細");
+    get_safe_string("璇疯緭鍏ユ柊鐨勬湁鏁堟湡锛圷YYY-MM-DD锛夛細", new_expiry_date, sizeof(new_expiry_date));
+    
+    // 璋冪敤鏇存柊鑽搧鍩烘湰淇℃伅鍑芥暟
+    int result = update_medicine_basic_info(
+        med_id, new_name, new_alias, new_generic_name, new_price, new_expiry_date
+    );
+    
+    if (result == 1)
+    {
+        printf("\n鑽搧鍩烘湰淇℃伅鏇存柊鎴愬姛锛乗n");
+        add_log("鑽搧淇℃伅鏇存柊", med_id, "鏇存柊鑽搧鍩烘湰淇℃伅");
+    }
+    else
+    {
+        printf("\n鑽搧鍩烘湰淇℃伅鏇存柊澶辫触锛乗n");
+        add_log("鑽搧淇℃伅鏇存柊", med_id, "鏇存柊鑽搧鍩烘湰淇℃伅澶辫触");
+    }
+    
+    printf("==============================================================\n");
+}
+
+// 澶勭悊杩戞晥鏈熻嵂鍝佹鏌?
 void handle_expiring_medicine_check(void)
 {
     char today[MAX_DATE_LEN];
     int days_threshold;
     
     printf("\n==============================================================\n");
-    printf("                      近效期药品检查\n");
+    printf("                      杩戞晥鏈熻嵂鍝佹鏌n");
     printf("==============================================================\n");
     
-    get_safe_string("请输入当前日期（YYYY-MM-DD）：", today, sizeof(today));
-    days_threshold = get_safe_int("请输入预警天数：");
+    get_safe_string("璇疯緭鍏ュ綋鍓嶆棩鏈燂紙YYYY-MM-DD锛夛細", today, sizeof(today));
+    days_threshold = get_safe_int("璇疯緭鍏ラ璀﹀ぉ鏁帮細");
     
     show_expiring_medicines(today, days_threshold);
     
-    add_log("近效期检查", today, "执行近效期药品检查");
+    add_log("杩戞晥鏈熸鏌?, today, "鎵ц杩戞晥鏈熻嵂鍝佹鏌?);
     printf("==============================================================\n");
 }
 
-// 显示所有检查项目字典
+// 鏄剧ず鎵€鏈夋鏌ラ」鐩瓧鍏?
 void show_all_check_items(void)
 {
     CheckItemNode* curr = NULL;
@@ -3408,15 +3457,15 @@ void show_all_check_items(void)
 
     if (g_check_item_list == NULL || g_check_item_list->next == NULL)
     {
-        printf("当前暂无检查项目数据\n");
+        printf("褰撳墠鏆傛棤妫€鏌ラ」鐩暟鎹甛n");
         return;
     }
 
     printf("\n==============================================================\n");
-    printf("                    检查项目字典\n");
+    printf("                    妫€鏌ラ」鐩瓧鍏竆n");
     printf("==============================================================\n");
     printf("%-10s %-20s %-12s %10s %8s\n",
-           "项目编号", "项目名称", "所属科室", "价格(元)", "医保类型");
+           "椤圭洰缂栧彿", "椤圭洰鍚嶇О", "鎵€灞炵瀹?, "浠锋牸(鍏?", "鍖讳繚绫诲瀷");
     printf("--------------------------------------------------------------\n");
 
     curr = g_check_item_list->next;
@@ -3426,16 +3475,16 @@ void show_all_check_items(void)
         switch (curr->m_type)
         {
             case MEDICARE_CLASS_A:
-                m_type_name = "甲类";
+                m_type_name = "鐢茬被";
                 break;
             case MEDICARE_CLASS_B:
-                m_type_name = "乙类";
+                m_type_name = "涔欑被";
                 break;
             case MEDICARE_NONE:
-                m_type_name = "自费";
+                m_type_name = "鑷垂";
                 break;
             default:
-                m_type_name = "未知";
+                m_type_name = "鏈煡";
                 break;
         }
         printf("%-10s %-20s %-12s %10.2f %8s\n",
@@ -3449,7 +3498,7 @@ void show_all_check_items(void)
     }
 
     printf("--------------------------------------------------------------\n");
-    printf("检查项目总数：%d\n", count);
+    printf("妫€鏌ラ」鐩€绘暟锛?d\n", count);
     printf("==============================================================\n");
 }
 
@@ -3499,19 +3548,19 @@ void search_check_item_by_keyword(const char* keyword)
 
     if (is_blank_string(keyword))
     {
-        printf("提示：查询关键字不能为空。\n");
+        printf("鎻愮ず锛氭煡璇㈠叧閿瓧涓嶈兘涓虹┖銆俓n");
         return;
     }
 
     if (g_check_item_list == NULL || g_check_item_list->next == NULL)
     {
-        printf("未找到匹配检查项目\n");
+        printf("鏈壘鍒板尮閰嶆鏌ラ」鐩甛n");
         return;
     }
 
-    printf("\n================ 检查项目查询结果 ================\n");
+    printf("\n================ 妫€鏌ラ」鐩煡璇㈢粨鏋?================\n");
     printf("%-10s %-20s %-12s %10s %8s\n",
-           "项目编号", "项目名称", "所属科室", "价格(元)", "医保类型");
+           "椤圭洰缂栧彿", "椤圭洰鍚嶇О", "鎵€灞炵瀹?, "浠锋牸(鍏?", "鍖讳繚绫诲瀷");
     printf("------------------------------------------\n");
 
     curr = g_check_item_list->next;
@@ -3524,10 +3573,10 @@ void search_check_item_by_keyword(const char* keyword)
             const char* m_type_name = NULL;
             switch (curr->m_type)
             {
-                case MEDICARE_CLASS_A: m_type_name = "甲类"; break;
-                case MEDICARE_CLASS_B: m_type_name = "乙类"; break;
-                case MEDICARE_NONE:    m_type_name = "自费"; break;
-                default:               m_type_name = "未知"; break;
+                case MEDICARE_CLASS_A: m_type_name = "鐢茬被"; break;
+                case MEDICARE_CLASS_B: m_type_name = "涔欑被"; break;
+                case MEDICARE_NONE:    m_type_name = "鑷垂"; break;
+                default:               m_type_name = "鏈煡"; break;
             }
             printf("%-10s %-20s %-12s %10.2f %8s\n",
                    curr->item_id, curr->item_name, curr->dept,
@@ -3537,7 +3586,7 @@ void search_check_item_by_keyword(const char* keyword)
         curr = curr->next;
     }
 
-    if (!found) printf("未找到匹配检查项目\n");
+    if (!found) printf("鏈壘鍒板尮閰嶆鏌ラ」鐩甛n");
 }
 
 void handle_check_item_register(void)
@@ -3548,16 +3597,16 @@ void handle_check_item_register(void)
     int medicare_type;
     char new_id[MAX_ID_LEN];
 
-    printf("\n================ 新增检查项目 ===============-\n");
-    printf("提示：任意输入项输入 'B' 可返回上一级菜单\n\n");
+    printf("\n================ 鏂板妫€鏌ラ」鐩?===============-\n");
+    printf("鎻愮ず锛氫换鎰忚緭鍏ラ」杈撳叆 'B' 鍙繑鍥炰笂涓€绾ц彍鍗昞n\n");
 
     while (1)
     {
-        if (!get_form_string("请输入检查项目名称（输入 B 返回上一级）: ", item_name, MAX_NAME_LEN))
+        if (!get_form_string("璇疯緭鍏ユ鏌ラ」鐩悕绉帮紙杈撳叆 B 杩斿洖涓婁竴绾э級: ", item_name, MAX_NAME_LEN))
             return;
         if (is_blank_string(item_name))
         {
-            printf("检查项目名称不能为空，请重新输入\n");
+            printf("妫€鏌ラ」鐩悕绉颁笉鑳戒负绌猴紝璇烽噸鏂拌緭鍏n");
             continue;
         }
         break;
@@ -3565,11 +3614,11 @@ void handle_check_item_register(void)
 
     while (1)
     {
-        if (!get_form_string("请输入所属科室（输入 B 返回上一级）: ", dept, MAX_NAME_LEN))
+        if (!get_form_string("璇疯緭鍏ユ墍灞炵瀹わ紙杈撳叆 B 杩斿洖涓婁竴绾э級: ", dept, MAX_NAME_LEN))
             return;
         if (is_blank_string(dept))
         {
-            printf("所属科室不能为空，请重新输入\n");
+            printf("鎵€灞炵瀹や笉鑳戒负绌猴紝璇烽噸鏂拌緭鍏n");
             continue;
         }
         break;
@@ -3577,22 +3626,22 @@ void handle_check_item_register(void)
 
     while (1)
     {
-        if (!get_form_double("请输入检查费用（输入 B 返回上一级）: ", &price, 0, "检查费用必须大于 0，请重新输入\n"))
+        if (!get_form_double("璇疯緭鍏ユ鏌ヨ垂鐢紙杈撳叆 B 杩斿洖涓婁竴绾э級: ", &price, 0, "妫€鏌ヨ垂鐢ㄥ繀椤诲ぇ浜?0锛岃閲嶆柊杈撳叆\n"))
             return;
         break;
     }
 
-    printf("医保类型：0=自费 1=甲类 2=乙类\n");
+    printf("鍖讳繚绫诲瀷锛?=鑷垂 1=鐢茬被 2=涔欑被\n");
     while (1)
     {
-        if (!get_form_int("请输入医保类型编号（输入 B 返回上一级）: ", &medicare_type, 0, 2, "医保类型输入非法，请重新输入\n"))
+        if (!get_form_int("璇疯緭鍏ュ尰淇濈被鍨嬬紪鍙凤紙杈撳叆 B 杩斿洖涓婁竴绾э級: ", &medicare_type, 0, 2, "鍖讳繚绫诲瀷杈撳叆闈炴硶锛岃閲嶆柊杈撳叆\n"))
             return;
         break;
     }
 
     if (g_check_item_list == NULL)
     {
-        printf("提示：检查项目链表尚未初始化，无法新增。\n");
+        printf("鎻愮ず锛氭鏌ラ」鐩摼琛ㄥ皻鏈垵濮嬪寲锛屾棤娉曟柊澧炪€俓n");
         return;
     }
 
@@ -3600,19 +3649,19 @@ void handle_check_item_register(void)
     CheckItemNode* new_node = create_check_item_node(new_id, item_name, dept, price, (MedicareType)medicare_type);
     if (new_node == NULL)
     {
-        printf("提示：检查项目节点创建失败。\n");
+        printf("鎻愮ず锛氭鏌ラ」鐩妭鐐瑰垱寤哄け璐ャ€俓n");
         return;
     }
 
     insert_check_item_tail(g_check_item_list, new_node);
-    printf("检查项目新增成功！\n");
-    printf("项目编号：%s\n", new_node->item_id);
-    printf("项目名称：%s\n", new_node->item_name);
-    printf("所属科室：%s\n", new_node->dept);
-    printf("检查费用：%.2f\n", new_node->price);
-    printf("医保类型：%s\n",
-           new_node->m_type == MEDICARE_CLASS_A ? "甲类" :
-           new_node->m_type == MEDICARE_CLASS_B ? "乙类" : "自费");
+    printf("妫€鏌ラ」鐩柊澧炴垚鍔燂紒\n");
+    printf("椤圭洰缂栧彿锛?s\n", new_node->item_id);
+    printf("椤圭洰鍚嶇О锛?s\n", new_node->item_name);
+    printf("鎵€灞炵瀹わ細%s\n", new_node->dept);
+    printf("妫€鏌ヨ垂鐢細%.2f\n", new_node->price);
+    printf("鍖讳繚绫诲瀷锛?s\n",
+           new_node->m_type == MEDICARE_CLASS_A ? "鐢茬被" :
+           new_node->m_type == MEDICARE_CLASS_B ? "涔欑被" : "鑷垂");
 }
 
 void handle_check_item_update(void)
@@ -3623,74 +3672,74 @@ void handle_check_item_update(void)
     double new_price = -1.0;
     int new_m_type = -1;
 
-    printf("\n================ 修改检查项目信息 ===============-\n");
+    printf("\n================ 淇敼妫€鏌ラ」鐩俊鎭?===============-\n");
 
     CheckItemNode* target = NULL;
     while (1)
     {
-        get_safe_string("请输入检查项目编号（输入 B 返回上一级）: ", item_id, MAX_ID_LEN);
+        get_safe_string("璇疯緭鍏ユ鏌ラ」鐩紪鍙凤紙杈撳叆 B 杩斿洖涓婁竴绾э級: ", item_id, MAX_ID_LEN);
         if (strcmp(item_id, "B") == 0 || strcmp(item_id, "b") == 0) return;
         if (is_blank_string(item_id))
         {
-            printf("检查项目编号不能为空，请重新输入\n");
+            printf("妫€鏌ラ」鐩紪鍙蜂笉鑳戒负绌猴紝璇烽噸鏂拌緭鍏n");
             continue;
         }
         target = find_check_item_by_id(g_check_item_list, item_id);
         if (target == NULL)
         {
-            printf("未找到编号为 %s 的检查项目，修改流程结束\n", item_id);
+            printf("鏈壘鍒扮紪鍙蜂负 %s 鐨勬鏌ラ」鐩紝淇敼娴佺▼缁撴潫\n", item_id);
             return;
         }
         break;
     }
 
-    printf("\n------------- 当前检查项目信息 ------------\n");
-    printf("项目编号：%s\n", target->item_id);
-    printf("项目名称：%s\n", target->item_name);
-    printf("所属科室：%s\n", target->dept);
-    printf("检查费用：%.2f\n", target->price);
+    printf("\n------------- 褰撳墠妫€鏌ラ」鐩俊鎭?------------\n");
+    printf("椤圭洰缂栧彿锛?s\n", target->item_id);
+    printf("椤圭洰鍚嶇О锛?s\n", target->item_name);
+    printf("鎵€灞炵瀹わ細%s\n", target->dept);
+    printf("妫€鏌ヨ垂鐢細%.2f\n", target->price);
     switch (target->m_type)
     {
-        case MEDICARE_CLASS_A: printf("医保类型：甲类\n"); break;
-        case MEDICARE_CLASS_B: printf("医保类型：乙类\n"); break;
-        case MEDICARE_NONE:    printf("医保类型：自费\n"); break;
+        case MEDICARE_CLASS_A: printf("鍖讳繚绫诲瀷锛氱敳绫籠n"); break;
+        case MEDICARE_CLASS_B: printf("鍖讳繚绫诲瀷锛氫箼绫籠n"); break;
+        case MEDICARE_NONE:    printf("鍖讳繚绫诲瀷锛氳嚜璐筡n"); break;
     }
     printf("----------------------------------------\n");
 
-    get_safe_string("请输入新项目名称（留空不修改，输入 B 返回上一级）: ", new_name, MAX_NAME_LEN);
+    get_safe_string("璇疯緭鍏ユ柊椤圭洰鍚嶇О锛堢暀绌轰笉淇敼锛岃緭鍏?B 杩斿洖涓婁竴绾э級: ", new_name, MAX_NAME_LEN);
     if (strcmp(new_name, "B") == 0 || strcmp(new_name, "b") == 0) return;
 
-    get_safe_string("请输入新所属科室（留空不修改，输入 B 返回上一级）: ", new_dept, MAX_NAME_LEN);
+    get_safe_string("璇疯緭鍏ユ柊鎵€灞炵瀹わ紙鐣欑┖涓嶄慨鏀癸紝杈撳叆 B 杩斿洖涓婁竴绾э級: ", new_dept, MAX_NAME_LEN);
     if (strcmp(new_dept, "B") == 0 || strcmp(new_dept, "b") == 0) return;
 
     while (1)
     {
         char price_str[32];
-        get_safe_string("请输入新检查费用（留空不修改，输入 B 返回上一级）: ", price_str, sizeof(price_str));
+        get_safe_string("璇疯緭鍏ユ柊妫€鏌ヨ垂鐢紙鐣欑┖涓嶄慨鏀癸紝杈撳叆 B 杩斿洖涓婁竴绾э級: ", price_str, sizeof(price_str));
         if (strcmp(price_str, "B") == 0 || strcmp(price_str, "b") == 0) return;
         if (is_blank_string(price_str)) break;
         char* endptr = NULL;
         new_price = strtod(price_str, &endptr);
         if (endptr == price_str || *endptr != '\0' || new_price <= 0)
         {
-            printf("检查费用必须为大于 0 的数字，请重新输入\n");
+            printf("妫€鏌ヨ垂鐢ㄥ繀椤讳负澶т簬 0 鐨勬暟瀛楋紝璇烽噸鏂拌緭鍏n");
             continue;
         }
         break;
     }
 
-    printf("医保类型：0=自费 1=甲类 2=乙类（-1 不修改）\n");
+    printf("鍖讳繚绫诲瀷锛?=鑷垂 1=鐢茬被 2=涔欑被锛?1 涓嶄慨鏀癸級\n");
     while (1)
     {
         char type_str[32];
-        get_safe_string("请输入新医保类型（留空不修改，输入 B 返回上一级）: ", type_str, sizeof(type_str));
+        get_safe_string("璇疯緭鍏ユ柊鍖讳繚绫诲瀷锛堢暀绌轰笉淇敼锛岃緭鍏?B 杩斿洖涓婁竴绾э級: ", type_str, sizeof(type_str));
         if (strcmp(type_str, "B") == 0 || strcmp(type_str, "b") == 0) return;
         if (is_blank_string(type_str)) break;
         char* endptr = NULL;
         new_m_type = (int)strtol(type_str, &endptr, 10);
         if (endptr == type_str || *endptr != '\0' || new_m_type < 0 || new_m_type > 2)
         {
-            printf("医保类型必须为 0/1/2，请重新输入\n");
+            printf("鍖讳繚绫诲瀷蹇呴』涓?0/1/2锛岃閲嶆柊杈撳叆\n");
             continue;
         }
         break;
@@ -3701,7 +3750,7 @@ void handle_check_item_update(void)
     if (new_price > 0) target->price = new_price;
     if (new_m_type >= 0) target->m_type = (MedicareType)new_m_type;
 
-    printf("\n提示：检查项目信息修改成功。\n");
+    printf("\n鎻愮ず锛氭鏌ラ」鐩俊鎭慨鏀规垚鍔熴€俓n");
 }
 
 void handle_check_item_remove(void)
@@ -3710,50 +3759,50 @@ void handle_check_item_remove(void)
     CheckItemNode* target = NULL;
     int confirm;
 
-    printf("\n================ 下架检查项目 ===============-\n");
-    get_safe_string("请输入要下架的检查项目编号: ", item_id, MAX_ID_LEN);
+    printf("\n================ 涓嬫灦妫€鏌ラ」鐩?===============-\n");
+    get_safe_string("璇疯緭鍏ヨ涓嬫灦鐨勬鏌ラ」鐩紪鍙? ", item_id, MAX_ID_LEN);
 
     target = find_check_item_by_id(g_check_item_list, item_id);
     if (target == NULL)
     {
-        printf("提示：未找到对应检查项目，下架失败。\n");
+        printf("鎻愮ず锛氭湭鎵惧埌瀵瑰簲妫€鏌ラ」鐩紝涓嬫灦澶辫触銆俓n");
         return;
     }
 
-    printf("\n当前检查项目信息：\n");
-    printf("项目编号：%s\n", target->item_id);
-    printf("项目名称：%s\n", target->item_name);
-    printf("所属科室：%s\n", target->dept);
-    printf("检查费用：%.2f\n", target->price);
+    printf("\n褰撳墠妫€鏌ラ」鐩俊鎭細\n");
+    printf("椤圭洰缂栧彿锛?s\n", target->item_id);
+    printf("椤圭洰鍚嶇О锛?s\n", target->item_name);
+    printf("鎵€灞炵瀹わ細%s\n", target->dept);
+    printf("妫€鏌ヨ垂鐢細%.2f\n", target->price);
     switch (target->m_type)
     {
-        case MEDICARE_CLASS_A: printf("医保类型：甲类\n"); break;
-        case MEDICARE_CLASS_B: printf("医保类型：乙类\n"); break;
-        case MEDICARE_NONE:    printf("医保类型：自费\n"); break;
+        case MEDICARE_CLASS_A: printf("鍖讳繚绫诲瀷锛氱敳绫籠n"); break;
+        case MEDICARE_CLASS_B: printf("鍖讳繚绫诲瀷锛氫箼绫籠n"); break;
+        case MEDICARE_NONE:    printf("鍖讳繚绫诲瀷锛氳嚜璐筡n"); break;
     }
     printf("----------------------------------------\n");
 
     if (is_check_item_referenced_by_active_record(item_id))
     {
-        printf("提示：当前检查项目仍被未完成检查记录引用，暂不能下架。\n");
-        printf("请先完成相关患者的检查流程后再重试。\n");
+        printf("鎻愮ず锛氬綋鍓嶆鏌ラ」鐩粛琚湭瀹屾垚妫€鏌ヨ褰曞紩鐢紝鏆備笉鑳戒笅鏋躲€俓n");
+        printf("璇峰厛瀹屾垚鐩稿叧鎮ｈ€呯殑妫€鏌ユ祦绋嬪悗鍐嶉噸璇曘€俓n");
         return;
     }
 
-    printf("是否确定下架该检查项目？\n");
-    printf("[1] 确定下架\n");
-    printf("[0] 取消返回\n");
-    confirm = get_safe_int("请输入操作编号: ");
+    printf("鏄惁纭畾涓嬫灦璇ユ鏌ラ」鐩紵\n");
+    printf("[1] 纭畾涓嬫灦\n");
+    printf("[0] 鍙栨秷杩斿洖\n");
+    confirm = get_safe_int("璇疯緭鍏ユ搷浣滅紪鍙? ");
 
     if (confirm != 1)
     {
-        printf("提示：已取消下架操作。\n");
+        printf("鎻愮ず锛氬凡鍙栨秷涓嬫灦鎿嶄綔銆俓n");
         return;
     }
 
     if (delete_check_item_by_id(g_check_item_list, item_id))
-        printf("提示：检查项目下架成功。\n");
+        printf("鎻愮ず锛氭鏌ラ」鐩笅鏋舵垚鍔熴€俓n");
     else
-        printf("提示：检查项目下架失败。\n");
+        printf("鎻愮ず锛氭鏌ラ」鐩笅鏋跺け璐ャ€俓n");
 }
 

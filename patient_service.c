@@ -55,7 +55,7 @@ static const SymptomRule g_symptom_dict[] = {
     {"哮喘", 50, "呼吸内科"}, {"肺炎", 50, "呼吸内科"}, {"支气管炎", 50, "呼吸内科"}, {"慢性支气管炎", 50, "呼吸内科"},
     {"支气管扩张", 50, "呼吸内科"}, {"咯血", 50, "呼吸内科"}, {"肺结核", 50, "呼吸内科"}, {"结核", 50, "感染科"},
     {"肺结节", 50, "呼吸内科"}, {"肺气肿", 50, "呼吸内科"}, {"慢阻肺", 50, "呼吸内科"}, {"肺心病", 50, "呼吸内科"},
-    {"胃溃疡", 50, "消化内科"}, {"十二指肠溃疡", 50, "消化内科"}, {"结肠炎", 50, "消化内科"}, {"肠易激综合征", 50, "消化内科"},
+    {"胃溃疡", 50, "消化内科"}, {"胃痛", 50, "消化内科"}, {"十二指肠溃疡", 50, "消化内科"}, {"结肠炎", 50, "消化内科"}, {"肠易激综合征", 50, "消化内科"},
     {"便血", 50, "消化内科"}, {"黄疸", 50, "消化内科"}, {"肝炎", 50, "消化内科"}, {"肝炎", 50, "感染科"},
     {"甲肝", 50, "感染科"}, {"乙肝", 50, "感染科"}, {"丙肝", 50, "感染科"}, {"肝硬化", 50, "消化内科"},
     {"肝硬化", 50, "肝胆外科"}, {"胆囊炎", 50, "消化内科"}, {"胆囊炎", 50, "肝胆外科"}, {"胆结石", 50, "消化内科"},
@@ -256,56 +256,90 @@ static const char* get_display_text(const char* text)
  * @param c 汉字字符
  * @return 拼音首字母（大写），非汉字返回原字符
  */
-static char get_pinyin_first_letter(char c)
+static int utf8_char_len(unsigned char first_byte)
 {
-    unsigned char uc = (unsigned char)c;
-    
-    // ASCII字符直接返回大写
-    if (uc < 0x80)
-    {
-        if (c >= 'a' && c <= 'z')
-            return c - 32;
-        return c;
-    }
-    
-    // 常见汉字拼音首字母映射表（简化版）
-    if (uc >= 0xB0 && uc <= 0xF7)
-    {
-        // 根据汉字的GB2312编码范围判断首字母
-        if (uc == 0xB0) return 'A';
-        if (uc == 0xB1) return 'B';
-        if (uc == 0xB2) return 'C';
-        if (uc == 0xB3) return 'D';
-        if (uc == 0xB4) return 'E';
-        if (uc == 0xB5) return 'F';
-        if (uc == 0xB6) return 'G';
-        if (uc == 0xB7) return 'H';
-        if (uc == 0xB8) return 'J';
-        if (uc == 0xB9) return 'K';
-        if (uc == 0xBA) return 'L';
-        if (uc == 0xBB) return 'M';
-        if (uc == 0xBC) return 'N';
-        if (uc == 0xBD) return 'O';
-        if (uc == 0xBE) return 'P';
-        if (uc == 0xBF) return 'Q';
-        if (uc == 0xC0) return 'R';
-        if (uc == 0xC1) return 'S';
-        if (uc == 0xC2) return 'T';
-        if (uc == 0xC3) return 'W';
-        if (uc == 0xC4) return 'X';
-        if (uc == 0xC5) return 'Y';
-        if (uc == 0xC6) return 'Z';
-    }
-    
-    return c;
+    if (first_byte < 0x80) return 1;
+    if (first_byte < 0xC0) return 1;
+    if (first_byte < 0xE0) return 2;
+    if (first_byte < 0xF0) return 3;
+    return 4;
 }
 
-/**
- * @brief 将中文姓名转换为拼音首字母
- * @param name 中文姓名
- * @param pinyin 存储拼音首字母的缓冲区
- * @param max_len 缓冲区最大长度
- */
+static char get_chinese_pinyin_initial_utf8(const char* ch, int len)
+{
+    if (len < 3) return 0;
+
+    if (memcmp(ch, "\xE5\xBC\xA0", 3) == 0) return 'Z';
+    if (memcmp(ch, "\xE7\x8E\x8B", 3) == 0) return 'W';
+    if (memcmp(ch, "\xE6\x9D\x8E", 3) == 0) return 'L';
+    if (memcmp(ch, "\xE5\x88\x98", 3) == 0) return 'L';
+    if (memcmp(ch, "\xE9\x99\x88", 3) == 0) return 'C';
+    if (memcmp(ch, "\xE6\x9D\xA8", 3) == 0) return 'Y';
+    if (memcmp(ch, "\xE9\xBB\x84", 3) == 0) return 'H';
+    if (memcmp(ch, "\xE8\xB5\xB5", 3) == 0) return 'Z';
+    if (memcmp(ch, "\xE5\x91\xA8", 3) == 0) return 'Z';
+    if (memcmp(ch, "\xE5\x90\xB4", 3) == 0) return 'W';
+    if (memcmp(ch, "\xE9\x83\x91", 3) == 0) return 'Z';
+    if (memcmp(ch, "\xE5\x86\xAF", 3) == 0) return 'F';
+    if (memcmp(ch, "\xE8\x92\x8B", 3) == 0) return 'J';
+    if (memcmp(ch, "\xE6\xB2\x88", 3) == 0) return 'S';
+    if (memcmp(ch, "\xE9\x9F\xA9", 3) == 0) return 'H';
+    if (memcmp(ch, "\xE6\x9C\xB1", 3) == 0) return 'Z';
+    if (memcmp(ch, "\xE7\xA7\xA6", 3) == 0) return 'Q';
+    if (memcmp(ch, "\xE8\xAE\xB8", 3) == 0) return 'X';
+    if (memcmp(ch, "\xE4\xBD\x95", 3) == 0) return 'H';
+    if (memcmp(ch, "\xE5\x90\x95", 3) == 0) return 'L';
+    if (memcmp(ch, "\xE6\x96\xBD", 3) == 0) return 'S';
+    if (memcmp(ch, "\xE6\x96\x87", 3) == 0) return 'W';
+    if (memcmp(ch, "\xE5\xAE\x8B", 3) == 0) return 'S';
+    if (memcmp(ch, "\xE5\x94\x90", 3) == 0) return 'T';
+    if (memcmp(ch, "\xE4\xBC\x9F", 3) == 0) return 'W';
+    if (memcmp(ch, "\xE5\xA8\x9C", 3) == 0) return 'N';
+    if (memcmp(ch, "\xE5\xBC\xBA", 3) == 0) return 'Q';
+    if (memcmp(ch, "\xE6\x95\x8F", 3) == 0) return 'M';
+    if (memcmp(ch, "\xE9\x9D\x99", 3) == 0) return 'J';
+    if (memcmp(ch, "\xE7\xA3\x8A", 3) == 0) return 'L';
+    if (memcmp(ch, "\xE5\x86\x9B", 3) == 0) return 'J';
+    if (memcmp(ch, "\xE6\xB4\x8B", 3) == 0) return 'Y';
+    if (memcmp(ch, "\xE5\x8B\x87", 3) == 0) return 'Y';
+    if (memcmp(ch, "\xE5\xBB\xBA", 3) == 0) return 'J';
+    if (memcmp(ch, "\xE5\x9B\xBD", 3) == 0) return 'G';
+    if (memcmp(ch, "\xE6\xAC\xA3", 3) == 0) return 'X';
+    if (memcmp(ch, "\xE6\x80\xA1", 3) == 0) return 'Y';
+    if (memcmp(ch, "\xE6\xB5\xA9", 3) == 0) return 'H';
+    if (memcmp(ch, "\xE7\x84\xB6", 3) == 0) return 'R';
+    if (memcmp(ch, "\xE9\x9B\xA8", 3) == 0) return 'Y';
+    if (memcmp(ch, "\xE6\xA1\x90", 3) == 0) return 'T';
+    if (memcmp(ch, "\xE5\xAD\x90", 3) == 0) return 'Z';
+    if (memcmp(ch, "\xE8\xBD\xA9", 3) == 0) return 'X';
+    if (memcmp(ch, "\xE6\xA2\x93", 3) == 0) return 'Z';
+    if (memcmp(ch, "\xE6\xB6\xB5", 3) == 0) return 'H';
+    if (memcmp(ch, "\xE8\xAF\x97", 3) == 0) return 'S';
+    if (memcmp(ch, "\xE6\xB3\xBD", 3) == 0) return 'Z';
+    if (memcmp(ch, "\xE5\xAE\x87", 3) == 0) return 'Y';
+    if (memcmp(ch, "\xE4\xBD\xB3", 3) == 0) return 'J';
+    if (memcmp(ch, "\xE7\x90\xAA", 3) == 0) return 'Q';
+    if (memcmp(ch, "\xE8\xB1\xAA", 3) == 0) return 'H';
+    if (memcmp(ch, "\xE4\xB8\x80", 3) == 0) return 'Y';
+    if (memcmp(ch, "\xE8\xAF\xBA", 3) == 0) return 'N';
+    if (memcmp(ch, "\xE8\x89\xBA", 3) == 0) return 'Y';
+    if (memcmp(ch, "\xE9\xA6\xA8", 3) == 0) return 'X';
+    if (memcmp(ch, "\xE6\x80\x9D", 3) == 0) return 'S';
+    if (memcmp(ch, "\xE8\xBF\x9C", 3) == 0) return 'Y';
+    if (memcmp(ch, "\xE8\xAF\xAD", 3) == 0) return 'Y';
+    if (memcmp(ch, "\xE8\x90\x8C", 3) == 0) return 'M';
+    if (memcmp(ch, "\xE8\x8A\xB3", 3) == 0) return 'F';
+    if (memcmp(ch, "\xE9\x80\x83", 3) == 0) return 'T';
+    if (memcmp(ch, "\xE5\x8D\x95", 3) == 0) return 'D';
+    if (memcmp(ch, "\xE7\x88\xBD", 3) == 0) return 'S';
+    if (memcmp(ch, "\xE7\xBA\xA6", 3) == 0) return 'Y';
+    if (memcmp(ch, "\xE5\x8D\xB3", 3) == 0) return 'J';
+    if (memcmp(ch, "\xE5\xB0\x86", 3) == 0) return 'J';
+    if (memcmp(ch, "\xE8\xA7\xA3", 3) == 0) return 'J';
+    if (memcmp(ch, "\xE7\xA6\x81", 3) == 0) return 'J';
+    return 0;
+}
+
 static void name_to_pinyin(const char* name, char* pinyin, int max_len)
 {
     if (name == NULL || pinyin == NULL || max_len <= 0)
@@ -317,18 +351,22 @@ static void name_to_pinyin(const char* name, char* pinyin, int max_len)
     while (name[i] != '\0' && pos < max_len - 1)
     {
         unsigned char uc = (unsigned char)name[i];
+        int clen = utf8_char_len(uc);
         
-        if (uc < 0x80)
+        if (clen == 1)
         {
-            // ASCII字符
-            pinyin[pos++] = get_pinyin_first_letter(name[i]);
+            if (uc >= 'a' && uc <= 'z')
+                pinyin[pos++] = uc - 32;
+            else if (uc >= 'A' && uc <= 'Z')
+                pinyin[pos++] = uc;
             i++;
         }
         else
         {
-            // 汉字（GB2312编码，2字节）
-            pinyin[pos++] = get_pinyin_first_letter(name[i]);
-            i += 2;
+            char initial = get_chinese_pinyin_initial_utf8(&name[i], clen);
+            if (initial != 0)
+                pinyin[pos++] = initial;
+            i += clen;
         }
     }
     
@@ -878,9 +916,22 @@ int query_patient_archive_by_name(const char* name_keyword)
         }
         else
         {
-            // 2. 拼音首字母匹配（支持拼音首字母搜索）
+            // 2. 拼音首字母匹配（支持拼音首字母搜索，大小写不敏感）
             name_to_pinyin(curr->name, pinyin, MAX_NAME_LEN);
-            if (strstr(pinyin, name_keyword) != NULL)
+            
+            // 将用户输入转换为大写进行匹配
+            char keyword_upper[MAX_NAME_LEN];
+            int k;
+            for (k = 0; name_keyword[k] != '\0' && k < MAX_NAME_LEN - 1; k++)
+            {
+                if (name_keyword[k] >= 'a' && name_keyword[k] <= 'z')
+                    keyword_upper[k] = name_keyword[k] - 32;
+                else
+                    keyword_upper[k] = name_keyword[k];
+            }
+            keyword_upper[k] = '\0';
+            
+            if (strstr(pinyin, keyword_upper) != NULL)
             {
                 display_patient_archive(curr);
                 found = 1;
