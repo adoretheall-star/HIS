@@ -50,6 +50,9 @@ int doctor_consult_patient(
 // 4. 医生查看已处理患者
 void doctor_view_processed_patients(const char* doctor_id);
 
+// 5. 显示医生信息
+void show_doctor_info(DoctorNode* doctor);
+
 // 5. 医生查看已处理患者详情
 void doctor_view_processed_patient_detail(const char* doctor_id, const char* patient_id);
 

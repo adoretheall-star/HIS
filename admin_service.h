@@ -9,6 +9,9 @@ void show_all_accounts(void);
 // 注册新员工账号
 int register_account(const char* username, const char* password, const char* real_name, const char* gender, RoleType role);
 
+// 验证账号密码
+int verify_account(const char* username, const char* password, int* role);
+
 // 更新员工资料
 int update_account_basic_info(
     const char* username,
@@ -50,6 +53,12 @@ void show_all_nurses_with_duty_status(void);
 
 // 更新护士值班状态
 int update_nurse_duty_status(const char* username, int new_status);
+
+// 显示所有药师值班状态
+void show_all_pharmacists_with_duty_status(void);
+
+// 更新药师值班状态
+int update_pharmacist_duty_status(const char* username, int new_status);
 
 // 显示传染病异常提醒
 void show_infectious_disease_alerts(void);
