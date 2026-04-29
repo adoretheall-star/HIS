@@ -120,30 +120,181 @@ static int validate_appointment_target(const char* appoint_doctor, const char* a
     printf("⚠️ 当前预约科室暂无可用医生，预约登记失败！\n");
     return 0;
 }
+// ==========================================
+// 判断预约是否可取消
+// ==========================================
+int is_appointment_cancelable(const AppointmentNode* appt)
+{
+    if (appt == NULL) return 0;
+    
+    // 只有状态为"已预约"的预约才能取消
+    if (appt->appointment_status == RESERVED)
+    {
+        return 1;
+    }
+    
+    return 0;
+}
+
+// ==========================================
+// 显示患者可取消的预约列表
+// 返回可取消预约的数量
+// ==========================================
+int show_cancelable_appointments_for_patient(const char* patient_id)
+{
+    if (patient_id == NULL || strlen(patient_id) == 0)
+    {
+        return 0;
+    }
+    if (g_appointment_list == NULL)
+    {
+        return 0;
+    }
+    
+    int count = 0;
+    AppointmentNode* curr = g_appointment_list->next;
+    
+    printf("\n您当前可取消的预约如下：\n");
+    printf("------------------------------------------------------------\n");
+    
+    while (curr != NULL)
+    {
+        // 只显示该患者的可取消预约
+        if (strcmp(curr->patient_id, patient_id) == 0 && is_appointment_cancelable(curr))
+        {
+            count++;
+            printf("\n【预约记录 %d】\n", count);
+            
+            const char* doctor_name = "";
+            const char* doctor_dept = "";
+            
+            if (strlen(curr->appoint_doctor) > 0)
+            {
+                DoctorNode* doctor = find_doctor_by_id(g_doctor_list, curr->appoint_doctor);
+                if (doctor != NULL)
+                {
+                    doctor_name = doctor->name;
+                    doctor_dept = doctor->department;
+                }
+            }
+            
+            printf("预约编号：%s | 日期：%s | 时段：%s | 科室：%s | ",
+                curr->appointment_id,
+                curr->appointment_date,
+                curr->appointment_slot,
+                strlen(doctor_dept) > 0 ? doctor_dept : curr->appoint_dept);
+            
+            if (strlen(curr->appoint_doctor) > 0)
+            {
+                printf("医生：%s %s | ", curr->appoint_doctor, doctor_name);
+            }
+            printf("状态：%s\n", get_appointment_display_status(curr));
+            
+            printf("------------------------------------------------------------\n");
+        }
+        curr = curr->next;
+    }
+    
+    if (count == 0)
+    {
+        printf("⚠ 当前没有可取消的预约记录。\n");
+        printf("------------------------------------------------------------\n");
+    }
+    
+    return count;
+}
+
+// ==========================================
+// 在指定科室中查找最佳医生（自动分配用）
+// 规则1：优先选择值班中的医生
+// 规则2：如果有多名值班医生，选择 queue_length 最小的
+// 规则3：如果 queue_length 也相同，选择编号较小的医生
+// ==========================================
+DoctorNode* find_best_doctor_for_department(const char* dept)
+{
+    DoctorNode* best_doctor = NULL;
+    int min_queue = 9999;
+    
+    if (dept == NULL || strlen(dept) == 0)
+    {
+        return NULL;
+    }
+    if (g_doctor_list == NULL)
+    {
+        return NULL;
+    }
+    
+    DoctorNode* curr = g_doctor_list->next;
+    while (curr != NULL)
+    {
+        // 规则1：只考虑该科室的值班医生
+        if (strcmp(curr->department, dept) == 0 && curr->is_on_duty == 1)
+        {
+            // 规则2：选择 queue_length 最小的医生
+            if (curr->queue_length < min_queue)
+            {
+                min_queue = curr->queue_length;
+                best_doctor = curr;
+            }
+            // 规则3：如果 queue_length 相同，选择编号较小的医生
+            else if (curr->queue_length == min_queue && best_doctor != NULL)
+            {
+                if (strcmp(curr->id, best_doctor->id) < 0)
+                {
+                    best_doctor = curr;
+                }
+            }
+        }
+        curr = curr->next;
+    }
+    
+    return best_doctor;
+}
+
 // 打印单条预约信息
 static void print_appointment_info(const AppointmentNode* appointment)
 {
-    const char* target_text = NULL;
+    const char* doctor_name = "未知";
+    const char* doctor_dept = "未知";
+    
     if (appointment == NULL) return;
+    
+    // 如果有医生编号，尝试获取医生姓名和科室
     if (strlen(appointment->appoint_doctor) > 0)
     {
-        target_text = appointment->appoint_doctor;
-        printf("预约编号：%s | 类型：%s | 日期：%s | 时段：%s | 医生：%s | 状态：%s\n",
+        DoctorNode* doctor = find_doctor_by_id(g_doctor_list, appointment->appoint_doctor);
+        if (doctor != NULL)
+        {
+            if (strlen(doctor->name) > 0)
+                doctor_name = doctor->name;
+            if (strlen(doctor->department) > 0)
+                doctor_dept = doctor->department;
+        }
+        
+        printf("预约编号：%s | 类型：%s | 日期：%s | 时段：%s\n",
             appointment->appointment_id,
             get_appointment_source_text(appointment),
             appointment->appointment_date,
-            appointment->appointment_slot,
-            target_text,
+            appointment->appointment_slot);
+        printf("医生编号：%s | 医生姓名：%s | 科室：%s | 状态：%s\n",
+            appointment->appoint_doctor,
+            doctor_name,
+            doctor_dept,
             get_appointment_display_status(appointment));
     }
     else
     {
-        target_text = appointment->appoint_dept;
-        printf("预约编号：%s | 类型：%s | 日期：%s | 时段：%s | 科室：%s | 状态：%s\n",
+        // 如果没有医生编号，显示科室信息
+        const char* target_text = appointment->appoint_dept;
+        if (strlen(target_text) == 0)
+            target_text = "未知";
+        
+        printf("预约编号：%s | 类型：%s | 日期：%s | 时段：%s\n",
             appointment->appointment_id,
             get_appointment_source_text(appointment),
             appointment->appointment_date,
-            appointment->appointment_slot,
+            appointment->appointment_slot);
+        printf("医生编号：未指定 | 医生姓名：未知 | 科室：%s | 状态：%s\n",
             target_text,
             get_appointment_display_status(appointment));
     }
@@ -155,7 +306,8 @@ static void print_appointment_info(const AppointmentNode* appointment)
  */
 int display_doctors_by_dept(const char* dept_name)
 {
-    int count = 0;
+    int total_count = 0;
+    int duty_count = 0;
     
     if (g_doctor_list == NULL)
     {
@@ -169,39 +321,162 @@ int display_doctors_by_dept(const char* dept_name)
         return 0;
     }
     
-    printf("\n🏥 【%s】科室医生列表：\n", dept_name);
-    printf("--------------------------------------------------------\n");
-    printf("  编号\t姓名\t\t性别\t排队人数\n");
-    printf("--------------------------------------------------------\n");
+    // 第一步：遍历统计列宽和医生数量
+    int id_width = get_display_width("编号") + 4;
+    int name_width = get_display_width("姓名") + 4;
+    int gender_width = get_display_width("性别") + 4;
+    int queue_width = get_display_width("排队人数") + 4;
+    int duty_width = get_display_width("值班状态") + 4;
     
     DoctorNode* curr = g_doctor_list->next;
     while (curr != NULL)
     {
-        // 匹配科室
-        if (curr->is_on_duty == 1 && strcmp(curr->department, dept_name) == 0)
+        if (strcmp(curr->department, dept_name) == 0)
         {
-            count++;
-            printf("  %s\t%s\t\t%s\t%d\n", 
-                   curr->id, 
-                   curr->name, 
-                   strlen(curr->gender) > 0 ? curr->gender : "-",
-                   curr->queue_length);
+            total_count++;
+            if (curr->is_on_duty == 1) duty_count++;
+            
+            int w = get_display_width(curr->id) + 4;
+            if (w > id_width) id_width = w;
+            
+            w = get_display_width(curr->name) + 4;
+            if (w > name_width) name_width = w;
+            
+            w = get_display_width(curr->gender) + 4;
+            if (w > gender_width) gender_width = w;
+            
+            char queue_str[20];
+            sprintf(queue_str, "%d", curr->queue_length);
+            w = get_display_width(queue_str) + 4;
+            if (w > queue_width) queue_width = w;
+            
+            w = get_display_width(curr->is_on_duty == 1 ? "值班中" : "休息中") + 4;
+            if (w > duty_width) duty_width = w;
         }
         curr = curr->next;
     }
     
-    printf("--------------------------------------------------\n");
-    
-    if (count == 0)
+    // 如果没有该科室医生
+    if (total_count == 0)
     {
-        printf("😔 该科室暂无医生值班，请选择其他科室\n");
-    }
-    else
-    {
-        printf("📝 该科室共有 %d 位医生\n", count);
+        return 0;
     }
     
-    return count;
+    // 第二步：计算总宽度并打印表格
+    int total_width = id_width + name_width + gender_width + queue_width + duty_width;
+    
+    printf("\n🏥 【%s】科室医生列表\n", dept_name);
+    for (int i = 0; i < total_width; i++) printf("-");
+    printf("\n");
+    
+    // 打印表头
+    print_padded_text("编号", id_width);
+    print_padded_text("姓名", name_width);
+    print_padded_text("性别", gender_width);
+    print_padded_text("排队人数", queue_width);
+    print_padded_text("值班状态", duty_width);
+    printf("\n");
+    
+    for (int i = 0; i < total_width; i++) printf("-");
+    printf("\n");
+    
+    // 打印数据行
+    curr = g_doctor_list->next;
+    while (curr != NULL)
+    {
+        if (strcmp(curr->department, dept_name) == 0)
+        {
+            print_padded_text(curr->id, id_width);
+            print_padded_text(curr->name, name_width);
+            print_padded_text(strlen(curr->gender) > 0 ? curr->gender : "-", gender_width);
+            
+            char queue_str[20];
+            sprintf(queue_str, "%d", curr->queue_length);
+            print_padded_text(queue_str, queue_width);
+            
+            print_padded_text(curr->is_on_duty == 1 ? "值班中" : "休息中", duty_width);
+            printf("\n");
+        }
+        curr = curr->next;
+    }
+    
+    for (int i = 0; i < total_width; i++) printf("-");
+    printf("\n");
+    
+    // 打印统计信息
+    printf("📝 该科室共有 %d 位医生，其中当前值班医生 %d 位\n", total_count, duty_count);
+    
+    return duty_count;
+}
+
+// 检查科室是否存在（不管是否值班）
+int department_exists(const char* dept_name)
+{
+    if (dept_name == NULL || strlen(dept_name) == 0)
+        return 0;
+    if (g_doctor_list == NULL)
+        return 0;
+
+    DoctorNode* curr = g_doctor_list->next;
+    while (curr != NULL)
+    {
+        if (strcmp(curr->department, dept_name) == 0)
+            return 1;
+        curr = curr->next;
+    }
+    return 0;
+}
+
+// 检查科室是否有值班医生
+int has_on_duty_doctor_in_department(const char* dept_name)
+{
+    if (dept_name == NULL || strlen(dept_name) == 0)
+        return 0;
+    if (g_doctor_list == NULL)
+        return 0;
+
+    DoctorNode* curr = g_doctor_list->next;
+    while (curr != NULL)
+    {
+        if (strcmp(curr->department, dept_name) == 0 && curr->is_on_duty == 1)
+            return 1;
+        curr = curr->next;
+    }
+    return 0;
+}
+
+// 检查患者是否已存在同日期同时段的有效预约（提前校验用）
+int check_duplicate_appointment_early(
+    const char* patient_id,
+    const char* appointment_date,
+    const char* appointment_slot,
+    char* existing_appointment_id,
+    size_t id_size
+)
+{
+    if (patient_id == NULL || appointment_date == NULL || appointment_slot == NULL)
+        return 0;
+    if (g_appointment_list == NULL)
+        return 0;
+    
+    AppointmentNode* curr = g_appointment_list->next;
+    while (curr != NULL)
+    {
+        if (strcmp(curr->patient_id, patient_id) == 0 &&
+            strcmp(curr->appointment_date, appointment_date) == 0 &&
+            strcmp(curr->appointment_slot, appointment_slot) == 0 &&
+            (curr->appointment_status == RESERVED || curr->appointment_status == CHECKED_IN))
+        {
+            if (existing_appointment_id != NULL && id_size > 0)
+            {
+                strncpy(existing_appointment_id, curr->appointment_id, id_size - 1);
+                existing_appointment_id[id_size - 1] = '\0';
+            }
+            return 1;
+        }
+        curr = curr->next;
+    }
+    return 0;
 }
 
 // 预约登记
@@ -357,6 +632,36 @@ AppointmentNode* register_appointment(
     {
         return NULL;
     }
+    
+    // ==========================================
+    // 自动分配医生逻辑：只有科室、没有医生时自动分配
+    // ==========================================
+    char assigned_doctor_id[MAX_ID_LEN] = "";
+    char assigned_doctor_name[MAX_NAME_LEN] = "";
+    char assigned_dept[MAX_NAME_LEN] = "";
+    
+    if (has_dept && !has_doctor)
+    {
+        // 调用自动分配函数
+        DoctorNode* best_doctor = find_best_doctor_for_department(appoint_dept);
+        if (best_doctor == NULL)
+        {
+            printf("⚠️ 当前科室暂无可分配医生，请重新选择科室或手动指定医生。\n");
+            return NULL;
+        }
+        
+        // 保存分配结果
+        strncpy(assigned_doctor_id, best_doctor->id, MAX_ID_LEN - 1);
+        strncpy(assigned_doctor_name, best_doctor->name, MAX_NAME_LEN - 1);
+        strncpy(assigned_dept, best_doctor->department, MAX_NAME_LEN - 1);
+        
+        printf("✅ 已为您自动分配医生：%s %s（%s）\n", best_doctor->id, best_doctor->name, best_doctor->department);
+        
+        // 更新变量，以便后续使用
+        appoint_doctor = assigned_doctor_id;
+        has_doctor = 1;
+    }
+    
     generate_appointment_id(new_id);
     new_appointment = create_appointment_node(
         new_id,
@@ -379,6 +684,7 @@ AppointmentNode* register_appointment(
 void query_appointments_by_patient_id(const char* patient_id)
 {
     int found = 0;
+    int record_count = 0;
     AppointmentNode* curr = NULL;
     if (g_appointment_list == NULL)
     {
@@ -395,7 +701,16 @@ void query_appointments_by_patient_id(const char* patient_id)
     {
         if (strcmp(curr->patient_id, patient_id) == 0)
         {
+            record_count++;
+            // 如果不是第一条记录，先打印空行
+            if (record_count > 1)
+                printf("\n");
+            // 打印记录标题
+            printf("【预约记录 %d】\n", record_count);
+            // 打印预约信息
             print_appointment_info(curr);
+            // 打印分隔线
+            printf("------------------------------------------------------------\n");
             found = 1;
         }
         curr = curr->next;

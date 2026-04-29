@@ -69,4 +69,34 @@ int str_display_width(const char* str);
 // 16. 按显示宽度对齐打印字符串
 void print_col(const char* str, int col_width);
 
+// 17. 检查日期格式是否正确 (YYYY-MM-DD)
+int is_valid_date_format(const char* date_str);
+
+// 18. 检查日期是否真实存在
+int is_real_date(int year, int month, int day);
+
+// 19. 解析日期字符串为年月日
+int parse_date(const char* date_str, int* year, int* month, int* day);
+
+// 20. 比较两个日期，返回 1 表示 d1 > d2，0 表示相等，-1 表示 d1 < d2
+int compare_date(int y1, int m1, int d1, int y2, int m2, int d2);
+
+// 21. 获取今天的日期
+int get_today_date(int* year, int* month, int* day);
+
+// 22. 检查预约日期是否有效，并返回错误信息
+int is_appointment_date_valid(const char* date_str, char* error_msg, size_t error_size);
+
+// 23. 检查预约时段是否有效（日期+时段联合校验）
+int is_appointment_slot_valid(const char* date_str, const char* slot, char* error_msg, size_t error_size);
+
+// 24. 计算字符串的显示宽度（中文算2个宽度）
+int get_display_width(const char* str);
+
+// 25. 按指定宽度打印文本并补空格
+void print_padded_text(const char* str, int target_width);
+
+// 26. 打印指定长度的分隔线
+void print_line_separator(int length);
+
 #endif

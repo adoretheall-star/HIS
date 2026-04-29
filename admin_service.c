@@ -1,9 +1,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <time.h>
-#include <math.h> // 用于 isnan, isinf 函数
+#include <stdlib.h>
 #include "admin_service.h"
 #include "list_ops.h"
 #include "medicine_service.h"
@@ -141,53 +139,10 @@ static int parse_date_string(const char* date_str, struct tm* tm_out);
 // 计算两个日期之间的天数差
 static int days_between_dates(const char* start_date, const char* end_date);
 
-// 计算字符串的显示宽度（中文算2个宽度）
-static int get_display_width(const char* str)
-{
-    if (str == NULL) return 0;
-    
-    int width = 0;
-    const unsigned char* p = (const unsigned char*)str;
-    
-    while (*p != '\0')
-    {
-        if (*p < 128)
-        {
-            // ASCII 字符，宽度 1
-            width++;
-        }
-        else
-        {
-            // 非 ASCII 字符（如中文），宽度 2
-            width += 2;
-            // 跳过后续字节（UTF-8 编码）
-            if (*p >= 0xE0) p += 2; // 3字节UTF-8
-            else p += 1; // 2字节UTF-8
-        }
-        p++;
-    }
-    
-    return width;
-}
+// 前置声明
+static void show_expiring_medicine_warning(void);
 
-// 按指定宽度打印文本并补空格
-static void print_padded_text(const char* str, int target_width)
-{
-    if (str == NULL) str = "";
 
-    int current_width = get_display_width(str);
-    printf("%s", str);
-
-    // 计算需要补的空格数
-    int spaces = target_width - current_width;
-    if (spaces > 0)
-    {
-        for (int i = 0; i < spaces; i++)
-        {
-            printf(" ");
-        }
-    }
-}
 
 // 根据病房类型估算日费用
 static double estimate_daily_cost_by_ward_type(WardType ward_type)
@@ -2169,7 +2124,6 @@ static void print_field(const char* s, int field_width)
     if (pad > 0) printf("%*s", pad, "");
 }
 
-// 显示负载监控查看
 void show_load_monitoring(void)
 {
     system("cls");
@@ -2240,6 +2194,7 @@ static void show_waiting_dispense_warning(void)
     int age_width = get_display_width("年龄");
     int status_width = get_display_width("当前状态");
     int dept_width = get_display_width("就诊科室");
+    total_width = id_width + name_width + age_width + status_width + dept_width + 20; // 20是列间距总和
     
     if (g_patient_list != NULL && g_patient_list->next != NULL)
     {
@@ -2279,58 +2234,81 @@ static void show_waiting_dispense_warning(void)
         }
     }
 
-    total_width = id_width + name_width + age_width + status_width + dept_width + 12;
-
-    printf("\n======================================================\n");
-    printf("                  待取药患者提醒\n");
-    printf("======================================================\n");
-    print_padded_text("患者编号", id_width);
-    printf("    ");
-    print_padded_text("姓名", name_width);
-    printf("    ");
-    print_padded_text("年龄", age_width);
-    printf("    ");
-    print_padded_text("当前状态", status_width);
-    printf("    ");
-    print_padded_text("就诊科室", dept_width);
+    // 第二步：按动态列宽输出表格
+    printf("\n");
+    total_width = id_width + name_width + age_width + status_width + dept_width + 20; // 20是列间距总和
+    for (int i = 0; i < total_width; i++) printf("=");
     printf("\n");
     
-    for (int i = 0; i < total_width; i++) printf("-");
+    // 输出标题
+    int title_width = get_display_width("待发药患者预警");
+    int title_padding = (total_width - title_width) / 2;
+    for (int i = 0; i < title_padding; i++) printf(" ");
+    printf("待发药患者预警");
+    for (int i = 0; i < total_width - title_width - title_padding; i++) printf(" ");
     printf("\n");
     
-    if (g_patient_list != NULL && g_patient_list->next != NULL)
+    for (int i = 0; i < total_width; i++) printf("=");
+    printf("\n");
+    
+    if (count == 0)
     {
-        PatientNode* curr = g_patient_list->next;
-        while (curr != NULL)
+        printf("当前无待发药患者\n");
+    }
+    else
+    {
+        // 输出表头
+        print_padded_text("患者编号", id_width);
+        printf("    ");
+        print_padded_text("姓名", name_width);
+        printf("    ");
+        print_padded_text("年龄", age_width);
+        printf("    ");
+        print_padded_text("当前状态", status_width);
+        printf("    ");
+        print_padded_text("就诊科室", dept_width);
+        printf("\n");
+        
+        // 输出表头下横线
+        for (int i = 0; i < total_width; i++) printf("-");
+        printf("\n");
+        
+        // 输出数据行
+        if (g_patient_list != NULL && g_patient_list->next != NULL)
         {
-            if (curr->status == STATUS_WAIT_MED)
+            PatientNode* curr = g_patient_list->next;
+            while (curr != NULL)
             {
-                const char* status_name = NULL;
-                switch (curr->status)
+                if (curr->status == STATUS_WAIT_MED)
                 {
-                    case STATUS_WAIT_MED:
-                        status_name = "已缴费待取药";
-                        break;
-                    default:
-                        status_name = "未知";
-                        break;
+                    const char* status_name = NULL;
+                    switch (curr->status)
+                    {
+                        case STATUS_WAIT_MED:
+                            status_name = "已缴费待取药";
+                            break;
+                        default:
+                            status_name = "未知";
+                            break;
+                    }
+                    
+                    print_padded_text(curr->id, id_width);
+                    printf("    ");
+                    print_padded_text(curr->name, name_width);
+                    printf("    ");
+                    printf("%d", curr->age);
+                    printf("    ");
+                    print_padded_text(status_name, status_width);
+                    printf("    ");
+                    print_padded_text(curr->target_dept, dept_width);
+                    printf("\n");
                 }
-                
-                print_padded_text(curr->id, id_width);
-                printf("    ");
-                print_padded_text(curr->name, name_width);
-                printf("    ");
-                printf("%d", curr->age);
-                printf("    ");
-                print_padded_text(status_name, status_width);
-                printf("    ");
-                print_padded_text(curr->target_dept, dept_width);
-                printf("\n");
+                curr = curr->next;
             }
-            curr = curr->next;
         }
     }
     
+    // 输出底部横线
     for (int i = 0; i < total_width; i++) printf("-");
     printf("\n");
     
@@ -2368,18 +2346,17 @@ void show_resource_warnings(void)
         int free_beds = 0;
         int unpaid_patient_count = 0;
 
+        time_t now = time(NULL);
+        struct tm now_tm;
+        localtime_s(&now_tm, &now);
+        char current_date[11];
+        snprintf(current_date, sizeof(current_date), "%d-%02d-%02d",
+                 now_tm.tm_year + 1900, now_tm.tm_mon + 1, now_tm.tm_mday);
+
         // 统计低库存药品和近效期药品数量
         if (g_medicine_list != NULL && g_medicine_list->next != NULL)
         {
             MedicineNode* curr = g_medicine_list->next;
-            
-            time_t now = time(NULL);
-            struct tm now_tm;
-            localtime_s(&now_tm, &now);
-            
-            char current_date[11];
-            snprintf(current_date, sizeof(current_date), "%d-%02d-%02d", 
-                     now_tm.tm_year + 1900, now_tm.tm_mon + 1, now_tm.tm_mday);
             
             while (curr != NULL)
             {
@@ -2487,7 +2464,7 @@ void show_resource_warnings(void)
                 show_low_stock_warning();
                 break;
             case 2:
-                show_expiring_medicine_warning();
+                show_expiring_medicines(current_date, 30);
                 break;
             case 3:
                 show_waiting_dispense_warning();
@@ -2700,6 +2677,8 @@ static void show_arrears_warning(void)
     printf("按任意键返回...\n");
     get_single_char("");
 }
+// 显示负载监控
+
 
 // 显示公共状态统计摘要
 void show_public_status_statistics(void)
@@ -3756,4 +3735,3 @@ void handle_check_item_remove(void)
     else
         printf("提示：检查项目下架失败。\n");
 }
-
