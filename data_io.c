@@ -32,8 +32,8 @@ static void generate_appointment_id(char* new_id)
     snprintf(new_id, MAX_ID_LEN, "A-%03d", max_no + 1);
 }
 
-// 调试开关，开启
-#define DATA_IO_DEBUG 1
+// 调试开关，默认关闭（设为1显示详细调试信息）
+#define DATA_IO_DEBUG 0
 
 #define DATA_DIR "data/"
 
@@ -123,10 +123,14 @@ int load_patient_list(PatientNode** head) {
     ensure_data_dir();
     char file_path[256];
     snprintf(file_path, sizeof(file_path), "%spatients.txt", DATA_DIR);
+    #if DATA_IO_DEBUG
     printf("DEBUG: 正在读取患者文件: %s\n", file_path);
+    #endif
     FILE* fp = fopen(file_path, "r");
     if (fp == NULL) {
+        #if DATA_IO_DEBUG
         printf("DEBUG: 无法打开患者文件: %s\n", file_path);
+        #endif
         return 0;
     }
 
@@ -156,7 +160,9 @@ int load_patient_list(PatientNode** head) {
         int field_count = split_line_by_delimiter(line, '|', fields, 30);
         
         if (field_count < 27) {
+            #if DATA_IO_DEBUG
             printf("DEBUG: 字段数不足，跳过此行: %s (字段数: %d)\n", line, field_count);
+            #endif
             continue;
         }
 

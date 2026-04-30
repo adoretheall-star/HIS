@@ -23,6 +23,9 @@
 // 登录调试开关，默认关闭
 #define LOGIN_DEBUG 0
 
+// 启动调试开关，默认关闭（设为1显示详细调试信息）
+#define STARTUP_DEBUG 0
+
 // 辅助函数：不区分大小写的字符串比较
 static int my_strcasecmp(const char* s1, const char* s2)
 {
@@ -6986,8 +6989,11 @@ int main()
     g_inpatient_list = create_inpatient_record_head();
 
     // 加载存档数据
+    #if STARTUP_DEBUG
     printf("DEBUG: 开始加载数据...\n");
+    #endif
     int load_result = load_all_data();
+    #if STARTUP_DEBUG
     printf("DEBUG: 数据加载完成，结果: %d\n", load_result);
     
     // 检查患者链表状态
@@ -7015,6 +7021,7 @@ int main()
                    first_account->username, first_account->password, first_account->role);
         }
     }
+    #endif
 
     // ==============================================
     // 仅当没有读取到管理员账号时，才注入系统初始数据
