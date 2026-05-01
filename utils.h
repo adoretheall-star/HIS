@@ -15,13 +15,22 @@ double get_safe_double(const char* prompt);
 // 参数说明：prompt是提示语，buffer是存放文本的数组，max_len是数组最大长度
 void get_safe_string(const char* prompt, char* buffer, int max_len);
 
-// 4. 身份证基础格式校验
+// 4. 获取密码输入（支持Tab切换显示/隐藏，星号掩码）
+void get_password_with_toggle(const char* prompt, char* buffer, int max_len);
+
+// 5. 获取敏感信息输入（支持Tab切换显示/隐藏，星号掩码）
+void get_sensitive_string_with_toggle(const char* prompt, char* buffer, int max_len);
+
+// 6. 身份证基础格式校验
 int validate_id_card(const char* id_card);
 
-// 5. 患者编号格式校验
+// 5. 患者编号格式校验（兼容小写p）
 int validate_patient_id(const char* patient_id);
 
-// 6. 身份证号脱敏
+// 6. 患者编号规范化（小写p转大写P）
+void normalize_patient_id(char* patient_id);
+
+// 7. 身份证号脱敏
 void mask_id_card(const char* src, char* dest);
 
 // 6. 获取预约状态文本
@@ -32,6 +41,9 @@ struct AppointmentNode* find_latest_appointment_by_patient_id(const char* patien
 
 // 8. 判断是否为夜间班次
 int is_night_shift();
+
+// 角色名称获取函数
+const char* getRoleName(int roleId);
 
 // 以后如果有通用功能，比如隐藏密码输入、暂停程序，也全声明在这里
 // void clear_screen(); 
@@ -98,5 +110,9 @@ void print_padded_text(const char* str, int target_width);
 
 // 26. 打印指定长度的分隔线
 void print_line_separator(int length);
+
+// 27. 通用菜单选择输入（支持 B 返回上一级，Q 退出系统）
+// 返回值：-1=返回上一级，-2=退出系统，其他值=有效选择
+int inputChoice(int min, int max);
 
 #endif

@@ -8,6 +8,7 @@
 #include "global.h"
 #include "list_ops.h"
 #include "medicine_service.h"
+#include "admin_service.h"
 
 static void generate_medicine_id(char* new_id)
 {
@@ -422,6 +423,7 @@ void show_low_stock_medicines(int threshold)
 
 void show_expiring_medicines(const char* today, int days_threshold)
 {
+    system("cls");
     int found = 0;
     MedicineNode* curr = NULL;
 
@@ -472,6 +474,8 @@ void show_expiring_medicines(const char* today, int days_threshold)
     {
         printf("当前无近效期药品\n");
     }
+    printf("\n请按任意键返回...\n");
+    system("pause");
 }
 
 MedicineNode* register_medicine(
@@ -832,32 +836,47 @@ int update_medicine_basic_info(
 }
 
 // -----------------------------------------------------------------------------
-// 下架药品（新增）
+// 软删除药品到回收站
 // -----------------------------------------------------------------------------
-
-int remove_medicine(const char* med_id)
+int soft_remove_medicine_to_recycle(
+    const char* med_id,
+    const char* deleted_by,
+    const char* reason
+)
 {
     MedicineNode* target = NULL;
+    RecycleNode* recycle_node = NULL;
+    char recycle_id[MAX_ID_LEN];
 
+    // 校验链表是否初始化
     if (g_medicine_list == NULL)
     {
-        printf("提示：药品链表尚未初始化，无法下架药品。\n");
+        printf("提示：药品链表尚未初始化。\n");
         return 0;
     }
 
+    if (g_recycle_list == NULL)
+    {
+        printf("提示：回收站链表尚未初始化。\n");
+        return 0;
+    }
+
+    // 校验药品编号
     if (is_blank_string(med_id))
     {
         printf("提示：药品编号不能为空。\n");
         return 0;
     }
 
+    // 查找药品
     target = find_medicine_by_id(g_medicine_list, med_id);
     if (target == NULL)
     {
-        printf("提示：未找到对应药品，下架失败。\n");
+        printf("提示：未找到对应药品，无法下架。\n");
         return 0;
     }
 
+    // 校验是否被未完成处方引用
     if (is_medicine_referenced_by_active_prescription(med_id))
     {
         printf("提示：当前药品仍被未完成处方引用，暂不能下架。\n");
@@ -865,14 +884,75 @@ int remove_medicine(const char* med_id)
         return 0;
     }
 
-    if (delete_medicine_by_id(g_medicine_list, med_id))
+    // 显示药品信息确认
+    printf("\n即将下架的药品信息：\n");
+    printf("药品编号：%s\n", target->id);
+    printf("商品名：%s\n", target->name);
+    printf("别名：%s\n", target->alias);
+    printf("通用名：%s\n", target->generic_name);
+    printf("单价：%.2f\n", target->price);
+    printf("库存：%d\n", target->stock);
+    switch (target->m_type)
     {
-        printf("提示：药品下架成功。\n");
-        return 1;
+        case MEDICARE_CLASS_A: printf("医保类型：甲类\n"); break;
+        case MEDICARE_CLASS_B: printf("医保类型：乙类\n"); break;
+        case MEDICARE_NONE:    printf("医保类型：自费\n"); break;
+        default:               printf("医保类型：未知\n"); break;
     }
-    else
+    printf("有效期：%s\n", target->expiry_date);
+    printf("\n是否确认下架该药品并转入回收站？Y=确认，N=取消\n");
+    
+    char confirm[10];
+    get_safe_string("请输入选择：", confirm, sizeof(confirm));
+    
+    // 确认检查
+    if (confirm[0] != 'Y' && confirm[0] != 'y')
     {
-        printf("提示：药品下架失败。\n");
+        printf("提示：已取消下架操作。\n");
         return 0;
     }
+
+    // 生成回收站编号
+    generate_recycle_id(recycle_id);
+
+    // 创建回收站节点
+    recycle_node = create_recycle_medicine_node(recycle_id, target, deleted_by, reason);
+    if (recycle_node == NULL)
+    {
+        printf("提示：创建回收站记录失败。\n");
+        return 0;
+    }
+
+    // 插入回收站
+    insert_recycle_tail(g_recycle_list, recycle_node);
+
+    // 从药品链表中断链
+    if (target->prev != NULL)
+    {
+        target->prev->next = target->next;
+    }
+    if (target->next != NULL)
+    {
+        target->next->prev = target->prev;
+    }
+
+    // 释放原药品节点
+    free(target);
+
+    // 添加操作日志
+    add_log("软删除药品", med_id, "药品已下架并转入回收站");
+
+    // 打印提示信息
+    printf("提示：药品已下架并转入回收站，可由管理员在回收站中恢复。\n");
+
+    return 1;
+}
+
+// -----------------------------------------------------------------------------
+// 下架药品（新增）
+// -----------------------------------------------------------------------------
+
+int remove_medicine(const char* med_id)
+{
+    return soft_remove_medicine_to_recycle(med_id, "admin", "管理员下架药品");
 }

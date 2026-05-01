@@ -140,6 +140,26 @@ LogNode* create_log_list();
 LogNode* create_log_node(const char* timestamp, const char* operation, const char* target, const char* description);
 void insert_log_tail(LogNode* head, LogNode* new_node);
 
+// ==========================================
+// 十二、回收站链表操作
+// ==========================================
+RecycleNode* init_recycle_list(void);
+
+RecycleNode* create_recycle_medicine_node(
+    const char* recycle_id,
+    const MedicineNode* medicine,
+    const char* deleted_by,
+    const char* reason
+);
+
+void insert_recycle_tail(RecycleNode* head, RecycleNode* new_node);
+
+RecycleNode* find_recycle_by_id(RecycleNode* head, const char* recycle_id);
+
+int remove_recycle_node_by_id(RecycleNode* head, const char* recycle_id);
+
+void generate_recycle_id(char* new_id);
+
 
 // ==========================================
 //六、住院记录链表操作

@@ -42,6 +42,9 @@ int load_log_list(LogNode** head);
 int save_inpatient_list(InpatientRecord* head);
 int load_inpatient_list(InpatientRecord** head);
 
+int save_recycle_list(RecycleNode* head);
+int load_recycle_list(RecycleNode** head);
+
 int save_all_data();
 int load_all_data();
 

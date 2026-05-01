@@ -1,4 +1,4 @@
-#define _CRT_SECURE_NO_WARNINGS
+﻿#define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,7 +7,7 @@
 #include "global.h"
 #include "list_ops.h"
 
-// 生成下一个预约编�?
+// 鐢熸垚涓嬩竴涓绾︾紪鍙?
 static void generate_appointment_id(char* new_id)
 {
     int max_no = 0;
@@ -32,7 +32,7 @@ static void generate_appointment_id(char* new_id)
     snprintf(new_id, MAX_ID_LEN, "A-%03d", max_no + 1);
 }
 
-// 调试开关，默认关闭（设�?显示详细调试信息�?
+// 璋冭瘯寮€鍏筹紝榛樿鍏抽棴锛堣涓?鏄剧ず璇︾粏璋冭瘯淇℃伅锛?
 #define DATA_IO_DEBUG 0
 
 #define DATA_DIR "data/"
@@ -82,8 +82,8 @@ int save_patient_list(PatientNode* head) {
     FILE* fp = fopen(DATA_DIR "patients.txt", "w");
     if (fp == NULL) return 0;
 
-    // 写入表头
-    fprintf(fp, "患者编号|姓名|性别|年龄|身份证号|医保类型(0=�?1=甲类,2=乙类)|症状|目标科室|医生编号|就诊卡号|余额|状�?1=待诊,2=检查中,3=检查后待复�?4=已看诊待缴费,5=已缴费待取药,6=住院�?7=就诊结束,8=过号作废)|诊断结果|治疗意见|处方|处方数量|爽约时间1|爽约时间2|爽约时间3|爽约次数|黑名单过期时间|是否黑名�?0=�?1=�?|是否急诊(0=�?1=�?|排队时间|呼叫次数|急诊欠费|欠费时间\n");
+    // 鍐欏叆琛ㄥご
+    fprintf(fp, "鎮ｈ€呯紪鍙穦濮撳悕|鎬у埆|骞撮緞|韬唤璇佸彿|鍖讳繚绫诲瀷(0=鏃?1=鐢茬被,2=涔欑被)|鐥囩姸|鐩爣绉戝|鍖荤敓缂栧彿|灏辫瘖鍗″彿|浣欓|鐘舵€?1=寰呰瘖,2=妫€鏌ヤ腑,3=妫€鏌ュ悗寰呭璇?4=宸茬湅璇婂緟缂磋垂,5=宸茬即璐瑰緟鍙栬嵂,6=浣忛櫌涓?7=灏辫瘖缁撴潫,8=杩囧彿浣滃簾)|璇婃柇缁撴灉|娌荤枟鎰忚|澶勬柟|澶勬柟鏁伴噺|鐖界害鏃堕棿1|鐖界害鏃堕棿2|鐖界害鏃堕棿3|鐖界害娆℃暟|榛戝悕鍗曡繃鏈熸椂闂磡鏄惁榛戝悕鍗?0=鍚?1=鏄?|鏄惁鎬ヨ瘖(0=鍚?1=鏄?|鎺掗槦鏃堕棿|鍛煎彨娆℃暟|鎬ヨ瘖娆犺垂|娆犺垂鏃堕棿\n");
 
     PatientNode* curr = head->next;
     while (curr != NULL) {
@@ -124,17 +124,17 @@ int load_patient_list(PatientNode** head) {
     char file_path[256];
     snprintf(file_path, sizeof(file_path), "%spatients.txt", DATA_DIR);
     #if DATA_IO_DEBUG
-    printf("DEBUG: 正在读取患者文�? %s\n", file_path);
+    printf("DEBUG: 姝ｅ湪璇诲彇鎮ｈ€呮枃浠? %s\n", file_path);
     #endif
     FILE* fp = fopen(file_path, "r");
     if (fp == NULL) {
         #if DATA_IO_DEBUG
-        printf("DEBUG: 无法打开患者文�? %s\n", file_path);
+        printf("DEBUG: 鏃犳硶鎵撳紑鎮ｈ€呮枃浠? %s\n", file_path);
         #endif
         return 0;
     }
 
-    // 跳过表头
+    // 璺宠繃琛ㄥご
     char header_buffer[512];
     if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
         fclose(fp);
@@ -161,7 +161,7 @@ int load_patient_list(PatientNode** head) {
         
         if (field_count < 27) {
             #if DATA_IO_DEBUG
-            printf("DEBUG: 字段数不足，跳过此行: %s (字段�? %d)\n", line, field_count);
+            printf("DEBUG: 瀛楁鏁颁笉瓒筹紝璺宠繃姝よ: %s (瀛楁鏁? %d)\n", line, field_count);
             #endif
             continue;
         }
@@ -232,24 +232,24 @@ int load_patient_list(PatientNode** head) {
 
         insert_patient_tail(*head, new_node);
         
-        // 为导入的患者生成预约记�?
+        // 涓哄鍏ョ殑鎮ｈ€呯敓鎴愰绾﹁褰?
         if (g_appointment_list != NULL && strlen(target_dept) > 0) {
             char appointment_id[MAX_ID_LEN];
             generate_appointment_id(appointment_id);
             
-            // 随机分配现场号和预约号（50%概率�?
+            // 闅忔満鍒嗛厤鐜板満鍙峰拰棰勭害鍙凤紙50%姒傜巼锛?
             int is_walk_in = rand() % 2;
             
-            // 获取当前日期
+            // 鑾峰彇褰撳墠鏃ユ湡
             char current_date[MAX_NAME_LEN];
             time_t now = time(NULL);
             struct tm* tm_now = localtime(&now);
             strftime(current_date, sizeof(current_date), "%Y-%m-%d", tm_now);
             
-            // 随机分配上午或下�?
-            const char* slot = (rand() % 2 == 0) ? "上午" : "下午";
+            // 闅忔満鍒嗛厤涓婂崍鎴栦笅鍗?
+            const char* slot = (rand() % 2 == 0) ? "涓婂崍" : "涓嬪崍";
             
-            // 创建预约记录
+            // 鍒涘缓棰勭害璁板綍
             AppointmentNode* new_appointment = create_appointment_node(
                 appointment_id,
                 id,
@@ -262,8 +262,8 @@ int load_patient_list(PatientNode** head) {
             
             if (new_appointment != NULL) {
                 new_appointment->is_walk_in = is_walk_in;
-                new_appointment->reg_fee = is_walk_in ? 10.0 : 30.0; // 现场�?0元，预约�?0�?
-                new_appointment->fee_paid = 1; // 假设已缴�?
+                new_appointment->reg_fee = is_walk_in ? 10.0 : 30.0; // 鐜板満鍙?0鍏冿紝棰勭害鍙?0鍏?
+                new_appointment->fee_paid = 1; // 鍋囪宸茬即璐?
                 insert_appointment_tail(g_appointment_list, new_appointment);
             }
         }
@@ -278,8 +278,8 @@ int save_appointment_list(AppointmentNode* head) {
     FILE* fp = fopen(DATA_DIR "appointments.txt", "w");
     if (fp == NULL) return 0;
 
-    // 写入表头
-    fprintf(fp, "预约编号|患者编号|预约日期|预约时段|医生编号|科室|状�?1=待确�?2=已确�?3=已完�?4=已取�?|挂号费|是否缴费(0=�?1=�?|是否现场挂号(0=�?1=�?\n");
+    // 鍐欏叆琛ㄥご
+    fprintf(fp, "棰勭害缂栧彿|鎮ｈ€呯紪鍙穦棰勭害鏃ユ湡|棰勭害鏃舵|鍖荤敓缂栧彿|绉戝|鐘舵€?1=寰呯‘璁?2=宸茬‘璁?3=宸插畬鎴?4=宸插彇娑?|鎸傚彿璐箌鏄惁缂磋垂(0=鍚?1=鏄?|鏄惁鐜板満鎸傚彿(0=鍚?1=鏄?\n");
 
     AppointmentNode* curr = head->next;
     while (curr != NULL) {
@@ -298,7 +298,7 @@ int load_appointment_list(AppointmentNode** head) {
     FILE* fp = fopen(DATA_DIR "appointments.txt", "r");
     if (fp == NULL) return 1;
 
-    // 跳过表头
+    // 璺宠繃琛ㄥご
     char header_buffer[512];
     if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
         fclose(fp);
@@ -352,8 +352,8 @@ int save_doctor_list(DoctorNode* head) {
     FILE* fp = fopen(DATA_DIR "doctors.txt", "w");
     if (fp == NULL) return 0;
 
-    // 写入表头
-    fprintf(fp, "医生编号|姓名|性别|科室|排队长度|是否值班(0=�?1=�?\n");
+    // 鍐欏叆琛ㄥご
+    fprintf(fp, "鍖荤敓缂栧彿|濮撳悕|鎬у埆|绉戝|鎺掗槦闀垮害|鏄惁鍊肩彮(0=鍚?1=鏄?\n");
 
     DoctorNode* curr = head->next;
     while (curr != NULL) {
@@ -370,7 +370,7 @@ int load_doctor_list(DoctorNode** head) {
     FILE* fp = fopen(DATA_DIR "doctors.txt", "r");
     if (fp == NULL) return 1;
 
-    // 跳过表头
+    // 璺宠繃琛ㄥご
     char header_buffer[512];
     if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
         fclose(fp);
@@ -416,8 +416,8 @@ int save_medicine_list(MedicineNode* head) {
     FILE* fp = fopen(DATA_DIR "medicines.txt", "w");
     if (fp == NULL) return 0;
 
-    // 写入表头
-    fprintf(fp, "药品编号|商品名|别名|通用名|单价|库存|医保类型(0=自费,1=甲类,2=乙类)|有效期\n");
+    // 鍐欏叆琛ㄥご
+    fprintf(fp, "鑽搧缂栧彿|鍟嗗搧鍚峾鍒悕|閫氱敤鍚峾鍗曚环|搴撳瓨|鍖讳繚绫诲瀷(0=鑷垂,1=鐢茬被,2=涔欑被)|鏈夋晥鏈焅n");
 
     MedicineNode* curr = head->next;
     while (curr != NULL) {
@@ -435,7 +435,7 @@ int load_medicine_list(MedicineNode** head) {
     FILE* fp = fopen(DATA_DIR "medicines.txt", "r");
     if (fp == NULL) return 1;
 
-    // 跳过表头
+    // 璺宠繃琛ㄥご
     char header_buffer[512];
     if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
         fclose(fp);
@@ -482,8 +482,8 @@ int save_ward_list(WardNode* head) {
     FILE* fp = fopen(DATA_DIR "wards.txt", "w");
     if (fp == NULL) return 0;
 
-    // 写入表头
-    fprintf(fp, "病房号|床位号|病房类型(1=普�?2=ICU,3=隔离病房,4=单人病房)|所属科室|是否占用(0=�?1=�?|患者编号\n");
+    // 鍐欏叆琛ㄥご
+    fprintf(fp, "鐥呮埧鍙穦搴婁綅鍙穦鐥呮埧绫诲瀷(1=鏅€?2=ICU,3=闅旂鐥呮埧,4=鍗曚汉鐥呮埧)|鎵€灞炵瀹鏄惁鍗犵敤(0=鍚?1=鏄?|鎮ｈ€呯紪鍙穃n");
 
     WardNode* curr = head->next;
     while (curr != NULL) {
@@ -500,7 +500,7 @@ int load_ward_list(WardNode** head) {
     FILE* fp = fopen(DATA_DIR "wards.txt", "r");
     if (fp == NULL) return 1;
 
-    // 跳过表头
+    // 璺宠繃琛ㄥご
     char header_buffer[512];
     if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
         fclose(fp);
@@ -545,8 +545,8 @@ int save_account_list(AccountNode* head) {
     FILE* fp = fopen(DATA_DIR "accounts.txt", "w");
     if (fp == NULL) return 0;
 
-    // 写入表头
-    fprintf(fp, "用户名|密码|真实姓名|性别|角色(0=管理�?1=医生,2=护士,3=药师)|错误次数|锁定时间|是否值班(0=�?1=�?\n");
+    // 鍐欏叆琛ㄥご
+    fprintf(fp, "鐢ㄦ埛鍚峾瀵嗙爜|鐪熷疄濮撳悕|鎬у埆|瑙掕壊(0=绠＄悊鍛?1=鍖荤敓,2=鎶ゅ＋,3=鑽笀)|閿欒娆℃暟|閿佸畾鏃堕棿|鏄惁鍊肩彮(0=鍚?1=鏄?\n");
 
     AccountNode* curr = head->next;
     while (curr != NULL) {
@@ -565,18 +565,18 @@ int load_account_list(AccountNode** head) {
     snprintf(file_path, sizeof(file_path), "%saccounts.txt", DATA_DIR);
     
     #if DATA_IO_DEBUG
-    printf("DEBUG: 正在读取账号文件: %s\n", file_path);
+    printf("DEBUG: 姝ｅ湪璇诲彇璐﹀彿鏂囦欢: %s\n", file_path);
     #endif
     
     FILE* fp = fopen(file_path, "r");
     if (fp == NULL) {
         #if DATA_IO_DEBUG
-        printf("DEBUG: 无法打开账号文件: %s\n", file_path);
+        printf("DEBUG: 鏃犳硶鎵撳紑璐﹀彿鏂囦欢: %s\n", file_path);
         #endif
         return 0;
     }
 
-    // 跳过表头
+    // 璺宠繃琛ㄥご
     char header_buffer[512];
     if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
         fclose(fp);
@@ -621,7 +621,7 @@ int load_account_list(AccountNode** head) {
     fclose(fp);
     
     #if DATA_IO_DEBUG
-    printf("DEBUG: 成功加载 %d 个账号\n", loaded_count);
+    printf("DEBUG: 鎴愬姛鍔犺浇 %d 涓处鍙穃n", loaded_count);
     #endif
     
     return 1;
@@ -633,8 +633,8 @@ int save_consult_record_list(ConsultRecordNode* head) {
     FILE* fp = fopen(DATA_DIR "consult_records.txt", "w");
     if (fp == NULL) return 0;
 
-    // 写入表头
-    fprintf(fp, "记录编号|患者编号|医生编号|预约编号|就诊时间|诊断结果|治疗意见|决策(0=未决�?1=门诊,2=住院,3=转院)|就诊前状�?0=未就�?1=待检�?2=待诊�?|就诊后状�?0=未完�?1=已完�?2=已转�?|星级评分(1-5�?0=未评�?|评价内容\n");
+    // 鍐欏叆琛ㄥご
+    fprintf(fp, "璁板綍缂栧彿|鎮ｈ€呯紪鍙穦鍖荤敓缂栧彿|棰勭害缂栧彿|灏辫瘖鏃堕棿|璇婃柇缁撴灉|娌荤枟鎰忚|鍐崇瓥(0=鏈喅瀹?1=闂ㄨ瘖,2=浣忛櫌,3=杞櫌)|灏辫瘖鍓嶇姸鎬?0=鏈氨璇?1=寰呮鏌?2=寰呰瘖鏂?|灏辫瘖鍚庣姸鎬?0=鏈畬鎴?1=宸插畬鎴?2=宸茶浆璇?|鏄熺骇璇勫垎(1-5鏄?0=鏈瘎浠?|璇勪环鍐呭\n");
 
     ConsultRecordNode* curr = head->next;
     while (curr != NULL) {
@@ -653,7 +653,7 @@ int load_consult_record_list(ConsultRecordNode** head) {
     FILE* fp = fopen(DATA_DIR "consult_records.txt", "r");
     if (fp == NULL) return 1;
 
-    // 跳过表头
+    // 璺宠繃琛ㄥご
     char header_buffer[512];
     if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
         fclose(fp);
@@ -709,8 +709,8 @@ int save_check_item_list(CheckItemNode* head) {
     FILE* fp = fopen(DATA_DIR "check_items.txt", "w");
     if (fp == NULL) return 0;
 
-    // 写入表头
-    fprintf(fp, "检查项目编号|检查项目名称|所属科室|价格|医保类型(0=自费,1=甲类,2=乙类)\n");
+    // 鍐欏叆琛ㄥご
+    fprintf(fp, "妫€鏌ラ」鐩紪鍙穦妫€鏌ラ」鐩悕绉皘鎵€灞炵瀹浠锋牸|鍖讳繚绫诲瀷(0=鑷垂,1=鐢茬被,2=涔欑被)\n");
 
     CheckItemNode* curr = head->next;
     while (curr != NULL) {
@@ -727,7 +727,7 @@ int load_check_item_list(CheckItemNode** head) {
     FILE* fp = fopen(DATA_DIR "check_items.txt", "r");
     if (fp == NULL) return 1;
 
-    // 跳过表头
+    // 璺宠繃琛ㄥご
     char header_buffer[512];
     if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
         fclose(fp);
@@ -769,8 +769,8 @@ int save_check_record_list(CheckRecordNode* head) {
     FILE* fp = fopen(DATA_DIR "check_records.txt", "w");
     if (fp == NULL) return 0;
 
-    // 写入表头
-    fprintf(fp, "检查记录编号|患者编号|检查项目编号|检查项目名称|所属科室|检查时间|检查结果|是否完成(0=�?1=�?|是否缴费(0=�?1=�?\n");
+    // 鍐欏叆琛ㄥご
+    fprintf(fp, "妫€鏌ヨ褰曠紪鍙穦鎮ｈ€呯紪鍙穦妫€鏌ラ」鐩紪鍙穦妫€鏌ラ」鐩悕绉皘鎵€灞炵瀹妫€鏌ユ椂闂磡妫€鏌ョ粨鏋渱鏄惁瀹屾垚(0=鍚?1=鏄?|鏄惁缂磋垂(0=鍚?1=鏄?\n");
 
     CheckRecordNode* curr = head->next;
     while (curr != NULL) {
@@ -788,7 +788,7 @@ int load_check_record_list(CheckRecordNode** head) {
     FILE* fp = fopen(DATA_DIR "check_records.txt", "r");
     if (fp == NULL) return 1;
 
-    // 跳过表头
+    // 璺宠繃琛ㄥご
     char header_buffer[512];
     if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
         fclose(fp);
@@ -837,12 +837,12 @@ int save_alert_list(AlertNode* head) {
     FILE* fp = fopen(DATA_DIR "alerts.txt", "w");
     if (fp == NULL) return 0;
 
-    // 写入表头
-    fprintf(fp, "消息内容|时间\n");
+    // 鍐欏叆琛ㄥご
+    fprintf(fp, "娑堟伅鍐呭|鏃堕棿\n");
 
     AlertNode* curr = head->next;
     while (curr != NULL) {
-        // 将时间戳转换为可读格�?
+        // 灏嗘椂闂存埑杞崲涓哄彲璇绘牸寮?
         char time_str[20];
         struct tm* local_time = localtime(&curr->time);
         strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", local_time);
@@ -858,7 +858,7 @@ int load_alert_list(AlertNode** head) {
     FILE* fp = fopen(DATA_DIR "alerts.txt", "r");
     if (fp == NULL) return 0;
 
-    // 跳过表头
+    // 璺宠繃琛ㄥご
     char header_buffer[512];
     if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
         fclose(fp);
@@ -880,16 +880,16 @@ int load_alert_list(AlertNode** head) {
             strcpy(message, line);
             strcpy(time_str, last_pipe + 1);
             
-            // 解析日期时间字符�?(格式: YYYY-MM-DD HH:MM:SS)
+            // 瑙ｆ瀽鏃ユ湡鏃堕棿瀛楃涓?(鏍煎紡: YYYY-MM-DD HH:MM:SS)
             struct tm tm = {0};
             if (sscanf(time_str, "%d-%d-%d %d:%d:%d", 
                        &tm.tm_year, &tm.tm_mon, &tm.tm_mday,
                        &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 6) {
-                tm.tm_year -= 1900;  // 年份�?900开�?
-                tm.tm_mon -= 1;      // 月份�?开�?
+                tm.tm_year -= 1900;  // 骞翠唤浠?900寮€濮?
+                tm.tm_mon -= 1;      // 鏈堜唤浠?寮€濮?
                 alert_time = mktime(&tm);
             } else {
-                // 解析失败，使用当前时�?
+                // 瑙ｆ瀽澶辫触锛屼娇鐢ㄥ綋鍓嶆椂闂?
                 alert_time = time(NULL);
             }
         } else {
@@ -920,8 +920,8 @@ int save_complaint_list(ComplaintNode* head) {
     FILE* fp = fopen(DATA_DIR "complaints.txt", "w");
     if (fp == NULL) return 0;
 
-    // 写入表头
-    fprintf(fp, "投诉编号|患者编号|目标类型(1=医生,2=护士/前台,3=药师)|目标ID|目标名称|投诉内容|状�?0=待处�?1=已回�?|回复|提交时间\n");
+    // 鍐欏叆琛ㄥご
+    fprintf(fp, "鎶曡瘔缂栧彿|鎮ｈ€呯紪鍙穦鐩爣绫诲瀷(1=鍖荤敓,2=鎶ゅ＋/鍓嶅彴,3=鑽笀)|鐩爣ID|鐩爣鍚嶇О|鎶曡瘔鍐呭|鐘舵€?0=寰呭鐞?1=宸插洖澶?|鍥炲|鎻愪氦鏃堕棿\n");
 
     ComplaintNode* curr = head->next;
     while (curr != NULL) {
@@ -939,7 +939,7 @@ int load_complaint_list(ComplaintNode** head) {
     FILE* fp = fopen(DATA_DIR "complaints.txt", "r");
     if (fp == NULL) return 0;
 
-    // 跳过表头
+    // 璺宠繃琛ㄥご
     char header_buffer[512];
     if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
         fclose(fp);
@@ -977,7 +977,7 @@ int save_log_list(LogNode* head) {
     FILE* fp = fopen(DATA_DIR "logs.txt", "w");
     if (fp == NULL) return 0;
 
-    fprintf(fp, "时间戳|操作|目标|描述\n");
+    fprintf(fp, "鏃堕棿鎴硘鎿嶄綔|鐩爣|鎻忚堪\n");
 
     LogNode* curr = head->next;
     while (curr != NULL) {
@@ -1039,8 +1039,8 @@ int save_inpatient_list(InpatientRecord* head) {
     FILE* fp = fopen(DATA_DIR "inpatients.txt", "w");
     if (fp == NULL) return 0;
 
-    // 写入表头
-    fprintf(fp, "住院记录编号|患者编号|床位号|初分床位号|病房类型(1=普�?2=ICU,3=隔离病房,4=单人病房)|推荐病房类型(1=普�?2=ICU,3=隔离病房,4=单人病房)|预计天数|已住天数|押金余额|是否活跃(0=�?1=�?|最近一次日结时间戳\n");
+    // 鍐欏叆琛ㄥご
+    fprintf(fp, "浣忛櫌璁板綍缂栧彿|鎮ｈ€呯紪鍙穦搴婁綅鍙穦鍒濆垎搴婁綅鍙穦鐥呮埧绫诲瀷(1=鏅€?2=ICU,3=闅旂鐥呮埧,4=鍗曚汉鐥呮埧)|鎺ㄨ崘鐥呮埧绫诲瀷(1=鏅€?2=ICU,3=闅旂鐥呮埧,4=鍗曚汉鐥呮埧)|棰勮澶╂暟|宸蹭綇澶╂暟|鎶奸噾浣欓|鏄惁娲昏穬(0=鍚?1=鏄?|鏈€杩戜竴娆℃棩缁撴椂闂存埑\n");
 
     InpatientRecord* curr = head->next;
     while (curr != NULL) {
@@ -1049,7 +1049,7 @@ int save_inpatient_list(InpatientRecord* head) {
             time_t settlement_time = (time_t)curr->last_settlement_time;
             strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", localtime(&settlement_time));
         } else {
-            strcpy(time_str, "未日结");
+            strcpy(time_str, "鏈棩缁?);
         }
         fprintf(fp, "%s|%s|%s|%s|%d|%d|%d|%d|%.2f|%d|%s\n",
             curr->inpatient_id, curr->patient_id, curr->bed_id, curr->original_bed_id,
@@ -1067,7 +1067,7 @@ int load_inpatient_list(InpatientRecord** head) {
     FILE* fp = fopen(DATA_DIR "inpatients.txt", "r");
     if (fp == NULL) return 0;
 
-    // 跳过表头
+    // 璺宠繃琛ㄥご
     char header_buffer[512];
     if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
         fclose(fp);
@@ -1100,18 +1100,18 @@ int load_inpatient_list(InpatientRecord** head) {
         deposit_balance = atof(fields[8]);
         is_active = atoi(fields[9]);
         
-        // 解析时间字段
-        if (strcmp(fields[10], "未日结") != 0) {
+        // 瑙ｆ瀽鏃堕棿鎴?
+        if (strcmp(fields[10], "鏈棩缁?) != 0) {
             int year, month, day, hour, minute, second;
             if (sscanf(fields[10], "%d-%d-%d %d:%d:%d", &year, &month, &day, &hour, &minute, &second) == 6) {
                 struct tm tm_time;
-                tm_time.tm_year = year - 1900;  // 年份从1900开始
-                tm_time.tm_mon = month - 1;      // 月份从0开始
+                tm_time.tm_year = year - 1900;  // 骞翠唤浠?900寮€濮?
+                tm_time.tm_mon = month - 1;      // 鏈堜唤浠?寮€濮?
                 tm_time.tm_mday = day;
                 tm_time.tm_hour = hour;
                 tm_time.tm_min = minute;
                 tm_time.tm_sec = second;
-                tm_time.tm_isdst = -1;  // 自动检测夏令时
+                tm_time.tm_isdst = -1;  // 鑷姩妫€娴嬪浠ゆ椂
                 last_settlement_time = (long)mktime(&tm_time);
             }
         }
@@ -1131,7 +1131,7 @@ int load_inpatient_list(InpatientRecord** head) {
     return 1;
 }
 
-// 回收站列表持久化函数声明
+// 鍥炴敹绔欏垪琛ㄦ寔涔呭寲鍑芥暟澹版槑
 int save_recycle_list(RecycleNode* head);
 int load_recycle_list(RecycleNode** head);
 
@@ -1174,7 +1174,7 @@ int load_all_data() {
 }
 
 // -----------------------------------------------------------------------------
-// 保存回收站列�?
+// 淇濆瓨鍥炴敹绔欏垪琛?
 // -----------------------------------------------------------------------------
 int save_recycle_list(RecycleNode* head)
 {
@@ -1184,8 +1184,8 @@ int save_recycle_list(RecycleNode* head)
         return 0;
     }
 
-    // 写入表头
-    fprintf(fp, "回收站编号|类型|原编号|名称|删除时间|操作人|原因|是否恢复|药品编号|商品名|别名|通用名|单价|库存|医保类型|有效期\n");
+    // 鍐欏叆琛ㄥご
+    fprintf(fp, "鍥炴敹绔欑紪鍙穦绫诲瀷|鍘熺紪鍙穦鍚嶇О|鍒犻櫎鏃堕棿|鎿嶄綔浜簗鍘熷洜|鏄惁鎭㈠|鑽搧缂栧彿|鍟嗗搧鍚峾鍒悕|閫氱敤鍚峾鍗曚环|搴撳瓨|鍖讳繚绫诲瀷|鏈夋晥鏈焅n");
 
     RecycleNode* curr = head->next;
     while (curr != NULL)
@@ -1216,21 +1216,21 @@ int save_recycle_list(RecycleNode* head)
 }
 
 // -----------------------------------------------------------------------------
-// 加载回收站列�?
+// 鍔犺浇鍥炴敹绔欏垪琛?
 // -----------------------------------------------------------------------------
 int load_recycle_list(RecycleNode** head)
 {
     FILE* fp = fopen("data/recycle.txt", "r");
     if (fp == NULL)
     {
-        // 文件不存在，不报错，保持空链�?
+        // 鏂囦欢涓嶅瓨鍦紝涓嶆姤閿欙紝淇濇寔绌洪摼琛?
         return 1;
     }
 
     char line[4096];
     int line_num = 0;
 
-    // 跳过表头
+    // 璺宠繃琛ㄥご
     if (fgets(line, sizeof(line), fp) == NULL)
     {
         fclose(fp);
@@ -1241,14 +1241,14 @@ int load_recycle_list(RecycleNode** head)
     {
         line_num++;
 
-        // 移除换行�?
+        // 绉婚櫎鎹㈣绗?
         size_t len = strlen(line);
         if (len > 0 && line[len - 1] == '\n')
         {
             line[len - 1] = '\0';
         }
 
-        // �?| 分割字段
+        // 鎸?| 鍒嗗壊瀛楁
         char* token;
         char* rest = line;
         int field_idx = 0;
@@ -1294,14 +1294,14 @@ int load_recycle_list(RecycleNode** head)
             field_idx++;
         }
 
-        // 创建新节�?
+        // 鍒涘缓鏂拌妭鐐?
         RecycleNode* new_node = (RecycleNode*)malloc(sizeof(RecycleNode));
         if (new_node == NULL)
         {
             continue;
         }
 
-        // 初始化节�?
+        // 鍒濆鍖栬妭鐐?
         strncpy(new_node->recycle_id, recycle_id, MAX_ID_LEN - 1);
         new_node->type = type;
         strncpy(new_node->source_id, source_id, MAX_ID_LEN - 1);
@@ -1311,7 +1311,7 @@ int load_recycle_list(RecycleNode** head)
         strncpy(new_node->reason, reason, MAX_RECORD_LEN - 1);
         new_node->is_restored = is_restored;
 
-        // 恢复药品备份信息
+        // 鎭㈠鑽搧澶囦唤淇℃伅
         strncpy(new_node->medicine_backup.id, med_id, MAX_ID_LEN - 1);
         strncpy(new_node->medicine_backup.name, med_name, MAX_NAME_LEN - 1);
         strncpy(new_node->medicine_backup.alias, med_alias, MAX_NAME_LEN - 1);
@@ -1326,7 +1326,7 @@ int load_recycle_list(RecycleNode** head)
         new_node->prev = NULL;
         new_node->next = NULL;
 
-        // 插入链表尾部
+        // 鎻掑叆閾捐〃灏鹃儴
         RecycleNode* tail = *head;
         while (tail->next != NULL)
         {

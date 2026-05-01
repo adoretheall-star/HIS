@@ -68,6 +68,14 @@ typedef enum //病房类型
     WARD_TYPE_SINGLE = 4 // 单人病房
 } WardType;
 
+typedef enum // 回收站类型
+{
+    RECYCLE_MEDICINE = 1,   // 药品
+    RECYCLE_CHECK_ITEM = 2, // 检查项目
+    RECYCLE_ACCOUNT = 3,    // 账号
+    RECYCLE_WARD = 4        // 病房
+} RecycleType;
+
 // ==========================================
 // 3. 附属结构体定义
 // ==========================================
@@ -301,6 +309,24 @@ typedef struct LogNode {
     struct LogNode* next;       // 指向下一条日志
 } LogNode;
 
+// 【实体 12：回收站双向链表】
+typedef struct RecycleNode
+{
+    char recycle_id[MAX_ID_LEN];        // 回收站编号，例如 R-001
+    RecycleType type;                   // 回收对象类型
+    char source_id[MAX_ID_LEN];         // 原始编号，例如 M-001
+    char source_name[MAX_NAME_LEN];     // 原始名称
+    char delete_time[20];               // 删除时间
+    char deleted_by[MAX_ID_LEN];        // 操作人
+    char reason[MAX_RECORD_LEN];        // 删除/下架原因
+
+    MedicineNode medicine_backup;       // 当前先备份药品信息
+    int is_restored;                    // 0=未恢复，1=已恢复
+
+    struct RecycleNode* prev;
+    struct RecycleNode* next;
+} RecycleNode;
+
 // ==========================================
 // 6. 全局头结点声明 (外部文件通过 extern 共享)
 // ==========================================
@@ -318,6 +344,7 @@ extern AlertNode* g_alert_list;              // 安全预警队列
 extern ComplaintNode* g_complaint_list;      // 投诉工单链表
 extern LogNode* g_log_list;
 extern InpatientRecord* g_inpatient_list;
+extern RecycleNode* g_recycle_list;           // 回收站链表
 // ==========================================
 // 7. 功能：安全删除节点 (Delete)
 // ==========================================
