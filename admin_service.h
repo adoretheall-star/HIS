@@ -84,6 +84,7 @@ void show_evaluation_statistics(void);
 void handle_medicine_register(void);
 void handle_medicine_basic_info_update(void);
 void handle_medicine_stock_update(void);
+void handle_medicine_search(void);
 void handle_expiring_medicine_check(void);
 void handle_medicine_remove(void);
 
@@ -93,5 +94,10 @@ void search_check_item_by_keyword(const char* keyword);
 void handle_check_item_register(void);
 void handle_check_item_update(void);
 void handle_check_item_remove(void);
+
+// 回收站管理
+void admin_recycle_bin_menu(void);
+void show_recycle_bin(void);
+void handle_restore_medicine_from_recycle(void);
 
 #endif // ADMIN_SERVICE_H

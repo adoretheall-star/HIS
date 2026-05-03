@@ -25,6 +25,7 @@ AlertNode* g_alert_list = NULL;              // 安全预警队列
 ComplaintNode* g_complaint_list = NULL;      // 投诉工单链表
 LogNode* g_log_list = NULL;
 InpatientRecord* g_inpatient_list = NULL;
+RecycleNode* g_recycle_list = NULL;           // 回收站链表
 //一、患者链表操作
 // ---------------------------------------------------------
 // 功能 1：初始化带头结点的双向链表
@@ -1530,5 +1531,163 @@ void insert_log_tail(LogNode* head, LogNode* new_node) {
     }
     
     curr->next = new_node;
+}
+
+// ==========================================
+// 十二、回收站链表操作
+// ==========================================
+
+// 初始化回收站链表
+RecycleNode* init_recycle_list(void) {
+    RecycleNode* head = (RecycleNode*)malloc(sizeof(RecycleNode));
+    if (head == NULL) return NULL;
+    
+    strncpy(head->recycle_id, "HEAD", MAX_ID_LEN - 1);
+    head->recycle_id[MAX_ID_LEN - 1] = '\0';
+    head->prev = NULL;
+    head->next = NULL;
+    head->is_restored = 0;
+    
+    return head;
+}
+
+// 生成回收站编号
+void generate_recycle_id(char* new_id) {
+    if (new_id == NULL) return;
+    
+    int max_num = 0;
+    RecycleNode* curr = g_recycle_list;
+    
+    while (curr != NULL) {
+        if (curr->recycle_id[0] == 'R' && curr->recycle_id[1] == '-') {
+            int num = atoi(curr->recycle_id + 2);
+            if (num > max_num) {
+                max_num = num;
+            }
+        }
+        curr = curr->next;
+    }
+    
+    sprintf(new_id, "R-%03d", max_num + 1);
+}
+
+// 创建药品回收节点
+RecycleNode* create_recycle_medicine_node(
+    const char* recycle_id,
+    const MedicineNode* medicine,
+    const char* deleted_by,
+    const char* reason
+) {
+    if (medicine == NULL) return NULL;
+    
+    RecycleNode* new_node = (RecycleNode*)malloc(sizeof(RecycleNode));
+    if (new_node == NULL) return NULL;
+    
+    // 设置回收站编号
+    if (recycle_id != NULL) {
+        strncpy(new_node->recycle_id, recycle_id, MAX_ID_LEN - 1);
+    } else {
+        new_node->recycle_id[0] = '\0';
+    }
+    new_node->recycle_id[MAX_ID_LEN - 1] = '\0';
+    
+    // 设置类型为药品
+    new_node->type = RECYCLE_MEDICINE;
+    
+    // 复制药品原始信息
+    strncpy(new_node->source_id, medicine->id, MAX_ID_LEN - 1);
+    new_node->source_id[MAX_ID_LEN - 1] = '\0';
+    strncpy(new_node->source_name, medicine->name, MAX_NAME_LEN - 1);
+    new_node->source_name[MAX_NAME_LEN - 1] = '\0';
+    
+    // 设置操作人
+    if (deleted_by != NULL && strlen(deleted_by) > 0) {
+        strncpy(new_node->deleted_by, deleted_by, MAX_ID_LEN - 1);
+    } else {
+        strncpy(new_node->deleted_by, "SYSTEM", MAX_ID_LEN - 1);
+    }
+    new_node->deleted_by[MAX_ID_LEN - 1] = '\0';
+    
+    // 设置删除原因
+    if (reason != NULL && strlen(reason) > 0) {
+        strncpy(new_node->reason, reason, MAX_RECORD_LEN - 1);
+    } else {
+        strncpy(new_node->reason, "管理员下架药品", MAX_RECORD_LEN - 1);
+    }
+    new_node->reason[MAX_RECORD_LEN - 1] = '\0';
+    
+    // 设置删除时间
+    time_t now = time(NULL);
+    struct tm* t = localtime(&now);
+    sprintf(new_node->delete_time, "%04d-%02d-%02d %02d:%02d:%02d",
+            t->tm_year + 1900, t->tm_mon + 1, t->tm_mday,
+            t->tm_hour, t->tm_min, t->tm_sec);
+    
+    // 备份药品信息
+    new_node->medicine_backup = *medicine;
+    new_node->medicine_backup.prev = NULL;
+    new_node->medicine_backup.next = NULL;
+    
+    // 设置恢复状态
+    new_node->is_restored = 0;
+    
+    // 初始化链表指针
+    new_node->prev = NULL;
+    new_node->next = NULL;
+    
+    return new_node;
+}
+
+// 尾插法插入回收站链表
+void insert_recycle_tail(RecycleNode* head, RecycleNode* new_node) {
+    if (head == NULL || new_node == NULL) return;
+    
+    RecycleNode* curr = head;
+    while (curr->next != NULL) {
+        curr = curr->next;
+    }
+    
+    curr->next = new_node;
+    new_node->prev = curr;
+}
+
+// 根据回收站编号查找记录
+RecycleNode* find_recycle_by_id(RecycleNode* head, const char* recycle_id) {
+    if (head == NULL || recycle_id == NULL) return NULL;
+    
+    RecycleNode* curr = head->next;
+    while (curr != NULL) {
+        if (strcmp(curr->recycle_id, recycle_id) == 0) {
+            return curr;
+        }
+        curr = curr->next;
+    }
+    
+    return NULL;
+}
+
+// 根据回收站编号删除节点
+int remove_recycle_node_by_id(RecycleNode* head, const char* recycle_id) {
+    if (head == NULL || recycle_id == NULL) return -1;
+    
+    RecycleNode* curr = head->next;
+    while (curr != NULL) {
+        if (strcmp(curr->recycle_id, recycle_id) == 0) {
+            // 断链
+            if (curr->prev != NULL) {
+                curr->prev->next = curr->next;
+            }
+            if (curr->next != NULL) {
+                curr->next->prev = curr->prev;
+            }
+            
+            // 释放节点
+            free(curr);
+            return 0;
+        }
+        curr = curr->next;
+    }
+    
+    return -1;
 }
 

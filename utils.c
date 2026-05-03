@@ -9,6 +9,7 @@
 #include <limits.h> // 用于 INT_MIN, INT_MAX
 #include <errno.h> // 用于 errno
 #include <math.h> // 用于 isnan, isinf, isfinite
+#include <conio.h> // 用于 _getch()
 #include "global.h" // 需要访问全局链表和结构体
 #include "utils.h" // 必须把自己的说明书引进来
 // 1. 工业级安全整数读取（彻底吃掉残留回车）
@@ -77,7 +78,121 @@ void get_safe_string(const char* prompt, char* buffer, int max_len)
         }
     }
 }
-//4.身份证基础格式校验
+
+// 4. 获取密码输入（支持Tab切换显示/隐藏，星号掩码）
+void get_password_with_toggle(const char* prompt, char* buffer, int max_len)
+{
+    int index = 0;
+    int show_password = 0;  // 0=隐藏，1=显示
+    int ch;
+    int i;
+
+    if (buffer == NULL || max_len <= 0)
+    {
+        return;
+    }
+
+    buffer[0] = '\0';
+
+    if (prompt != NULL)
+    {
+        printf("%s", prompt);
+    }
+
+    while (1)
+    {
+        ch = _getch();
+
+        // Enter 键：结束输入
+        if (ch == '\r' || ch == '\n')
+        {
+            buffer[index] = '\0';
+            printf("\n");
+            return;
+        }
+
+        // Backspace 键：删除一个字符
+        if (ch == 8 || ch == 127)
+        {
+            if (index > 0)
+            {
+                index--;
+                buffer[index] = '\0';
+            }
+        }
+        // Tab 键：切换显示/隐藏
+        else if (ch == 9)
+        {
+            show_password = !show_password;
+        }
+        // 普通可打印字符
+        else if (ch >= 32 && ch <= 126)
+        {
+            if (index < max_len - 1)
+            {
+                buffer[index++] = (char)ch;
+                buffer[index] = '\0';
+            }
+        }
+        else
+        {
+            // 其他控制键直接忽略
+            continue;
+        }
+
+        // 重绘当前输入行
+        printf("\r");
+
+        if (prompt != NULL)
+        {
+            printf("%s", prompt);
+        }
+
+        if (show_password)
+        {
+            printf("%s", buffer);
+        }
+        else
+        {
+            for (i = 0; i < index; i++)
+            {
+                putchar('*');
+            }
+        }
+
+        // 清理行尾残留字符
+        printf("                    ");
+
+        // 再回到正确位置重新绘制一次，避免残留
+        printf("\r");
+
+        if (prompt != NULL)
+        {
+            printf("%s", prompt);
+        }
+
+        if (show_password)
+        {
+            printf("%s", buffer);
+        }
+        else
+        {
+            for (i = 0; i < index; i++)
+            {
+                putchar('*');
+            }
+        }
+    }
+}
+
+// 5. 获取敏感信息输入（支持Tab切换显示/隐藏，星号掩码）
+void get_sensitive_string_with_toggle(const char* prompt, char* buffer, int max_len)
+{
+    // 复用密码输入逻辑，避免重复代码
+    get_password_with_toggle(prompt, buffer, max_len);
+}
+
+//5.身份证基础格式校验
 int validate_id_card(const char* id_card) 
 {
     int i;
@@ -107,8 +222,8 @@ int validate_patient_id(const char* patient_id)
     int len = strlen(patient_id);
     if (len != 6) return 0;
     
-    // 检查格式：P-数字
-    if (patient_id[0] != 'P' || patient_id[1] != '-') return 0;
+    // 检查格式：P-数字（兼容小写p）
+    if ((patient_id[0] != 'P' && patient_id[0] != 'p') || patient_id[1] != '-') return 0;
     
     // 检查后面的数字部分
     for (i = 2; i < len; i++)
@@ -118,8 +233,16 @@ int validate_patient_id(const char* patient_id)
             return 0;
         }
     }
-    
     return 1;
+}
+
+//6. 患者编号规范化（小写p转大写P）
+void normalize_patient_id(char* patient_id)
+{
+    if (patient_id != NULL && patient_id[0] == 'p')
+    {
+        patient_id[0] = 'P';
+    }
 }
 
 //6.身份证号脱敏
@@ -145,6 +268,18 @@ void mask_id_card(const char* src, char* dest)
         dest[i] = src[i];
     }
     dest[18] = '\0';
+}
+
+const char* getRoleName(int roleId)
+{
+    switch (roleId)
+    {
+        case 1: return "医生";
+        case 2: return "护士";
+        case 3: return "药师";
+        case 4: return "管理员";
+        default: return "未知角色";
+    }
 }
 
 // 获取预约状态文本
@@ -956,4 +1091,66 @@ void print_line_separator(int length)
         printf("-");
     }
     printf("\n");
+}
+
+// 27. 通用菜单选择输入（支持 B 返回上一级，Q 退出系统）
+// 返回值：-1=返回上一级，-2=退出系统，其他值=有效选择
+int inputChoice(int min, int max)
+{
+    char buffer[64];
+    char prompt[128];
+    snprintf(prompt, sizeof(prompt), "请输入选择：");
+    
+    while (1)
+    {
+        get_safe_string(prompt, buffer, sizeof(buffer));
+        
+        // 检查是否输入B/b返回上一级
+        if (strcasecmp(buffer, "B") == 0)
+        {
+            return -1;
+        }
+        
+        // 检查是否输入Q/q退出系统
+        if (strcasecmp(buffer, "Q") == 0)
+        {
+            return -2;
+        }
+        
+        // 检查是否为空
+        if (is_blank_string(buffer))
+        {
+            printf("⚠️ 输入不能为空，请重新输入。\n");
+            continue;
+        }
+        
+        // 检查是否为纯数字
+        int is_numeric = 1;
+        for (int i = 0; buffer[i] != '\0'; i++)
+        {
+            if (!isdigit(buffer[i]) && buffer[i] != '-')
+            {
+                is_numeric = 0;
+                break;
+            }
+        }
+        
+        if (!is_numeric)
+        {
+            printf("⚠️ 无效输入，请输入 %d-%d 的数字，或输入 B 返回，Q 退出。\n", min, max);
+            continue;
+        }
+        
+        // 转换为整数
+        int value = atoi(buffer);
+        
+        // 检查范围
+        if (value < min || value > max)
+        {
+            printf("⚠️ 输入超出范围，请输入 %d-%d 的数字，或输入 B 返回，Q 退出。\n", min, max);
+            continue;
+        }
+        
+        return value;
+    }
 }
