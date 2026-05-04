@@ -167,6 +167,7 @@ printf("  [8] 查看药师值班状态\n");
         printf("  [21] 检查项目管理\n");
         printf("  [22] 查询检查记录\n");
         printf("  [23] 回收站管理\n");
+        printf("  [24] 医疗风险大屏\n");
         printf("  [0] 退出登录\n");
         printf("------------------------------------------------------\n");
 
@@ -265,6 +266,9 @@ printf("  [8] 查看药师值班状态\n");
             case 23:
                 admin_recycle_bin_menu();
                 system("pause");
+                break;
+            case 24:
+                show_admin_medical_big_screen();
                 break;
             case 0:
                 running = 0;
@@ -7855,7 +7859,7 @@ int main()
                 patient_self_service_menu();
                 break;
             case 3:
-                show_medical_big_screen();
+                show_public_medical_big_screen();
                 break;
             case 0:
                 // 准备退出主循环

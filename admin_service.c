@@ -3936,7 +3936,9 @@ static void print_progress_bar(const char* label, int value, int total, int widt
         ratio = value * 100.0 / total;
     }
 
-    if (total > 0 && ratio >= 90.0)
+    if (completed == width && total > 0)
+        set_console_color(12);
+    else if (total > 0 && ratio >= 90.0)
         set_console_color(12);
     else if (total > 0 && ratio >= 60.0)
         set_console_color(14);
@@ -3956,7 +3958,349 @@ static void print_progress_bar(const char* label, int value, int total, int widt
         printf("] 0/0\n");
 }
 
-void show_medical_big_screen(void)
+static void print_progress_bar_busy(const char* label, int value, int total, int width, int green_pct, int yellow_pct)
+{
+    int completed;
+    double ratio = 0.0;
+    int i;
+
+    printf("%-12s [", label);
+
+    if (total <= 0)
+    {
+        completed = 0;
+        ratio = 0.0;
+    }
+    else
+    {
+        completed = value * width / total;
+        if (completed < 0) completed = 0;
+        if (completed > width) completed = width;
+        ratio = value * 100.0 / total;
+    }
+
+    if (completed == width && total > 0)
+        set_console_color(12);
+    else if (total > 0 && ratio >= (double)yellow_pct)
+        set_console_color(12);
+    else if (total > 0 && ratio >= (double)green_pct)
+        set_console_color(14);
+    else
+        set_console_color(10);
+
+    for (i = 0; i < completed; i++)
+        printf("█");
+    for (; i < width; i++)
+        printf("-");
+
+    reset_console_color();
+
+    if (total > 0)
+        printf("] %d/%d\n", value, total);
+    else
+        printf("] 0/0\n");
+}
+
+static void print_progress_bar_cyan(const char* label, int value, int total, int width)
+{
+    int completed;
+    double ratio = 0.0;
+    int i;
+
+    printf("%-12s [", label);
+
+    if (total <= 0)
+    {
+        completed = 0;
+        ratio = 0.0;
+    }
+    else
+    {
+        completed = value * width / total;
+        if (completed < 0) completed = 0;
+        if (completed > width) completed = width;
+        ratio = value * 100.0 / total;
+    }
+
+    if (completed == width && total > 0)
+        set_console_color(12);
+    else if (total > 0 && ratio >= 90.0)
+        set_console_color(12);
+    else if (total > 0 && ratio >= 60.0)
+        set_console_color(14);
+    else
+        set_console_color(10);
+
+    for (i = 0; i < completed; i++)
+        printf("█");
+    for (; i < width; i++)
+        printf("-");
+
+    reset_console_color();
+
+    if (total > 0)
+        printf("] %d/%d\n", value, total);
+    else
+        printf("] 0/0\n");
+}
+
+ void show_public_medical_big_screen(void)
+ {
+     int running = 1;
+
+     while (running)
+     {
+         system("cls");
+
+         /* ===== 1. 门诊候诊概况 ===== */
+         int patient_total = 0;
+         int pending_count = 0;
+         int examining_count = 0;
+         int wait_med_count = 0;
+
+         if (g_patient_list != NULL)
+         {
+             PatientNode* curr = g_patient_list->next;
+             while (curr != NULL)
+             {
+                 patient_total++;
+                 switch (curr->status)
+                 {
+                     case STATUS_PENDING:          pending_count++;   break;
+                     case STATUS_EXAMINING:        examining_count++; break;
+                     case STATUS_WAIT_MED:         wait_med_count++;  break;
+                     default:                                         break;
+                 }
+                 curr = curr->next;
+             }
+         }
+
+         /* ===== 2. 预约挂号概况 ===== */
+         int appointment_total = 0;
+         int checked_in_count = 0;
+         int walk_in_count = 0;
+         int appointment_count = 0;
+
+         if (g_appointment_list != NULL)
+         {
+             AppointmentNode* curr = g_appointment_list->next;
+             while (curr != NULL)
+             {
+                 appointment_total++;
+                 if (curr->appointment_status == CHECKED_IN)
+                     checked_in_count++;
+                 if (curr->is_walk_in == 1)
+                     walk_in_count++;
+                 else
+                     appointment_count++;
+                 curr = curr->next;
+             }
+         }
+
+         /* ===== 3. 床位资源 ===== */
+         int bed_total = 0;
+         int bed_occupied = 0;
+         int bed_free = 0;
+         double bed_occupancy_rate = 0.0;
+
+         if (g_ward_list != NULL)
+         {
+             WardNode* curr = g_ward_list->next;
+             while (curr != NULL)
+             {
+                 bed_total++;
+                 if (curr->is_occupied != 0)
+                     bed_occupied++;
+                 else
+                     bed_free++;
+                 curr = curr->next;
+             }
+         }
+         if (bed_total > 0)
+             bed_occupancy_rate = bed_occupied * 100.0 / bed_total;
+
+         /* ===== 4. 医护在岗 ===== */
+         int doctor_total = 0;
+         int nurse_total = 0;
+         int pharmacist_total = 0;
+         int doctor_on_duty = 0;
+         int nurse_on_duty = 0;
+         int pharmacist_on_duty = 0;
+
+         if (g_account_list != NULL)
+         {
+             AccountNode* curr = g_account_list->next;
+             while (curr != NULL)
+             {
+                 switch (curr->role)
+                 {
+                     case ROLE_DOCTOR:
+                         doctor_total++;
+                         if (curr->is_on_duty == 1) doctor_on_duty++;
+                         break;
+                     case ROLE_NURSE:
+                         nurse_total++;
+                         if (curr->is_on_duty == 1) nurse_on_duty++;
+                         break;
+                     case ROLE_PHARMACIST:
+                         pharmacist_total++;
+                         if (curr->is_on_duty == 1) pharmacist_on_duty++;
+                         break;
+                     default:
+                         break;
+                 }
+                 curr = curr->next;
+             }
+         }
+
+         /* ===== 输出界面 ===== */
+         printf("\n");
+         printf("==============================================================\n");
+         printf("         📊 社区智慧医疗管理系统 - 医疗大屏（公共版）\n");
+         printf("==============================================================\n");
+
+         /* ---- 门诊候诊概况 ---- */
+         {
+             printf("\n");
+             printf("---------------------  【门诊候诊概况】  ---------------------\n");
+             printf("患者总数：%-7d 待诊人数：%-7d\n", patient_total, pending_count);
+             printf("检查中：%-9d 待取药：%-9d\n", examining_count, wait_med_count);
+         }
+
+         /* ---- 医生候诊队列 ---- */
+         {
+             printf("\n");
+             printf("---------------------  【医生候诊队列】  ---------------------\n");
+
+             if (g_doctor_list != NULL)
+             {
+                 DoctorNode* doc = g_doctor_list->next;
+                 int has_doc = 0;
+                 while (doc != NULL)
+                 {
+                     int queue = 0;
+                     if (g_patient_list != NULL)
+                     {
+                         PatientNode* p = g_patient_list->next;
+                         while (p != NULL)
+                         {
+                             if (p->status == STATUS_PENDING &&
+                                 strcmp(p->doctor_id, doc->id) == 0)
+                                 queue++;
+                             p = p->next;
+                         }
+                     }
+
+                     char label[24];
+                     snprintf(label, sizeof(label), "%s(%s)", doc->name, doc->department);
+                     printf("  %-20s ", label);
+
+                     if (doc->is_on_duty == 1)
+                     {
+                         const char* busy_text;
+                         int color;
+                         if (queue <= 5)      { busy_text = "空闲";    color = 10; }
+                         else if (queue <= 12) { busy_text = "较忙";  color = 14; }
+                         else                 { busy_text = "拥挤";    color = 12; }
+
+                         set_console_color(color);
+                         printf("%-4s", busy_text);
+                         reset_console_color();
+                         printf(" [");
+
+                         int bar_width = 20;
+                         int filled = (queue > 20) ? 20 : queue;
+                         set_console_color(color);
+                         int j;
+                         for (j = 0; j < filled; j++) printf("█");
+                         for (; j < bar_width; j++) printf("-");
+                         reset_console_color();
+                         printf("] %d人\n", queue);
+                     }
+                     else
+                     {
+                         set_console_color(8);
+                         printf("不在岗");
+                         reset_console_color();
+                         printf(" [--------------------] 0人\n");
+                     }
+
+                     has_doc = 1;
+                     doc = doc->next;
+                 }
+                 if (!has_doc)
+                     printf("  暂无医生数据\n");
+             }
+             else
+             {
+                 printf("  暂无医生数据\n");
+             }
+         }
+
+         /* ---- 预约挂号概况 ---- */
+         {
+             printf("\n");
+             printf("---------------------  【预约挂号概况】  ---------------------\n");
+             printf("预约总数：%-7d 已签到/已挂号：%-5d\n",
+                    appointment_total, checked_in_count);
+             printf("现场号：%-9d 预约号：%-7d\n",
+                    walk_in_count, appointment_count);
+
+             print_progress_bar_cyan("已签到/挂号", checked_in_count, appointment_total, 20);
+         }
+
+         /* ---- 床位资源 ---- */
+         {
+             char buf[64];
+
+             printf("\n");
+             printf("---------------------  【床位资源】  -------------------------\n");
+             printf("床位总数：%-7d 已占用：%-7d 空闲：%-7d\n",
+                    bed_total, bed_occupied, bed_free);
+
+             printf("床位占用率：");
+             snprintf(buf, sizeof(buf), "%.1f%%", bed_occupancy_rate);
+             if (bed_occupancy_rate >= 90.0) print_red(buf);
+             else if (bed_occupancy_rate >= 70.0) print_yellow(buf);
+             else print_green(buf);
+             printf("\n");
+
+             print_progress_bar_busy("床位占用", bed_occupied, bed_total, 20, 70, 90);
+         }
+
+         /* ---- 医护在岗 ---- */
+         {
+             printf("\n");
+             printf("---------------------  【医护在岗】  -------------------------\n");
+             printf("医生：%d / 在岗 %d\n", doctor_total, doctor_on_duty);
+             printf("护士：%d / 在岗 %d\n", nurse_total, nurse_on_duty);
+             printf("药师：%d / 在岗 %d\n", pharmacist_total, pharmacist_on_duty);
+         }
+
+         printf("\n");
+         printf("------------------------------------------------------------\n");
+         printf("提示：以上为公共脱敏数据，完整风险统计请管理员登录后查看。\n");
+         printf("按 R 刷新大屏，按 0 返回主菜单\n");
+
+         char ch = get_single_char("请输入操作: ");
+
+         if (ch == 'R' || ch == 'r')
+         {
+             continue;
+         }
+         else if (ch == '0')
+         {
+             running = 0;
+         }
+         else
+         {
+             printf("\n无效输入，请重新输入。\n");
+             system("pause");
+         }
+     }
+ }
+
+ void show_admin_medical_big_screen(void)
 {
     int running = 1;
 
