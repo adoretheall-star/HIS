@@ -3,6 +3,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <windows.h>
+#include <direct.h>
+#include <time.h>
 
 #ifdef STATUS_PENDING
 #undef STATUS_PENDING
@@ -3831,6 +3833,97 @@ void handle_remove_medicine_from_shelf(void)
     remove_medicine(med_id);
 }
 
+// 前向声明
+extern int soft_remove_medicine_to_recycle(const char* med_id, const char* deleted_by, const char* reason);
+
+// 删除药品（放入回收站）
+void handle_medicine_remove(void)
+{
+    char med_id[MAX_ID_LEN];
+    char reason[MAX_RECORD_LEN];
+    int confirm = 0;
+    MedicineNode* medicine = NULL;
+
+    while (1)
+    {
+        system("cls");
+        printf("\n================ 删除药品 ================\n");
+        printf("提示：输入 B 返回上一步操作，输入 Q 取消该操作\n\n");
+
+        get_safe_string("请输入要删除的药品编号：", med_id, MAX_ID_LEN);
+
+        if (my_strcasecmp(med_id, "Q") == 0)
+        {
+            printf("已取消操作\n");
+            return;
+        }
+        if (my_strcasecmp(med_id, "B") == 0)
+        {
+            printf("已取消操作\n");
+            return;
+        }
+
+        if (is_blank_string(med_id))
+        {
+            printf("药品编号不能为空，请重新输入\n");
+            printf("\n按任意键继续...\n");
+            system("pause");
+            continue;
+        }
+
+        // 查找药品是否存在
+        medicine = find_medicine_by_id(g_medicine_list, med_id);
+        if (medicine == NULL)
+        {
+            printf("提示：未找到对应药品，删除失败。\n");
+            printf("\n按任意键继续...\n");
+            system("pause");
+            continue;
+        }
+
+        // 显示药品基本信息
+        printf("\n当前药品信息：\n");
+        printf("药品编号：%s\n", medicine->id);
+        printf("商品名：%s\n", medicine->name);
+        printf("通用名：%s\n", medicine->generic_name);
+        printf("别名：%s\n", medicine->alias[0] == '\0' ? "无" : medicine->alias);
+        printf("单价：%.2f\n", medicine->price);
+        printf("库存：%d\n", medicine->stock);
+        printf("效期：%s\n", medicine->expiry_date);
+        printf("----------------------------------------\n");
+
+        // 二次确认
+        printf("是否确定删除该药品？删除后将放入回收站。\n");
+        printf("[1] 确定删除\n");
+        printf("[0] 取消返回\n");
+        confirm = get_safe_int("请输入操作编号: ");
+
+        if (confirm != 1)
+        {
+            printf("提示：已取消删除操作。\n");
+            return;
+        }
+
+        // 输入删除原因
+        get_safe_string("请输入删除原因：", reason, MAX_RECORD_LEN);
+        if (is_blank_string(reason))
+        {
+            strcpy(reason, "管理员删除");
+        }
+
+        // 执行删除操作（放入回收站）
+        if (soft_remove_medicine_to_recycle(med_id, "admin", reason))
+        {
+            printf("提示：药品已成功删除并放入回收站。\n");
+        }
+        else
+        {
+            printf("提示：删除药品失败。\n");
+        }
+        return;
+    }
+}
+
 // 初始化日志列表
 void init_log_list(void)
 {
@@ -5557,6 +5650,1183 @@ static void print_progress_bar_cyan(const char* label, int value, int total, int
         {
             printf("\n❌ 无效输入，请重新输入。\n");
             system("pause");
+        }
+    }
+}
+
+// 确保报表目录存在
+static void ensure_report_dir(void)
+{
+    _mkdir("report");
+}
+
+// 获取当前时间字符串
+static void get_current_time_string(char* buffer, int size)
+{
+    time_t now = time(NULL);
+    struct tm local_tm;
+    localtime_s(&local_tm, &now);
+    strftime(buffer, size, "%Y-%m-%d %H:%M:%S", &local_tm);
+}
+
+// 生成带时间戳的报表文件名
+static void build_report_filename(char* buffer, int size, const char* prefix)
+{
+    time_t now = time(NULL);
+    struct tm local_tm;
+    localtime_s(&local_tm, &now);
+    snprintf(buffer, size, "report/%s_%04d%02d%02d_%02d%02d%02d.txt",
+             prefix,
+             local_tm.tm_year + 1900,
+             local_tm.tm_mon + 1,
+             local_tm.tm_mday,
+             local_tm.tm_hour,
+             local_tm.tm_min,
+             local_tm.tm_sec);
+}
+
+static void write_utf8_bom(FILE* fp)
+{
+    if (fp != NULL)
+    {
+        // 分别写入三个字节，避免 \x 贪婪解析问题
+        fprintf(fp, "%c%c%c", 0xEF, 0xBB, 0xBF);
+    }
+}
+
+// 安全截取 UTF-8 字符串（不截断多字节字符）
+static void safe_utf8_truncate(char* dest, const char* src, int max_bytes)
+{
+    if (dest == NULL || src == NULL || max_bytes <= 0)
+    {
+        if (dest != NULL) dest[0] = '\0';
+        return;
+    }
+    
+    int i = 0;
+    while (i < max_bytes && src[i] != '\0')
+    {
+        // UTF-8 编码规则：
+        // 单字节: 0xxxxxxx (0x00-0x7F)
+        // 双字节: 110xxxxx 10xxxxxx (0xC2-0xDF)
+        // 三字节: 1110xxxx 10xxxxxx 10xxxxxx (0xE0-0xEF)
+        
+        if ((src[i] & 0xE0) == 0xE0 && max_bytes - i >= 3)
+        {
+            // 三字节字符（中文）
+            dest[i] = src[i];
+            dest[i+1] = src[i+1];
+            dest[i+2] = src[i+2];
+            i += 3;
+        }
+        else if ((src[i] & 0xC0) == 0xC0 && max_bytes - i >= 2)
+        {
+            // 双字节字符
+            dest[i] = src[i];
+            dest[i+1] = src[i+1];
+            i += 2;
+        }
+        else if ((src[i] & 0x80) == 0x00)
+        {
+            // 单字节字符
+            dest[i] = src[i];
+            i++;
+        }
+        else
+        {
+            // 无法完整包含当前多字节字符，停止
+            break;
+        }
+    }
+    dest[i] = '\0';
+}
+
+// 写报表头
+static void write_report_header(FILE* fp, const char* title)
+{
+    char time_str[32];
+    get_current_time_string(time_str, sizeof(time_str));
+    
+    fprintf(fp, "============================================================\n");
+    fprintf(fp, "社区智慧医疗管理系统 - %s\n", title);
+    fprintf(fp, "============================================================\n");
+    fprintf(fp, "导出时间：%s\n\n", time_str);
+}
+
+// 日期处理辅助函数 - 解析 YYYY-MM-DD 格式
+static int parse_ymd(const char* date_str, int* y, int* m, int* d)
+{
+    if (date_str == NULL || strlen(date_str) < 10)
+        return 0;
+    
+    return sscanf(date_str, "%d-%d-%d", y, m, d) == 3;
+}
+
+// 日期处理辅助函数 - 计算日期对应的天数
+static int date_to_days(int y, int m, int d)
+{
+    if (m < 3) {
+        y--;
+        m += 12;
+    }
+    return 365 * y + y / 4 - y / 100 + y / 400 + (153 * m - 457) / 5 + d - 306;
+}
+
+// 日期处理辅助函数 - 计算与今天的天数差
+static int days_from_today(const char* date_str)
+{
+    int y, m, d;
+    if (!parse_ymd(date_str, &y, &m, &d))
+        return -9999;
+    
+    time_t now = time(NULL);
+    struct tm local_tm;
+    localtime_s(&local_tm, &now);
+    
+    int today_days = date_to_days(local_tm.tm_year + 1900, local_tm.tm_mon + 1, local_tm.tm_mday);
+    int target_days = date_to_days(y, m, d);
+    
+    return target_days - today_days;
+}
+
+// 患者就诊统计报表
+static int export_patient_report(void)
+{
+    char filename[128];
+    build_report_filename(filename, sizeof(filename), "patient_report");
+    
+    FILE* fp = fopen(filename, "w");
+    if (fp == NULL)
+    {
+        printf("❌ 报表导出失败，请检查 report 目录权限或文件是否被占用。\n");
+        return 0;
+    }
+    write_utf8_bom(fp);
+    
+    // 写入报表头
+    write_report_header(fp, "患者就诊统计报表");
+    
+    // 统计变量
+    int patient_total = 0;
+    int pending_count = 0;
+    int examining_count = 0;
+    int recheck_pending_count = 0;
+    int unpaid_count = 0;
+    int wait_med_count = 0;
+    int need_hospitalize_count = 0;
+    int hospitalized_count = 0;
+    int completed_count = 0;
+    int no_show_count = 0;
+    int emergency_count = 0;
+    int blacklisted_count = 0;
+    double emergency_debt_total = 0.0;
+    
+    // 遍历患者链表
+    if (g_patient_list != NULL)
+    {
+        PatientNode* curr = g_patient_list->next;
+        while (curr != NULL)
+        {
+            patient_total++;
+            
+            switch (curr->status)
+            {
+                case STATUS_PENDING:
+                    pending_count++;
+                    break;
+                case STATUS_EXAMINING:
+                    examining_count++;
+                    break;
+                case STATUS_RECHECK_PENDING:
+                    recheck_pending_count++;
+                    break;
+                case STATUS_UNPAID:
+                    unpaid_count++;
+                    break;
+                case STATUS_WAIT_MED:
+                    wait_med_count++;
+                    break;
+                case STATUS_NEED_HOSPITALIZE:
+                    need_hospitalize_count++;
+                    break;
+                case STATUS_HOSPITALIZED:
+                    hospitalized_count++;
+                    break;
+                case STATUS_COMPLETED:
+                    completed_count++;
+                    break;
+                case STATUS_NO_SHOW:
+                    no_show_count++;
+                    break;
+            }
+            
+            if (curr->is_emergency == 1)
+                emergency_count++;
+            if (curr->is_blacklisted != 0)
+                blacklisted_count++;
+            emergency_debt_total += curr->emergency_debt;
+            
+            curr = curr->next;
+        }
+    }
+    
+    // 写入统计内容
+    fprintf(fp, "【统计汇总】\n");
+    fprintf(fp, "------------------------------------------------------------\n");
+    fprintf(fp, "患者总数：%d\n", patient_total);
+    fprintf(fp, "待诊人数：%d\n", pending_count);
+    fprintf(fp, "检查中人数：%d\n", examining_count);
+    fprintf(fp, "检查后待复诊人数：%d\n", recheck_pending_count);
+    fprintf(fp, "待缴费人数：%d\n", unpaid_count);
+    fprintf(fp, "待取药人数：%d\n", wait_med_count);
+    fprintf(fp, "需住院待登记人数：%d\n", need_hospitalize_count);
+    fprintf(fp, "住院中人数：%d\n", hospitalized_count);
+    fprintf(fp, "就诊结束人数：%d\n", completed_count);
+    fprintf(fp, "过号作废人数：%d\n", no_show_count);
+    fprintf(fp, "急诊患者人数：%d\n", emergency_count);
+    fprintf(fp, "黑名单患者人数：%d\n", blacklisted_count);
+    fprintf(fp, "急诊欠费总金额：%.2f\n", emergency_debt_total);
+    fprintf(fp, "------------------------------------------------------------\n\n");
+    
+    // 写入明细内容
+    fprintf(fp, "【患者明细】\n");
+    fprintf(fp, "------------------------------------------------------------\n");
+    fprintf(fp, "%-12s | %-8s | %-4s | %-4s | %-12s | %-10s | %-10s | %-8s\n",
+            "患者编号", "姓名", "性别", "年龄", "科室", "医生编号", "当前状态", "余额");
+    fprintf(fp, "------------------------------------------------------------\n");
+    
+    if (g_patient_list != NULL)
+    {
+        PatientNode* curr = g_patient_list->next;
+        while (curr != NULL)
+        {
+            fprintf(fp, "%-12s | %-8s | %-4s | %-4d | %-12s | %-10s | %-10s | %-8.2f\n",
+                    curr->id,
+                    curr->name,
+                    curr->gender,
+                    curr->age,
+                    strlen(curr->target_dept) > 0 ? curr->target_dept : "无",
+                    strlen(curr->doctor_id) > 0 ? curr->doctor_id : "无",
+                    get_patient_status_text(curr->status),
+                    curr->balance);
+            curr = curr->next;
+        }
+    }
+    
+    fprintf(fp, "------------------------------------------------------------\n");
+    fclose(fp);
+    
+    printf("✅ 报表导出成功：%s\n", filename);
+    return 1;
+}
+
+// 预约挂号统计报表
+static int export_appointment_report(void)
+{
+    char filename[128];
+    build_report_filename(filename, sizeof(filename), "appointment_report");
+    
+    FILE* fp = fopen(filename, "w");
+    if (fp == NULL)
+    {
+        printf("❌ 报表导出失败，请检查 report 目录权限或文件是否被占用。\n");
+        return 0;
+    }
+    write_utf8_bom(fp);
+    
+    // 写入报表头
+    write_report_header(fp, "预约挂号统计报表");
+    
+    // 统计变量
+    int appointment_total = 0;
+    int reserved_count = 0;
+    int checked_in_count = 0;
+    int cancelled_count = 0;
+    int missed_count = 0;
+    int walk_in_count = 0;
+    int prebook_count = 0;
+    int fee_paid_count = 0;
+    int fee_unpaid_count = 0;
+    
+    // 遍历预约链表
+    if (g_appointment_list != NULL)
+    {
+        AppointmentNode* curr = g_appointment_list->next;
+        while (curr != NULL)
+        {
+            appointment_total++;
+            
+            switch (curr->appointment_status)
+            {
+                case RESERVED:
+                    reserved_count++;
+                    break;
+                case CHECKED_IN:
+                    checked_in_count++;
+                    break;
+                case CANCELLED:
+                    cancelled_count++;
+                    break;
+                case MISSED:
+                    missed_count++;
+                    break;
+            }
+            
+            if (curr->is_walk_in == 1)
+                walk_in_count++;
+            else
+                prebook_count++;
+            
+            if (curr->fee_paid == 1)
+                fee_paid_count++;
+            else
+                fee_unpaid_count++;
+            
+            curr = curr->next;
+        }
+    }
+    
+    // 写入统计内容
+    fprintf(fp, "【统计汇总】\n");
+    fprintf(fp, "------------------------------------------------------------\n");
+    fprintf(fp, "预约总数：%d\n", appointment_total);
+    fprintf(fp, "已预约：%d\n", reserved_count);
+    fprintf(fp, "已签到/已挂号：%d\n", checked_in_count);
+    fprintf(fp, "已取消：%d\n", cancelled_count);
+    fprintf(fp, "已过号：%d\n", missed_count);
+    fprintf(fp, "现场号数量：%d\n", walk_in_count);
+    fprintf(fp, "预约号数量：%d\n", prebook_count);
+    fprintf(fp, "已缴挂号费数量：%d\n", fee_paid_count);
+    fprintf(fp, "未缴挂号费数量：%d\n", fee_unpaid_count);
+    fprintf(fp, "------------------------------------------------------------\n\n");
+    
+    // 写入明细内容
+    fprintf(fp, "【预约明细】\n");
+    fprintf(fp, "----------------------------------------------------------------------------------------------------\n");
+    fprintf(fp, "%-12s | %-10s | %-12s | %-10s | %-10s | %-10s | %-8s | %-6s | %-8s\n",
+            "预约编号", "患者编号", "预约日期", "预约时段", "医生编号", "科室", "状态", "来源", "挂号费状态");
+    fprintf(fp, "----------------------------------------------------------------------------------------------------\n");
+    
+    if (g_appointment_list != NULL)
+    {
+        AppointmentNode* curr = g_appointment_list->next;
+        while (curr != NULL)
+        {
+            const char* source = curr->is_walk_in == 1 ? "现场号" : "预约号";
+            const char* fee_status = curr->fee_paid == 1 ? "已缴费" : "未缴费";
+            
+            fprintf(fp, "%-12s | %-10s | %-12s | %-10s | %-10s | %-10s | %-8s | %-6s | %-8s\n",
+                    strlen(curr->appointment_id) > 0 ? curr->appointment_id : curr->id,
+                    curr->patient_id,
+                    strlen(curr->appointment_date) > 0 ? curr->appointment_date : "无",
+                    strlen(curr->appointment_slot) > 0 ? curr->appointment_slot : "无",
+                    strlen(curr->doctor_id) > 0 ? curr->doctor_id : "无",
+                    strlen(curr->department) > 0 ? curr->department : (strlen(curr->appoint_dept) > 0 ? curr->appoint_dept : "无"),
+                    get_appointment_status_text(curr->appointment_status),
+                    source,
+                    fee_status);
+            curr = curr->next;
+        }
+    }
+    
+    fprintf(fp, "----------------------------------------------------------------------------------------------------\n");
+    fclose(fp);
+    
+    printf("✅ 报表导出成功：%s\n", filename);
+    return 1;
+}
+
+// 药品库存预警报表
+static int export_medicine_report(void)
+{
+    char filename[128];
+    build_report_filename(filename, sizeof(filename), "medicine_report");
+    
+    FILE* fp = fopen(filename, "w");
+    if (fp == NULL)
+    {
+        printf("❌ 报表导出失败，请检查 report 目录权限或文件是否被占用。\n");
+        return 0;
+    }
+    write_utf8_bom(fp);
+    
+    // 写入报表头
+    write_report_header(fp, "药品库存预警报表");
+    
+    // 统计变量
+    int medicine_total = 0;
+    int stock_total = 0;
+    int low_stock_count = 0;
+    int expiring_count = 0;
+    int expired_count = 0;
+    
+    // 遍历药品链表
+    if (g_medicine_list != NULL)
+    {
+        MedicineNode* curr = g_medicine_list->next;
+        while (curr != NULL)
+        {
+            medicine_total++;
+            stock_total += curr->stock;
+            
+            if (curr->stock < 10)
+                low_stock_count++;
+            
+            int days = days_from_today(curr->expiry_date);
+            if (days < 0)
+                expired_count++;
+            else if (days >= 0 && days <= 30)
+                expiring_count++;
+            
+            curr = curr->next;
+        }
+    }
+    
+    // 写入统计内容
+    fprintf(fp, "【统计汇总】\n");
+    fprintf(fp, "------------------------------------------------------------\n");
+    fprintf(fp, "药品种类总数：%d\n", medicine_total);
+    fprintf(fp, "库存总量：%d\n", stock_total);
+    fprintf(fp, "低库存药品数量：%d\n", low_stock_count);
+    fprintf(fp, "近效期药品数量：%d\n", expiring_count);
+    fprintf(fp, "已过期药品数量：%d\n", expired_count);
+    fprintf(fp, "------------------------------------------------------------\n\n");
+    
+    // 写入低库存药品明细
+    fprintf(fp, "【低库存药品明细】\n");
+    fprintf(fp, "------------------------------------------------------------\n");
+    fprintf(fp, "%-12s | %-16s | %-12s | %-16s | %-8s | %-6s | %-12s\n",
+            "药品编号", "药品名称", "别名", "通用名", "单价", "库存", "有效期");
+    fprintf(fp, "------------------------------------------------------------\n");
+    
+    if (g_medicine_list != NULL)
+    {
+        MedicineNode* curr = g_medicine_list->next;
+        while (curr != NULL)
+        {
+            if (curr->stock < 10)
+            {
+                fprintf(fp, "%-12s | %-16s | %-12s | %-16s | %-8.2f | %-6d | %-12s\n",
+                        curr->id,
+                        curr->name,
+                        strlen(curr->alias) > 0 ? curr->alias : "无",
+                        strlen(curr->generic_name) > 0 ? curr->generic_name : "无",
+                        curr->price,
+                        curr->stock,
+                        strlen(curr->expiry_date) > 0 ? curr->expiry_date : "无");
+            }
+            curr = curr->next;
+        }
+    }
+    fprintf(fp, "------------------------------------------------------------\n\n");
+    
+    // 写入近效期药品明细
+    fprintf(fp, "【近效期药品明细】\n");
+    fprintf(fp, "------------------------------------------------------------\n");
+    fprintf(fp, "%-12s | %-16s | %-12s | %-16s | %-8s | %-6s | %-12s\n",
+            "药品编号", "药品名称", "别名", "通用名", "单价", "库存", "有效期");
+    fprintf(fp, "------------------------------------------------------------\n");
+    
+    if (g_medicine_list != NULL)
+    {
+        MedicineNode* curr = g_medicine_list->next;
+        while (curr != NULL)
+        {
+            int days = days_from_today(curr->expiry_date);
+            if (days >= 0 && days <= 30)
+            {
+                fprintf(fp, "%-12s | %-16s | %-12s | %-16s | %-8.2f | %-6d | %-12s\n",
+                        curr->id,
+                        curr->name,
+                        strlen(curr->alias) > 0 ? curr->alias : "无",
+                        strlen(curr->generic_name) > 0 ? curr->generic_name : "无",
+                        curr->price,
+                        curr->stock,
+                        strlen(curr->expiry_date) > 0 ? curr->expiry_date : "无");
+            }
+            curr = curr->next;
+        }
+    }
+    fprintf(fp, "------------------------------------------------------------\n\n");
+    
+    // 写入已过期药品明细
+    fprintf(fp, "【已过期药品明细】\n");
+    fprintf(fp, "------------------------------------------------------------\n");
+    fprintf(fp, "%-12s | %-16s | %-12s | %-16s | %-8s | %-6s | %-12s\n",
+            "药品编号", "药品名称", "别名", "通用名", "单价", "库存", "有效期");
+    fprintf(fp, "------------------------------------------------------------\n");
+    
+    if (g_medicine_list != NULL)
+    {
+        MedicineNode* curr = g_medicine_list->next;
+        while (curr != NULL)
+        {
+            int days = days_from_today(curr->expiry_date);
+            if (days < 0)
+            {
+                fprintf(fp, "%-12s | %-16s | %-12s | %-16s | %-8.2f | %-6d | %-12s\n",
+                        curr->id,
+                        curr->name,
+                        strlen(curr->alias) > 0 ? curr->alias : "无",
+                        strlen(curr->generic_name) > 0 ? curr->generic_name : "无",
+                        curr->price,
+                        curr->stock,
+                        strlen(curr->expiry_date) > 0 ? curr->expiry_date : "无");
+            }
+            curr = curr->next;
+        }
+    }
+    fprintf(fp, "------------------------------------------------------------\n");
+    fclose(fp);
+    
+    printf("✅ 报表导出成功：%s\n", filename);
+    return 1;
+}
+
+// 床位住院统计报表
+static int export_ward_inpatient_report(void)
+{
+    char filename[128];
+    build_report_filename(filename, sizeof(filename), "ward_inpatient_report");
+    
+    FILE* fp = fopen(filename, "w");
+    if (fp == NULL)
+    {
+        printf("❌ 报表导出失败，请检查 report 目录权限或文件是否被占用。\n");
+        return 0;
+    }
+    write_utf8_bom(fp);
+    
+    // 写入报表头
+    write_report_header(fp, "床位住院统计报表");
+    
+    // 床位统计变量
+    int total_beds = 0;
+    int occupied_beds = 0;
+    int free_beds = 0;
+    double occupancy_rate = 0.0;
+    
+    // 遍历床位链表
+    if (g_ward_list != NULL)
+    {
+        WardNode* curr = g_ward_list->next;
+        while (curr != NULL)
+        {
+            total_beds++;
+            if (curr->is_occupied != 0)
+                occupied_beds++;
+            else
+                free_beds++;
+            curr = curr->next;
+        }
+    }
+    
+    if (total_beds > 0)
+        occupancy_rate = occupied_beds * 100.0 / total_beds;
+    
+    // 住院统计变量
+    int inpatient_total = 0;
+    int active_inpatient = 0;
+    int discharged_inpatient = 0;
+    int deposit_warning_count = 0;
+    double deposit_total = 0.0;
+    
+    // 遍历住院记录链表
+    if (g_inpatient_list != NULL)
+    {
+        InpatientRecord* curr = g_inpatient_list->next;
+        while (curr != NULL)
+        {
+            inpatient_total++;
+            if (curr->is_active == 1)
+            {
+                active_inpatient++;
+                deposit_total += curr->deposit_balance;
+                if (curr->deposit_balance < 1000.0)
+                    deposit_warning_count++;
+            }
+            else
+            {
+                discharged_inpatient++;
+            }
+            curr = curr->next;
+        }
+    }
+    
+    // 写入床位统计
+    fprintf(fp, "【床位统计】\n");
+    fprintf(fp, "------------------------------------------------------------\n");
+    fprintf(fp, "床位总数：%d\n", total_beds);
+    fprintf(fp, "已占用床位：%d\n", occupied_beds);
+    fprintf(fp, "空闲床位：%d\n", free_beds);
+    fprintf(fp, "床位占用率：%.1f%%\n", occupancy_rate);
+    fprintf(fp, "------------------------------------------------------------\n\n");
+    
+    // 写入住院统计
+    fprintf(fp, "【住院统计】\n");
+    fprintf(fp, "------------------------------------------------------------\n");
+    fprintf(fp, "住院记录总数：%d\n", inpatient_total);
+    fprintf(fp, "当前住院中记录：%d\n", active_inpatient);
+    fprintf(fp, "已出院记录：%d\n", discharged_inpatient);
+    fprintf(fp, "押金不足患者数量：%d\n", deposit_warning_count);
+    fprintf(fp, "住院押金总余额：%.2f\n", deposit_total);
+    fprintf(fp, "------------------------------------------------------------\n\n");
+    
+    // 写入床位明细
+    fprintf(fp, "【床位明细】\n");
+    fprintf(fp, "------------------------------------------------------------\n");
+    fprintf(fp, "%-12s | %-10s | %-12s | %-8s | %-6s | %-12s\n",
+            "病房编号", "床位编号", "科室", "类型", "状态", "患者编号");
+    fprintf(fp, "------------------------------------------------------------\n");
+    
+    if (g_ward_list != NULL)
+    {
+        WardNode* curr = g_ward_list->next;
+        while (curr != NULL)
+        {
+            const char* ward_type_str = "";
+            switch (curr->ward_type)
+            {
+                case WARD_GENERAL: ward_type_str = "普通"; break;
+                case WARD_ICU: ward_type_str = "ICU"; break;
+                case WARD_ISOLATION: ward_type_str = "隔离"; break;
+                case WARD_SINGLE: ward_type_str = "单间"; break;
+                default: ward_type_str = "未知";
+            }
+            const char* status_str = curr->is_occupied != 0 ? "占用" : "空闲";
+            
+            fprintf(fp, "%-12s | %-10s | %-12s | %-8s | %-6s | %-12s\n",
+                    curr->room_id,
+                    curr->bed_id,
+                    strlen(curr->dept) > 0 ? curr->dept : "无",
+                    ward_type_str,
+                    status_str,
+                    curr->is_occupied != 0 ? curr->patient_id : "无");
+            curr = curr->next;
+        }
+    }
+    fprintf(fp, "------------------------------------------------------------\n\n");
+    
+    // 写入住院明细
+    fprintf(fp, "【住院明细】\n");
+    fprintf(fp, "------------------------------------------------------------\n");
+    fprintf(fp, "%-14s | %-12s | %-10s | %-12s | %-8s\n",
+            "住院编号", "患者编号", "床位编号", "押金余额", "是否在院");
+    fprintf(fp, "------------------------------------------------------------\n");
+    
+    if (g_inpatient_list != NULL)
+    {
+        InpatientRecord* curr = g_inpatient_list->next;
+        while (curr != NULL)
+        {
+            const char* active_str = curr->is_active == 1 ? "在院" : "已出院";
+            
+            fprintf(fp, "%-14s | %-12s | %-10s | %-12.2f | %-8s\n",
+                    curr->inpatient_id,
+                    curr->patient_id,
+                    strlen(curr->bed_id) > 0 ? curr->bed_id : "无",
+                    curr->deposit_balance,
+                    active_str);
+            curr = curr->next;
+        }
+    }
+    fprintf(fp, "------------------------------------------------------------\n");
+    fclose(fp);
+    
+    printf("✅ 报表导出成功：%s\n", filename);
+    return 1;
+}
+
+// 投诉服务处理报表
+static int export_service_report(void)
+{
+    char filename[128];
+    build_report_filename(filename, sizeof(filename), "service_report");
+    
+    FILE* fp = fopen(filename, "w");
+    if (fp == NULL)
+    {
+        printf("❌ 报表导出失败，请检查 report 目录权限或文件是否被占用。\n");
+        return 0;
+    }
+    write_utf8_bom(fp);
+    
+    // 写入报表头
+    write_report_header(fp, "投诉服务处理报表");
+    
+    // 投诉统计变量
+    int complaint_total = 0;
+    int pending_count = 0;
+    int replied_count = 0;
+    
+    // 遍历投诉链表
+    if (g_complaint_list != NULL)
+    {
+        ComplaintNode* curr = g_complaint_list->next;
+        while (curr != NULL)
+        {
+            complaint_total++;
+            if (curr->status == 0)
+                pending_count++;
+            else if (curr->status == 1)
+                replied_count++;
+            curr = curr->next;
+        }
+    }
+    
+    // 写入投诉统计
+    fprintf(fp, "【投诉统计】\n");
+    fprintf(fp, "------------------------------------------------------------\n");
+    fprintf(fp, "投诉总数：%d\n", complaint_total);
+    fprintf(fp, "待处理投诉：%d\n", pending_count);
+    fprintf(fp, "已回复投诉：%d\n", replied_count);
+    fprintf(fp, "------------------------------------------------------------\n\n");
+    
+    // 写入投诉明细
+    fprintf(fp, "【投诉明细】\n");
+    
+    if (g_complaint_list != NULL)
+    {
+        ComplaintNode* curr = g_complaint_list->next;
+        while (curr != NULL)
+        {
+            const char* status_str = curr->status == 0 ? "待处理" : "已回复";
+            const char* content_str = (strlen(curr->content) > 0) ? curr->content : "无投诉内容";
+            const char* response_str = (strlen(curr->response) > 0) ? curr->response : "暂无回复";
+            
+            fprintf(fp, "------------------------------------------------------------\n");
+            fprintf(fp, "投诉编号：%s\n", curr->complaint_id);
+            fprintf(fp, "患者编号：%s\n", curr->patient_id);
+            fprintf(fp, "处理状态：%s\n", status_str);
+            fprintf(fp, "投诉内容：%s\n", content_str);
+            fprintf(fp, "回复内容：%s\n", response_str);
+            curr = curr->next;
+        }
+    }
+    fprintf(fp, "------------------------------------------------------------\n\n");
+    
+    fclose(fp);
+    
+    printf("✅ 投诉服务处理报表导出成功：%s\n", filename);
+    return 1;
+}
+
+// 收费财务统计报表
+static int export_finance_report(void)
+{
+    char filename[128];
+    build_report_filename(filename, sizeof(filename), "finance_report");
+    
+    FILE* fp = fopen(filename, "w");
+    if (fp == NULL)
+    {
+        printf("❌ 收费财务统计报表导出失败，请检查 report 目录权限或文件是否被占用。\n");
+        return 0;
+    }
+    write_utf8_bom(fp);
+    
+    // 写入报表头
+    write_report_header(fp, "收费财务统计报表");
+    
+    // ========== 1. 患者账户统计 ==========
+    int patient_total = 0;
+    double total_balance = 0.0;
+    int unpaid_count = 0;
+    int wait_med_count = 0;
+    int emergency_debt_count = 0;
+    double total_emergency_debt = 0.0;
+    
+    if (g_patient_list != NULL)
+    {
+        PatientNode* curr = g_patient_list->next;
+        while (curr != NULL)
+        {
+            patient_total++;
+            total_balance += curr->balance;
+            
+            if (curr->status == STATUS_UNPAID)
+                unpaid_count++;
+            if (curr->status == STATUS_WAIT_MED)
+                wait_med_count++;
+            if (curr->emergency_debt > 0)
+            {
+                emergency_debt_count++;
+                total_emergency_debt += curr->emergency_debt;
+            }
+            curr = curr->next;
+        }
+    }
+    
+    double avg_balance = (patient_total > 0) ? (total_balance / patient_total) : 0.0;
+    
+    // ========== 2. 挂号缴费统计 ==========
+    int appointment_total = 0;
+    int fee_paid_count = 0;
+    int fee_unpaid_count = 0;
+    
+    if (g_appointment_list != NULL)
+    {
+        AppointmentNode* curr = g_appointment_list->next;
+        while (curr != NULL)
+        {
+            appointment_total++;
+            if (curr->fee_paid == 1)
+                fee_paid_count++;
+            else
+                fee_unpaid_count++;
+            curr = curr->next;
+        }
+    }
+    
+    // ========== 3. 检查缴费统计 ==========
+    int check_total = 0;
+    int check_paid_count = 0;
+    int check_unpaid_count = 0;
+    
+    if (g_check_record_list != NULL)
+    {
+        CheckRecordNode* curr = g_check_record_list->next;
+        while (curr != NULL)
+        {
+            check_total++;
+            if (curr->is_paid == 1)
+                check_paid_count++;
+            else
+                check_unpaid_count++;
+            curr = curr->next;
+        }
+    }
+    
+    // ========== 4. 住院押金统计 ==========
+    int inpatient_total = 0;
+    int inpatient_active = 0;
+    int inpatient_discharged = 0;
+    double total_deposit = 0.0;
+    int deposit_insufficient_count = 0;
+    
+    if (g_inpatient_list != NULL)
+    {
+        InpatientRecord* curr = g_inpatient_list->next;
+        while (curr != NULL)
+        {
+            inpatient_total++;
+            if (curr->is_active == 1)
+            {
+                inpatient_active++;
+                total_deposit += curr->deposit_balance;
+                if (curr->deposit_balance < 1000.0)
+                    deposit_insufficient_count++;
+            }
+            else
+            {
+                inpatient_discharged++;
+            }
+            curr = curr->next;
+        }
+    }
+    
+    // ========== 写入统计汇总 ==========
+    fprintf(fp, "【财务统计汇总】\n");
+    fprintf(fp, "------------------------------------------------------------\n");
+    fprintf(fp, "患者总数：%d\n", patient_total);
+    fprintf(fp, "患者账户余额总额：%.2f 元\n", total_balance);
+    fprintf(fp, "患者平均账户余额：%.2f 元\n", avg_balance);
+    fprintf(fp, "待缴费患者人数：%d\n", unpaid_count);
+    fprintf(fp, "待取药患者人数：%d\n", wait_med_count);
+    fprintf(fp, "急诊欠费患者人数：%d\n", emergency_debt_count);
+    fprintf(fp, "急诊欠费总金额：%.2f 元\n", total_emergency_debt);
+    fprintf(fp, "------------------------------------------------------------\n\n");
+    
+    fprintf(fp, "【挂号缴费统计】\n");
+    fprintf(fp, "------------------------------------------------------------\n");
+    fprintf(fp, "预约/挂号记录总数：%d\n", appointment_total);
+    fprintf(fp, "已缴挂号费记录：%d\n", fee_paid_count);
+    fprintf(fp, "未缴挂号费记录：%d\n", fee_unpaid_count);
+    fprintf(fp, "------------------------------------------------------------\n\n");
+    
+    fprintf(fp, "【检查缴费统计】\n");
+    fprintf(fp, "------------------------------------------------------------\n");
+    fprintf(fp, "检查记录总数：%d\n", check_total);
+    fprintf(fp, "已缴费检查记录：%d\n", check_paid_count);
+    fprintf(fp, "未缴费检查记录：%d\n", check_unpaid_count);
+    fprintf(fp, "------------------------------------------------------------\n\n");
+    
+    fprintf(fp, "【住院押金统计】\n");
+    fprintf(fp, "------------------------------------------------------------\n");
+    fprintf(fp, "住院记录总数：%d\n", inpatient_total);
+    fprintf(fp, "当前住院中：%d\n", inpatient_active);
+    fprintf(fp, "已出院：%d\n", inpatient_discharged);
+    fprintf(fp, "当前住院押金总余额：%.2f 元\n", total_deposit);
+    fprintf(fp, "押金不足患者数量：%d\n", deposit_insufficient_count);
+    fprintf(fp, "------------------------------------------------------------\n\n");
+    
+    // ========== 待缴费/欠费患者明细 ==========
+    fprintf(fp, "【待缴费/欠费患者明细】\n");
+    
+    int debt_patient_count = 0;
+    if (g_patient_list != NULL)
+    {
+        PatientNode* curr = g_patient_list->next;
+        while (curr != NULL)
+        {
+            if (curr->status == STATUS_UNPAID || curr->emergency_debt > 0 || curr->balance < 0)
+            {
+                debt_patient_count++;
+                fprintf(fp, "------------------------------------------------------------\n");
+                fprintf(fp, "患者编号：%s\n", curr->id);
+                fprintf(fp, "患者姓名：%s\n", curr->name);
+                fprintf(fp, "当前状态：%s\n", get_patient_status_text(curr->status));
+                fprintf(fp, "账户余额：%.2f 元\n", curr->balance);
+                fprintf(fp, "急诊欠费：%.2f 元\n", curr->emergency_debt);
+            }
+            curr = curr->next;
+        }
+    }
+    
+    if (debt_patient_count == 0)
+    {
+        fprintf(fp, "暂无待缴费或欠费患者。\n");
+    }
+    fprintf(fp, "------------------------------------------------------------\n\n");
+    
+    // ========== 押金不足住院患者明细 ==========
+    fprintf(fp, "【押金不足住院患者明细】\n");
+    
+    int deposit_insufficient_found = 0;
+    if (g_inpatient_list != NULL)
+    {
+        InpatientRecord* curr = g_inpatient_list->next;
+        while (curr != NULL)
+        {
+            if (curr->is_active == 1 && curr->deposit_balance < 1000.0)
+            {
+                deposit_insufficient_found++;
+                fprintf(fp, "------------------------------------------------------------\n");
+                fprintf(fp, "住院编号：%s\n", curr->inpatient_id);
+                fprintf(fp, "患者编号：%s\n", curr->patient_id);
+                fprintf(fp, "押金余额：%.2f 元\n", curr->deposit_balance);
+                fprintf(fp, "状态：住院中\n");
+            }
+            curr = curr->next;
+        }
+    }
+    
+    if (deposit_insufficient_found == 0)
+    {
+        fprintf(fp, "暂无押金不足住院患者。\n");
+    }
+    fprintf(fp, "------------------------------------------------------------\n\n");
+    
+    fclose(fp);
+    
+    printf("✅ 收费财务统计报表导出成功：%s\n", filename);
+    return 1;
+}
+
+// 操作日志报表
+static int export_log_report(void)
+{
+    char filename[128];
+    build_report_filename(filename, sizeof(filename), "log_report");
+    
+    FILE* fp = fopen(filename, "w");
+    if (fp == NULL)
+    {
+        printf("❌ 报表导出失败，请检查 report 目录权限或文件是否被占用。\n");
+        return 0;
+    }
+    write_utf8_bom(fp);
+    
+    // 写入报表头
+    write_report_header(fp, "操作日志报表");
+    
+    // 日志统计变量
+    int log_total = 0;
+    
+    // 遍历日志链表
+    if (g_log_list != NULL)
+    {
+        LogNode* curr = g_log_list->next;
+        while (curr != NULL)
+        {
+            log_total++;
+            curr = curr->next;
+        }
+    }
+    
+    // 写入统计内容
+    fprintf(fp, "【统计汇总】\n");
+    fprintf(fp, "------------------------------------------------------------\n");
+    fprintf(fp, "操作日志总数：%d\n", log_total);
+    fprintf(fp, "------------------------------------------------------------\n\n");
+    
+    // 写入日志明细
+    fprintf(fp, "【日志明细】\n");
+    fprintf(fp, "------------------------------------------------------------\n");
+    fprintf(fp, "%-18s | %-12s | %-15s | %-30s\n",
+            "操作时间", "操作类型", "操作对象", "操作说明");
+    fprintf(fp, "------------------------------------------------------------\n");
+    
+    if (g_log_list != NULL)
+    {
+        LogNode* curr = g_log_list->next;
+        int log_num = 1;
+        while (curr != NULL)
+        {
+            char desc[31];
+            safe_utf8_truncate(desc, curr->description, 30);
+            
+            fprintf(fp, "%-18s | %-12s | %-15s | %-30s\n",
+                    curr->timestamp,
+                    curr->operation,
+                    curr->target,
+                    desc);
+            log_num++;
+            curr = curr->next;
+        }
+    }
+    fprintf(fp, "------------------------------------------------------------\n");
+    
+    fclose(fp);
+    
+    printf("✅ 报表导出成功：%s\n", filename);
+    return 1;
+}
+
+// 一键导出全部报表
+static int export_all_reports(void)
+{
+    int success_count = 0;
+    int fail_count = 0;
+    
+    printf("正在导出全部报表...\n\n");
+    
+    // 导出患者就诊统计报表
+    if (export_patient_report())
+        success_count++;
+    else
+        fail_count++;
+    
+    // 导出预约挂号统计报表
+    if (export_appointment_report())
+        success_count++;
+    else
+        fail_count++;
+    
+    // 导出药品库存预警报表
+    if (export_medicine_report())
+        success_count++;
+    else
+        fail_count++;
+    
+    // 导出床位住院统计报表
+    if (export_ward_inpatient_report())
+        success_count++;
+    else
+        fail_count++;
+    
+    // 导出投诉服务处理报表
+    if (export_service_report())
+        success_count++;
+    else
+        fail_count++;
+    
+    // 导出操作日志报表
+    if (export_log_report())
+        success_count++;
+    else
+        fail_count++;
+    
+    // 导出收费财务统计报表
+    if (export_finance_report())
+        success_count++;
+    else
+        fail_count++;
+    
+    printf("\n一键导出完成：成功 %d 个，失败 %d 个。\n", success_count, fail_count);
+    return success_count > 0 ? 1 : 0;
+}
+
+void admin_report_menu(void)
+{
+    int running = 1;
+    
+    // 确保报表目录存在
+    ensure_report_dir();
+    
+    while (running)
+    {
+        system("cls");
+        printf("========== 报表导出中心 ==========\n");
+        printf("报表导出中心用于将系统中的核心业务数据生成本地 txt 报表，便于归档、打印和统计分析。\n");
+        printf("==================================\n");
+        printf("[1] 导出患者就诊统计报表\n");
+        printf("[2] 导出预约挂号统计报表\n");
+        printf("[3] 导出药品库存预警报表\n");
+        printf("[4] 导出床位住院统计报表\n");
+        printf("[5] 导出投诉服务处理报表\n");
+        printf("[6] 导出操作日志报表\n");
+        printf("[7] 导出收费财务统计报表\n");
+        printf("[8] 一键导出全部报表\n");
+        printf("[0] 返回管理员菜单\n");
+        printf("==================================\n");
+        
+        switch (get_safe_int("👉 请输入操作编号: "))
+        {
+            case 1:
+                printf("\n");
+                if (export_patient_report())
+                    printf("\n可在项目目录下的 report 文件夹中查看生成的报表文件。\n");
+                system("pause");
+                break;
+            case 2:
+                printf("\n");
+                if (export_appointment_report())
+                    printf("\n可在项目目录下的 report 文件夹中查看生成的报表文件。\n");
+                system("pause");
+                break;
+            case 3:
+                printf("\n");
+                if (export_medicine_report())
+                    printf("\n可在项目目录下的 report 文件夹中查看生成的报表文件。\n");
+                system("pause");
+                break;
+            case 4:
+                printf("\n");
+                if (export_ward_inpatient_report())
+                    printf("\n可在项目目录下的 report 文件夹中查看生成的报表文件。\n");
+                system("pause");
+                break;
+            case 5:
+                printf("\n");
+                if (export_service_report())
+                    printf("\n可在项目目录下的 report 文件夹中查看生成的报表文件。\n");
+                system("pause");
+                break;
+            case 6:
+                printf("\n");
+                if (export_log_report())
+                    printf("\n可在项目目录下的 report 文件夹中查看生成的报表文件。\n");
+                system("pause");
+                break;
+            case 7:
+                printf("\n");
+                if (export_finance_report())
+                    printf("\n可在项目目录下的 report 文件夹中查看生成的报表文件。\n");
+                system("pause");
+                break;
+            case 8:
+                printf("\n");
+                export_all_reports();
+                system("pause");
+                break;
+            case 0:
+                running = 0;
+                break;
+            default:
+                printf("\n⚠️ 无效选项，请重新输入\n");
+                system("pause");
+                break;
         }
     }
 }

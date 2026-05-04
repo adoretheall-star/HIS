@@ -42,6 +42,9 @@ int update_medicine_basic_info(
 // 下架药品
 int remove_medicine(const char* med_id);
 
+// 软删除药品到回收站
+int soft_remove_medicine_to_recycle(const char* med_id, const char* deleted_by, const char* reason);
+
 // 检查药品名称是否已存在（用于提前检测重复）
 int is_medicine_name_exists(const char* name);
 
