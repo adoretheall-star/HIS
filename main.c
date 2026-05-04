@@ -174,50 +174,62 @@ printf("  [8] 查看药师值班状态\n");
         switch (get_safe_int("👉 请输入操作编号: "))
         {
             case 1:
+                system("cls");
                 show_all_accounts();
                 system("pause");
                 break;
             case 2:
+                system("cls");
                 handle_admin_register_account();
                 system("pause");
                 break;
             case 3:
+                system("cls");
                 handle_admin_update_account();
                 system("pause");
                 break;
             case 4:
+                system("cls");
                 show_all_doctors_with_duty_status();
                 system("pause");
                 break;
             case 5:
+                system("cls");
                 handle_admin_update_doctor_duty();
                 system("pause");
                 break;
             case 6:
+                system("cls");
                 show_all_nurses_with_duty_status();
                 system("pause");
                 break;
             case 7:
+                system("cls");
                 handle_admin_update_nurse_duty();
                 system("pause");
                 break;
             case 8:
+                system("cls");
                 show_all_pharmacists_with_duty_status();
                 system("pause");
                 break;
             case 9:
+                system("cls");
                 handle_admin_update_pharmacist_duty();
                 system("pause");
                 break;
             case 10:
+                system("cls");
                 show_admin_dashboard();
                 system("pause");
                 break;
             case 11:
+                system("cls");
                 show_resource_warnings();
                 system("pause");
                 break;
             case 12:
+                system("cls");
                 show_load_monitoring();
                 system("pause");
                 break;
@@ -234,36 +246,44 @@ printf("  [8] 查看药师值班状态\n");
             case 15:
                 system("cls");
                 show_logs();
-                system("pause");
                 break;
             case 16:
+                system("cls");
                 admin_medicine_menu();
                 system("pause");
                 break;
             case 17:
+                system("cls");
                 admin_ward_resource_menu();
+                system("pause");
                 break;
             case 18:
+                system("cls");
                 admin_complaint_menu();
                 system("pause");
                 break;
             case 19:
+                system("cls");
                 admin_evaluation_menu();
                 system("pause");
                 break;
             case 20:
+                system("cls");
                 patient_archive_menu();
                 system("pause");
                 break;
             case 21:
+                system("cls");
                 admin_check_item_menu();
                 system("pause");
                 break;
             case 22:
+                system("cls");
                 handle_query_check_records();
                 system("pause");
                 break;
             case 23:
+                system("cls");
                 admin_recycle_bin_menu();
                 system("pause");
                 break;
@@ -666,12 +686,12 @@ static void handle_admin_update_account()
             case 0: // 输入要修改的账号
                 get_safe_string("请输入要修改的账号: ", input_buffer, 100);
                 
-                if (strcmp(input_buffer, "B") == 0)
+                if (strcmp(input_buffer, "B") == 0 || strcmp(input_buffer, "b") == 0)
                 {
                     printf("当前已是第一项，无法再返回\n");
                     continue;
                 }
-                else if (strcmp(input_buffer, "Q") == 0)
+                else if (strcmp(input_buffer, "Q") == 0 || strcmp(input_buffer, "q") == 0)
                 {
                     printf("提示：已取消修改员工资料操作。\n");
                     return;
@@ -696,12 +716,12 @@ static void handle_admin_update_account()
             case 1: // 新真实姓名
                 get_safe_string("请输入新真实姓名（直接回车表示不修改）: ", input_buffer, 100);
                 
-                if (strcmp(input_buffer, "B") == 0)
+                if (strcmp(input_buffer, "B") == 0 || strcmp(input_buffer, "b") == 0)
                 {
                     step = 0;
                     continue;
                 }
-                else if (strcmp(input_buffer, "Q") == 0)
+                else if (strcmp(input_buffer, "Q") == 0 || strcmp(input_buffer, "q") == 0)
                 {
                     printf("提示：已取消修改员工资料操作。\n");
                     return;
@@ -725,12 +745,12 @@ static void handle_admin_update_account()
             case 2: // 新密码
                 get_safe_string("请输入新密码（直接回车表示不修改）: ", input_buffer, 100);
                 
-                if (strcmp(input_buffer, "B") == 0)
+                if (strcmp(input_buffer, "B") == 0 || strcmp(input_buffer, "b") == 0)
                 {
                     step = 1;
                     continue;
                 }
-                else if (strcmp(input_buffer, "Q") == 0)
+                else if (strcmp(input_buffer, "Q") == 0 || strcmp(input_buffer, "q") == 0)
                 {
                     printf("提示：已取消修改员工资料操作。\n");
                     return;
@@ -760,12 +780,12 @@ static void handle_admin_update_account()
                 printf("  [4] 药师\n");
                 get_safe_string("👉 请输入角色编号: ", input_buffer, 100);
                 
-                if (strcmp(input_buffer, "B") == 0)
+                if (strcmp(input_buffer, "B") == 0 || strcmp(input_buffer, "b") == 0)
                 {
                     step = 2;
                     continue;
                 }
-                else if (strcmp(input_buffer, "Q") == 0)
+                else if (strcmp(input_buffer, "Q") == 0 || strcmp(input_buffer, "q") == 0)
                 {
                     printf("提示：已取消修改员工资料操作。\n");
                     return;
@@ -826,12 +846,12 @@ static void handle_admin_update_account()
                     get_safe_string("请输入医生所属科室: ", input_buffer, 100);
                 }
                 
-                if (strcmp(input_buffer, "B") == 0)
+                if (strcmp(input_buffer, "B") == 0 || strcmp(input_buffer, "b") == 0)
                 {
                     step = 3;
                     continue;
                 }
-                else if (strcmp(input_buffer, "Q") == 0)
+                else if (strcmp(input_buffer, "Q") == 0 || strcmp(input_buffer, "q") == 0)
                 {
                     printf("提示：已取消修改员工资料操作。\n");
                     return;
@@ -1311,12 +1331,12 @@ static void handle_admin_update_pharmacist_duty()
             case 0: // 第1步：输入药师账号
                 get_safe_string("请输入药师账号: ", input_buffer, 100);
                 
-                if (strcmp(input_buffer, "B") == 0)
+                if (strcmp(input_buffer, "B") == 0 || strcmp(input_buffer, "b") == 0)
                 {
                     printf("当前已是第一步，无法再返回\n");
                     continue;
                 }
-                else if (strcmp(input_buffer, "Q") == 0)
+                else if (strcmp(input_buffer, "Q") == 0 || strcmp(input_buffer, "q") == 0)
                 {
                     printf("已取消修改药师值班状态操作。\n");
                     return;
@@ -1348,12 +1368,12 @@ static void handle_admin_update_pharmacist_duty()
             case 1: // 第3步：输入新状态
                 get_safe_string("请输入新状态（1=值班中, 0=未值班）: ", input_buffer, 100);
                 
-                if (strcmp(input_buffer, "B") == 0)
+                if (strcmp(input_buffer, "B") == 0 || strcmp(input_buffer, "b") == 0)
                 {
                     step = 0;
                     continue;
                 }
-                else if (strcmp(input_buffer, "Q") == 0)
+                else if (strcmp(input_buffer, "Q") == 0 || strcmp(input_buffer, "q") == 0)
                 {
                     printf("已取消修改药师值班状态操作。\n");
                     return;
@@ -1470,35 +1490,65 @@ static void admin_medicine_menu()
         switch (get_safe_int("👉 请输入操作编号: "))
         {
             case 1:
+                system("cls");
                 show_all_medicines();
                 system("pause");
                 break;
             case 2:
+                system("cls");
                 handle_medicine_search();
                 system("pause");
                 break;
             case 3:
+                system("cls");
                 handle_medicine_register();
                 system("pause");
                 break;
             case 4:
+                system("cls");
                 handle_medicine_basic_info_update();
                 system("pause");
                 break;
             case 5:
+                system("cls");
                 handle_medicine_stock_update();
                 system("pause");
                 break;
             case 6:
-                threshold = get_safe_int("请输入低库存阈值: ");
-                show_low_stock_medicines(threshold);
-                system("pause");
+                {
+                    system("cls");
+                    char threshold_str[32];
+
+                    printf("\n================ 查看低库存药品 ===============\n");
+                    printf("提示：输入 Q 取消操作返回菜单页\n\n");
+
+                    get_safe_string("请输入低库存阈值：", threshold_str, sizeof(threshold_str));
+
+                    if (my_strcasecmp(threshold_str, "Q") == 0)
+                    {
+                        printf("已取消操作\n");
+                        break;
+                    }
+
+                    int threshold = atoi(threshold_str);
+                    if (threshold <= 0)
+                    {
+                        printf("⚠️ 输入无效：库存阈值必须大于 0！\n");
+                        system("pause");
+                        break;
+                    }
+
+                    show_low_stock_medicines(threshold);
+                    system("pause");
+                }
                 break;
             case 7:
+                system("cls");
                 handle_expiring_medicine_check();
                 system("pause");
                 break;
             case 8:
+                system("cls");
                 handle_medicine_remove();
                 system("pause");
                 break;
@@ -1535,23 +1585,37 @@ static void admin_check_item_menu()
         switch (get_safe_int("👉 请输入操作编号: "))
         {
             case 1:
+                system("cls");
                 show_all_check_items();
                 system("pause");
                 break;
             case 2:
+                system("cls");
+                printf("=============== 查询检查项目 ===============\n");
+                printf("提示：输入 Q 取消该操作返回上一级菜单\n\n");
                 get_safe_string("请输入查询关键词: ", keyword, MAX_NAME_LEN);
-                search_check_item_by_keyword(keyword);
+                if (my_strcasecmp(keyword, "Q") == 0)
+                {
+                    printf("\n已取消操作。\n");
+                }
+                else
+                {
+                    search_check_item_by_keyword(keyword);
+                }
                 system("pause");
                 break;
             case 3:
+                system("cls");
                 handle_check_item_register();
                 system("pause");
                 break;
             case 4:
+                system("cls");
                 handle_check_item_update();
                 system("pause");
                 break;
             case 5:
+                system("cls");
                 handle_check_item_remove();
                 system("pause");
                 break;
@@ -2070,14 +2134,25 @@ back_to_decision:
         }
 
         printf("\n================ 可用检查项目列表 ================\n");
+        printf("%-12s %-18s %-12s %-10s %s\n", "项目编号", "项目名称", "所属科室", "价格(元)", "医保类型");
+        printf("---------------------------------------------------------\n");
         item_curr = g_check_item_list->next;
         while (item_curr != NULL)
         {
-            printf("项目编号：%s | 项目名称：%s | 所属科室：%s | 价格：%.2f\n",
+            const char* medicare_type = "";
+            switch (item_curr->m_type)
+            {
+                case MEDICARE_CLASS_A: medicare_type = "甲类"; break;
+                case MEDICARE_CLASS_B: medicare_type = "乙类"; break;
+                case MEDICARE_NONE: medicare_type = "自费"; break;
+                default: medicare_type = "未知";
+            }
+            printf("%-12s %-18s %-12s %-10.2f %s\n",
                    item_curr->item_id,
                    item_curr->item_name,
                    item_curr->dept,
-                   item_curr->price);
+                   item_curr->price,
+                   medicare_type);
             item_curr = item_curr->next;
         }
 
@@ -2406,12 +2481,13 @@ static void handle_query_check_records()
     char query_str[MAX_ID_LEN];
 
     printf("\n================ 查询检查记录 ================\n");
-    printf("支持：患者编号（P-1001）| 检查记录编号（CR-001）\n");
+    printf("支持格式：患者编号（例如 P-1001） | 检查记录编号（例如 CR-001）\n");
+    printf("提示：输入 Q 取消该操作返回上一级菜单\n\n");
 
     while (1)
     {
-        get_safe_string("请输入编号（输入 B 返回上一级）: ", query_str, MAX_ID_LEN);
-        if (strcmp(query_str, "B") == 0 || strcmp(query_str, "b") == 0) return;
+        get_safe_string("请输入编号：", query_str, MAX_ID_LEN);
+        if (my_strcasecmp(query_str, "Q") == 0 || my_strcasecmp(query_str, "B") == 0) return;
         if (is_blank_string(query_str))
         {
             printf("编号不能为空，请重新输入\n");
@@ -2462,8 +2538,6 @@ static void handle_query_check_records()
         }
         break;
     }
-
-    system("pause");
 }
 
 static void doctor_menu()
@@ -5505,103 +5579,99 @@ static void handle_patient_self_appointment_cancel()
 static void handle_patient_archive_query_by_id()
 {
     char patient_id[MAX_ID_LEN];
-    
+
     printf("\n================ 按编号查询档案 ================\n");
-    printf("提示：输入 '0' 可以回退上一步，输入 '00' 可以退出操作\n");
-    
+    printf("提示：输入 Q 取消该操作返回上一级菜单\n\n");
+
     while (1)
     {
         get_safe_string("请输入患者编号: ", patient_id, MAX_ID_LEN);
-        
-        // 检查是否退出
-        if (strcmp(patient_id, "00") == 0)
+
+        if (my_strcasecmp(patient_id, "Q") == 0)
         {
-            printf("操作取消！\n");
-            system("pause");
             return;
         }
-        
-        // 检查患者编号格式是否合法
+
+        if (is_blank_string(patient_id))
+        {
+            printf("⚠️ 患者编号不能为空，请重新输入！\n");
+            continue;
+        }
+
         if (validate_patient_id(patient_id))
         {
-            break; // 格式正确，退出循环
+            break;
         }
         else
         {
             printf("⚠️ 患者编号格式不合法，正确格式为 P-XXXX，例如：P-1001，请重新输入！\n");
         }
     }
-    
+
     query_patient_archive_by_id(patient_id);
-    system("pause");
 }
 
 static void handle_patient_archive_query_by_id_card()
 {
     char id_card[MAX_ID_LEN];
-    
+
     printf("\n================ 按身份证号查询档案 ================\n");
-    printf("提示：输入 '0' 可以回退上一步，输入 '00' 可以退出操作\n");
-    
+    printf("提示：输入 Q 取消该操作返回上一级菜单\n\n");
+
     while (1)
     {
         get_safe_string("请输入身份证号: ", id_card, MAX_ID_LEN);
-        
-        // 检查是否退出
-        if (strcmp(id_card, "00") == 0)
+
+        if (my_strcasecmp(id_card, "Q") == 0)
         {
-            printf("操作取消！\n");
-            system("pause");
             return;
         }
-        
-        // 检查身份证号格式是否合法
+
+        if (is_blank_string(id_card))
+        {
+            printf("⚠️ 身份证号不能为空，请重新输入！\n");
+            continue;
+        }
+
         if (validate_id_card(id_card))
         {
-            break; // 格式正确，退出循环
+            break;
         }
         else
         {
             printf("⚠️ 身份证号格式不合法，请重新输入！\n");
         }
     }
-    
+
     query_patient_archive_by_id_card(id_card);
-    system("pause");
 }
 
 static void handle_patient_archive_query_by_name()
 {
     char name[MAX_NAME_LEN];
-    
+
     printf("\n================ 按姓名查询档案 ================\n");
-    printf("提示：输入 '0' 可以回退上一步，输入 '00' 可以退出操作\n");
-    
+    printf("提示：输入 Q 取消该操作返回上一级菜单\n\n");
+
     while (1)
     {
         get_safe_string("请输入患者姓名: ", name, MAX_NAME_LEN);
-        
-        // 检查是否退出
-        if (strcmp(name, "00") == 0)
+
+        if (my_strcasecmp(name, "Q") == 0)
         {
-            printf("操作取消！\n");
-            system("pause");
             return;
         }
-        
-        // 检查姓名是否为空
-        if (strlen(name) > 0)
-        {
-            break; // 姓名不为空，退出循环
-        }
-        else
+
+        if (is_blank_string(name))
         {
             printf("⚠️ 姓名不能为空，请重新输入！\n");
+            continue;
         }
+
+        break;
     }
-    
+
     query_patient_archive_by_name(name);
-    system("pause");
 }
 
 static void handle_patient_archive_update()
@@ -5615,11 +5685,12 @@ static void handle_patient_archive_update()
     int age = 0;
     PatientNode* patient = NULL;
     double balance = 0;
+    int has_modified = 0;
 
     printf("\n================ 修改患者信息 ================\n");
     printf("提示：输入 B 返回上一步，输入 Q 返回菜单页\n");
     printf("提示：留空表示不修改该字段\n\n");
-    
+
     // 患者编号输入环节
     input_patient_id:
     get_safe_string("请输入患者编号：", patient_id, MAX_ID_LEN);
@@ -5661,9 +5732,9 @@ static void handle_patient_archive_update()
         }
         break;
     }
-    
+
     printf("\n提示：患者编号不可修改。\n\n");
-    
+
     // 输入新姓名环节
     input_name:
     printf("当前姓名：%s\n", patient->name);
@@ -5676,10 +5747,22 @@ static void handle_patient_archive_update()
     if (strcmp(temp_input, "B") == 0 || strcmp(temp_input, "b") == 0)
         goto input_patient_id;
     if (strlen(temp_input) > 0)
-        strcpy(name, temp_input);
+    {
+        if (strcmp(temp_input, patient->name) != 0)
+        {
+            strcpy(name, temp_input);
+            has_modified = 1;
+        }
+        else
+        {
+            strcpy(name, patient->name);
+        }
+    }
     else
+    {
         strcpy(name, patient->name);
-    
+    }
+
     // 输入新年龄环节
     input_age:
     printf("当前年龄：%d\n", patient->age);
@@ -5692,10 +5775,23 @@ static void handle_patient_archive_update()
     if (strcmp(temp_input, "B") == 0 || strcmp(temp_input, "b") == 0)
         goto input_name;
     if (strlen(temp_input) > 0)
-        age = atoi(temp_input);
+    {
+        int new_age = atoi(temp_input);
+        if (new_age != patient->age)
+        {
+            age = new_age;
+            has_modified = 1;
+        }
+        else
+        {
+            age = patient->age;
+        }
+    }
     else
+    {
         age = patient->age;
-    
+    }
+
     // 输入新症状环节
     input_symptom:
     printf("当前症状：%s\n", patient->symptom);
@@ -5708,10 +5804,22 @@ static void handle_patient_archive_update()
     if (strcmp(temp_input, "B") == 0 || strcmp(temp_input, "b") == 0)
         goto input_age;
     if (strlen(temp_input) > 0)
-        strcpy(symptom, temp_input);
+    {
+        if (strcmp(temp_input, patient->symptom) != 0)
+        {
+            strcpy(symptom, temp_input);
+            has_modified = 1;
+        }
+        else
+        {
+            strcpy(symptom, patient->symptom);
+        }
+    }
     else
+    {
         strcpy(symptom, patient->symptom);
-    
+    }
+
     // 输入新目标科室环节
     input_dept:
     printf("当前目标科室：%s\n", patient->target_dept);
@@ -5724,10 +5832,22 @@ static void handle_patient_archive_update()
     if (strcmp(temp_input, "B") == 0 || strcmp(temp_input, "b") == 0)
         goto input_symptom;
     if (strlen(temp_input) > 0)
-        strcpy(target_dept, temp_input);
+    {
+        if (strcmp(temp_input, patient->target_dept) != 0)
+        {
+            strcpy(target_dept, temp_input);
+            has_modified = 1;
+        }
+        else
+        {
+            strcpy(target_dept, patient->target_dept);
+        }
+    }
     else
+    {
         strcpy(target_dept, patient->target_dept);
-    
+    }
+
     // 输入新身份证号环节
     input_id_card:
     printf("当前身份证号：%s\n", patient->id_card);
@@ -5760,10 +5880,18 @@ static void handle_patient_archive_update()
                 goto input_dept;
             continue;
         }
-        strcpy(id_card, temp_input);
+        if (strcmp(temp_input, patient->id_card) != 0)
+        {
+            strcpy(id_card, temp_input);
+            has_modified = 1;
+        }
+        else
+        {
+            strcpy(id_card, patient->id_card);
+        }
         break;
     }
-    
+
     // 输入新余额环节
     input_balance:
     balance = patient->balance;
@@ -5807,12 +5935,28 @@ static void handle_patient_archive_update()
                 goto input_id_card;
             continue;
         }
-        balance = new_balance;
+        if (new_balance != patient->balance)
+        {
+            balance = new_balance;
+            has_modified = 1;
+        }
+        else
+        {
+            balance = patient->balance;
+        }
         break;
     }
 
     update_patient_archive(patient_id, name, age, symptom, target_dept, id_card, balance);
-    system("pause");
+
+    if (has_modified)
+    {
+        printf("✅ 患者档案更新成功！\n");
+    }
+    else
+    {
+        printf("未进行任何修改！\n");
+    }
 }
 
 static void patient_archive_menu()
@@ -5833,16 +5977,24 @@ static void patient_archive_menu()
         switch (get_safe_int("👉 请输入操作编号: "))
         {
             case 1:
+                system("cls");
                 handle_patient_archive_query_by_id();
+                system("pause");
                 break;
             case 2:
+                system("cls");
                 handle_patient_archive_query_by_id_card();
+                system("pause");
                 break;
             case 3:
+                system("cls");
                 handle_patient_archive_query_by_name();
+                system("pause");
                 break;
             case 4:
+                system("cls");
                 handle_patient_archive_update();
+                system("pause");
                 break;
             case 0:
                 running = 0;
@@ -7930,36 +8082,35 @@ static void admin_ward_resource_menu()
             case 1:
                 system("cls");
                 show_all_beds();
-                printf("\n请按任意键返回...\n");
                 system("pause");
                 break;
             case 2:
                 system("cls");
                 show_free_beds();
-                printf("\n请按任意键返回...\n");
                 system("pause");
                 break;
             case 3:
                 system("cls");
                 show_hospitalized_patients();
-                printf("\n请按任意键返回...\n");
                 system("pause");
                 break;
             case 4:
                 system("cls");
                 show_bed_resource_alerts();
-                printf("\n请按任意键返回...\n");
                 system("pause");
                 break;
             case 5:
+                system("cls");
                 handle_admin_add_ward_bed();
                 system("pause");
                 break;
             case 6:
+                system("cls");
                 handle_admin_update_ward_bed();
                 system("pause");
                 break;
             case 7:
+                system("cls");
                 handle_admin_delete_ward_bed();
                 system("pause");
                 break;
@@ -7994,12 +8145,7 @@ static void handle_admin_add_ward_bed()
         {
         case 0:
             get_safe_string("请输入所属病房编号（例如 R-101）：", room_id, MAX_ID_LEN);
-            if (my_strcasecmp(room_id, "B") == 0)
-            {
-                printf("\n当前已是第一步，无法返回上一步；如需退出请输入 Q。\n\n");
-                continue;
-            }
-            if (my_strcasecmp(room_id, "Q") == 0)
+            if (my_strcasecmp(room_id, "B") == 0 || my_strcasecmp(room_id, "Q") == 0)
             {
                 printf("\n已退出新增床位操作。\n");
                 return;
@@ -8123,7 +8269,7 @@ static void handle_admin_add_ward_bed()
             printf("占用状态：空闲\n");
             printf("==============================================\n");
 
-            printf("\n是否确认新增该床位？Y=确认，N=取消，B=返回上一步，Q=退出\n");
+            printf("\n是否确认新增该床位？Y=确认，N=取消，B=返回上一步\n");
             confirm = get_single_char("");
 
             if (confirm == 'Y' || confirm == 'y')
@@ -8178,22 +8324,209 @@ static void handle_admin_update_ward_bed()
     char new_dept[MAX_NAME_LEN] = "";
     int new_ward_type = 0;
     char confirm;
+    int step = 0;
     
     WardNode* target = NULL;
     char old_room_id[MAX_ID_LEN] = "";
     char old_dept[MAX_NAME_LEN] = "";
     int old_ward_type = 0;
+    char input_buffer[100];
 
     system("cls");
     printf("\n================ 修改床位信息 ================\n");
     printf("提示：输入 B 返回上一级，Q 退出当前操作\n\n");
 
-    // 输入床位编号
-    get_safe_string("请输入要修改的床位编号：", bed_id, MAX_ID_LEN);
-    if (my_strcasecmp(bed_id, "B") == 0)
+    while (1)
     {
-        printf("\n已返回床位资源管理菜单。\n");
-        return;
+        switch (step)
+        {
+        case 0:
+            get_safe_string("请输入要修改的床位编号：", bed_id, MAX_ID_LEN);
+            if (my_strcasecmp(bed_id, "B") == 0 || my_strcasecmp(bed_id, "Q") == 0)
+            {
+                printf("\n已退出修改床位信息操作。\n");
+                return;
+            }
+            if (my_strcasecmp(bed_id, "0") == 0)
+            {
+                printf("当前已统一使用 B 返回上一级，Q 退出当前操作。\n");
+                continue;
+            }
+            if (is_blank_string(bed_id))
+            {
+                printf("\n⚠️ 床位编号不能为空！\n\n");
+                continue;
+            }
+
+            target = find_ward_by_id(g_ward_list, bed_id);
+            if (target == NULL)
+            {
+                printf("\n⚠️ 未找到对应床位！\n");
+                return;
+            }
+
+            strncpy(old_room_id, target->room_id, MAX_ID_LEN - 1);
+            strncpy(old_dept, target->dept, MAX_NAME_LEN - 1);
+            old_ward_type = target->ward_type;
+
+            printf("\n---------- 当前床位信息 ----------\n");
+            printf("病房编号：%s\n", target->room_id);
+            printf("床位编号：%s\n", target->bed_id);
+            printf("所属科室：%s\n", strlen(target->dept) == 0 ? "无" : target->dept);
+            printf("病房类型：");
+            switch (target->ward_type)
+            {
+                case WARD_GENERAL: printf("普通病房\n"); break;
+                case WARD_ICU: printf("ICU\n"); break;
+                case WARD_ISOLATION: printf("隔离病房\n"); break;
+                case WARD_SINGLE: printf("单人病房\n"); break;
+                default: printf("未知\n"); break;
+            }
+            printf("占用状态：%s\n", target->is_occupied ? "已占用" : "空闲");
+            printf("当前患者：%s\n", target->is_occupied ? target->patient_id : "无");
+            printf("--------------------------------\n");
+
+            if (target->is_occupied)
+            {
+                printf("\n⚠️ 该床位正在被患者占用，不允许修改核心信息。\n");
+                return;
+            }
+            step = 1;
+            break;
+
+        case 1:
+            printf("\n请输入新病房编号（当前：%s，直接回车不修改）：\n", old_room_id);
+            get_safe_string("新病房编号：", new_room_id, MAX_ID_LEN);
+            if (my_strcasecmp(new_room_id, "Q") == 0)
+            {
+                printf("\n已退出修改床位信息操作。\n");
+                return;
+            }
+            if (my_strcasecmp(new_room_id, "B") == 0)
+            {
+                printf("\n已返回床位资源管理菜单。\n");
+                return;
+            }
+            step = 2;
+            break;
+
+        case 2:
+            printf("\n请输入新所属科室（当前：%s，直接回车不修改）：\n", strlen(old_dept) == 0 ? "无" : old_dept);
+            get_safe_string("新所属科室：", new_dept, MAX_NAME_LEN);
+            if (my_strcasecmp(new_dept, "Q") == 0)
+            {
+                printf("\n已退出修改床位信息操作。\n");
+                return;
+            }
+            if (my_strcasecmp(new_dept, "B") == 0)
+            {
+                step = 1;
+                continue;
+            }
+            step = 3;
+            break;
+
+        case 3:
+            printf("\n新病房类型（当前：");
+            switch (old_ward_type)
+            {
+                case 1: printf("普通病房"); break;
+                case 2: printf("ICU"); break;
+                case 3: printf("隔离病房"); break;
+                case 4: printf("单人病房"); break;
+            }
+            printf("）：\n");
+            printf("  [0] 不修改\n");
+            printf("  [1] 普通病房\n");
+            printf("  [2] ICU\n");
+            printf("  [3] 隔离病房\n");
+            printf("  [4] 单人病房\n");
+
+            get_safe_string("请输入选择：", input_buffer, sizeof(input_buffer));
+            if (my_strcasecmp(input_buffer, "Q") == 0)
+            {
+                printf("\n已退出修改床位信息操作。\n");
+                return;
+            }
+            if (my_strcasecmp(input_buffer, "B") == 0)
+            {
+                step = 2;
+                continue;
+            }
+
+            new_ward_type = atoi(input_buffer);
+            if (new_ward_type < 0 || new_ward_type > 4)
+            {
+                printf("\n⚠️ 非法输入！请重新输入0-4之间的纯数字。\n");
+                continue;
+            }
+            step = 4;
+            break;
+
+        case 4:
+            if (is_blank_string(new_room_id))
+            {
+                strncpy(new_room_id, old_room_id, MAX_ID_LEN - 1);
+            }
+            if (is_blank_string(new_dept))
+            {
+                strncpy(new_dept, old_dept, MAX_NAME_LEN - 1);
+            }
+            if (new_ward_type == 0)
+            {
+                new_ward_type = old_ward_type;
+            }
+
+            if (strcmp(new_room_id, old_room_id) == 0 && 
+                strcmp(new_dept, old_dept) == 0 && 
+                new_ward_type == old_ward_type)
+            {
+                printf("\n未进行任何修改！\n");
+                return;
+            }
+
+            printf("\n================ 修改确认 ================\n");
+            printf("床位编号：%s\n", bed_id);
+            printf("病房编号：%s -> %s\n", strlen(old_room_id) == 0 ? "无" : old_room_id, strlen(new_room_id) == 0 ? "无" : new_room_id);
+            printf("所属科室：%s -> %s\n", strlen(old_dept) == 0 ? "无" : old_dept, strlen(new_dept) == 0 ? "无" : new_dept);
+            printf("病房类型：");
+            switch (old_ward_type) { case 1: printf("普通病房"); break; case 2: printf("ICU"); break; case 3: printf("隔离病房"); break; case 4: printf("单人病房"); break; }
+            printf(" -> ");
+            switch (new_ward_type) { case 1: printf("普通病房"); break; case 2: printf("ICU"); break; case 3: printf("隔离病房"); break; case 4: printf("单人病房"); break; }
+            printf("\n");
+            printf("============================================\n");
+
+            printf("\n是否确认修改该床位信息？Y=确认，N=取消，B=返回上一步\n");
+            confirm = get_single_char("");
+            if (confirm == 'Y' || confirm == 'y')
+            {
+                strncpy(target->room_id, new_room_id, MAX_ID_LEN - 1);
+                strncpy(target->dept, new_dept, MAX_NAME_LEN - 1);
+                target->ward_type = new_ward_type;
+
+                add_log("修改床位", bed_id, "管理员修改床位信息");
+
+                printf("\n✅ 床位信息修改成功！\n");
+                return;
+            }
+            if (confirm == 'N' || confirm == 'n')
+            {
+                printf("\n操作已取消！\n");
+                return;
+            }
+            if (confirm == 'B' || confirm == 'b')
+            {
+                step = 3;
+                continue;
+            }
+            if (confirm == 'Q' || confirm == 'q')
+            {
+                printf("\n已退出修改床位信息操作。\n");
+                return;
+            }
+            printf("⚠️ 无效选择，操作已取消！\n");
+            return;
+        }
     }
     if (my_strcasecmp(bed_id, "Q") == 0)
     {
@@ -8394,7 +8727,7 @@ static void handle_admin_delete_ward_bed()
         printf("\n---------- 床位信息 ----------\n");
         printf("所属病房编号：%s\n", target->room_id);
         printf("床位编号：%s\n", target->bed_id);
-        printf("所属科室：%s\n", target->dept);
+        printf("所属科室：%s\n", strlen(target->dept) == 0 ? "无" : target->dept);
         printf("病房类型：");
         switch (target->ward_type)
         {
@@ -8419,7 +8752,7 @@ static void handle_admin_delete_ward_bed()
 
         while (1)
         {
-            printf("\n是否确认删除/停用该床位？Y=确认，N=取消，B=返回上一步，Q=退出\n");
+            printf("\n是否确认删除/停用该床位？Y=确认，N=取消，B=返回上一步\n");
             confirm = get_single_char("");
 
             if (confirm == 'Y' || confirm == 'y')

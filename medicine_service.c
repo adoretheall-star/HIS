@@ -330,11 +330,29 @@ void show_all_medicines()
     printf("\n======================================================\n");
     printf("                    药品信息列表\n");
     printf("======================================================\n");
+    printf("%-12s %-20s %-15s %-10s %-6s %-10s %s\n",
+           "药品编号", "商品名", "通用名", "单价(元)", "库存", "医保类型", "效期");
+    printf("------------------------------------------------------\n");
 
     curr = g_medicine_list->next;
     while (curr != NULL)
     {
-        print_medicine_info(curr);
+        const char* m_type_name = NULL;
+        switch (curr->m_type)
+        {
+            case MEDICARE_CLASS_A: m_type_name = "甲类"; break;
+            case MEDICARE_CLASS_B: m_type_name = "乙类"; break;
+            case MEDICARE_NONE:    m_type_name = "自费"; break;
+            default:               m_type_name = "未知";
+        }
+        printf("%-12s %-20s %-15s %-10.2f %-6d %-10s %s\n",
+               curr->id,
+               curr->name,
+               curr->generic_name,
+               curr->price,
+               curr->stock,
+               m_type_name,
+               curr->expiry_date);
         curr = curr->next;
     }
 }
@@ -423,7 +441,6 @@ void show_low_stock_medicines(int threshold)
 
 void show_expiring_medicines(const char* today, int days_threshold)
 {
-    system("cls");
     int found = 0;
     MedicineNode* curr = NULL;
 
@@ -474,8 +491,6 @@ void show_expiring_medicines(const char* today, int days_threshold)
     {
         printf("当前无近效期药品\n");
     }
-    printf("\n请按任意键返回...\n");
-    system("pause");
 }
 
 MedicineNode* register_medicine(
@@ -612,6 +627,13 @@ int update_medicine_stock(const char* med_id, int new_stock)
     printf("药品编号：%s\n", target->id);
     printf("商品名：%s\n", target->name);
     printf("旧库存：%d\n", old_stock);
+
+    if (new_stock == old_stock)
+    {
+        printf("新库存：%d\n", new_stock);
+        printf("提示：库存数量未发生变化，未做任何修改。\n");
+        return 1;
+    }
 
     target->stock = new_stock;
 
