@@ -168,6 +168,7 @@ printf("  [8] 查看药师值班状态\n");
         printf("  [22] 查询检查记录\n");
         printf("  [23] 回收站管理\n");
         printf("  [24] 医疗风险大屏\n");
+        printf("  [25] 报表导出中心\n");
         printf("  [0] 退出登录\n");
         printf("------------------------------------------------------\n");
 
@@ -289,6 +290,11 @@ printf("  [8] 查看药师值班状态\n");
                 break;
             case 24:
                 show_admin_medical_big_screen();
+                break;
+            case 25:
+                system("cls");
+                admin_report_menu();
+                system("pause");
                 break;
             case 0:
                 running = 0;

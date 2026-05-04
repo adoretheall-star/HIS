@@ -104,4 +104,7 @@ void handle_restore_medicine_from_recycle(void);
 void show_public_medical_big_screen(void);
 void show_admin_medical_big_screen(void);
 
+// 报表导出中心
+void admin_report_menu(void);
+
 #endif // ADMIN_SERVICE_H
