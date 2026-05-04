@@ -506,6 +506,7 @@ static void handle_admin_register_account()
                         case ROLE_NURSE:    strcpy(role_str, "护士"); break;
                         case ROLE_DOCTOR:   strcpy(role_str, "医生"); break;
                         case ROLE_PHARMACIST: strcpy(role_str, "药师"); break;
+                        case ROLE_PATIENT:  strcpy(role_str, "患者"); break;
                     }
                     if (role == ROLE_DOCTOR)
                     {
@@ -2760,9 +2761,9 @@ static void display_recent_alerts()
             {
                 double rate = 120.0;
                 switch (ir->ward_type) {
-                    case WARD_TYPE_ICU: rate = 500.0; break;
-                    case WARD_TYPE_ISOLATION: rate = 300.0; break;
-                    case WARD_TYPE_SINGLE: rate = 400.0; break;
+                    case WARD_ICU: rate = 500.0; break;
+                    case WARD_ISOLATION: rate = 300.0; break;
+                    case WARD_SINGLE: rate = 400.0; break;
                     default: rate = 120.0; break;
                 }
                 if (ir->deposit_balance < rate * 3)
@@ -7365,7 +7366,7 @@ int main()
 "A-001", "P-001", "2026-04-01", "上午", "D-201", "外科", RESERVED
 ));
         insert_ward_tail(g_ward_list, create_ward_node(
-"W-101", "B-101", WARD_TYPE_GENERAL, "内科"
+"W-101", "B-101", WARD_GENERAL, "内科"
 ));
         insert_account_tail(g_account_list, create_account_node(
 "admin", "123456", "超级管理员", "男", ROLE_ADMIN));
@@ -7854,8 +7855,7 @@ int main()
                 patient_self_service_menu();
                 break;
             case 3:
-                printf("\n[提示] 医疗大屏功能后续开发...\n");
-                system("pause");
+                show_medical_big_screen();
                 break;
             case 0:
                 // 准备退出主循环
@@ -8223,10 +8223,10 @@ static void handle_admin_update_ward_bed()
     printf("病房类型：");
     switch (target->ward_type)
     {
-        case 1: printf("普通病房\n"); break;
-        case 2: printf("ICU\n"); break;
-        case 3: printf("隔离病房\n"); break;
-        case 4: printf("单人病房\n"); break;
+        case WARD_GENERAL: printf("普通病房\n"); break;
+        case WARD_ICU: printf("ICU\n"); break;
+        case WARD_ISOLATION: printf("隔离病房\n"); break;
+        case WARD_SINGLE: printf("单人病房\n"); break;
     }
     printf("占用状态：%s\n", target->is_occupied ? "已占用" : "空闲");
     printf("当前患者：%s\n", target->is_occupied ? target->patient_id : "无");
@@ -8253,10 +8253,10 @@ static void handle_admin_update_ward_bed()
     printf("\n新病房类型（当前：");
     switch (target->ward_type)
     {
-        case 1: printf("普通病房"); break;
-        case 2: printf("ICU"); break;
-        case 3: printf("隔离病房"); break;
-        case 4: printf("单人病房"); break;
+        case WARD_GENERAL: printf("普通病房"); break;
+        case WARD_ICU: printf("ICU"); break;
+        case WARD_ISOLATION: printf("隔离病房"); break;
+        case WARD_SINGLE: printf("单人病房"); break;
     }
     printf("）：\n");
     printf("  [0] 不修改\n");
@@ -8394,10 +8394,10 @@ static void handle_admin_delete_ward_bed()
         printf("病房类型：");
         switch (target->ward_type)
         {
-            case 1: printf("普通病房\n"); break;
-            case 2: printf("ICU\n"); break;
-            case 3: printf("隔离病房\n"); break;
-            case 4: printf("单人病房\n"); break;
+            case WARD_GENERAL: printf("普通病房\n"); break;
+            case WARD_ICU: printf("ICU\n"); break;
+            case WARD_ISOLATION: printf("隔离病房\n"); break;
+            case WARD_SINGLE: printf("单人病房\n"); break;
             default: printf("未知\n"); break;
         }
         printf("占用状态：%s\n", target->is_occupied ? "已占用" : "空闲");
@@ -8605,9 +8605,9 @@ static void inpatient_menu()
                                     p_card = masked_id_card;
                                 }
 
-                                const char* t = ward_curr->ward_type == WARD_TYPE_ICU ? "ICU" :
-                                    (ward_curr->ward_type == WARD_TYPE_ISOLATION ? "隔离病房" :
-                                    (ward_curr->ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房"));
+                                const char* t = ward_curr->ward_type == WARD_ICU ? "ICU" :
+                                    (ward_curr->ward_type == WARD_ISOLATION ? "隔离病房" :
+                                    (ward_curr->ward_type == WARD_SINGLE ? "单人病房" : "普通病房"));
 
                                 print_col(ward_curr->room_id, 12);
                                 print_col(ward_curr->bed_id, 12);
@@ -8653,7 +8653,7 @@ static void inpatient_menu()
                                 printf("======================================================\n");
                                 printf("病房编号: %s\n", ward_curr->room_id);
                                 printf("床位编号: %s\n", ward_curr->bed_id);
-                                printf("病房类型: %s\n", ward_curr->ward_type == WARD_TYPE_ICU ? "ICU" : (ward_curr->ward_type == WARD_TYPE_ISOLATION ? "隔离病房" : (ward_curr->ward_type == WARD_TYPE_SINGLE ? "单人病房" : "普通病房")));
+                                printf("病房类型: %s\n", ward_curr->ward_type == WARD_ICU ? "ICU" : (ward_curr->ward_type == WARD_ISOLATION ? "隔离病房" : (ward_curr->ward_type == WARD_SINGLE ? "单人病房" : "普通病房")));
                                 printf("床位状态: %s\n", ward_curr->is_occupied ? "占用" : "空闲");
                                 
                                 if (ward_curr->is_occupied)

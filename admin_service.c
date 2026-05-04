@@ -2,6 +2,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <windows.h>
+
+#ifdef STATUS_PENDING
+#undef STATUS_PENDING
+#endif
+
 #include "admin_service.h"
 #include "list_ops.h"
 #include "medicine_service.h"
@@ -62,13 +68,13 @@ int my_strcasecmp(const char* s1, const char* s2)
 static double get_ward_rate(WardType ward_type)
 {
     switch (ward_type) {
-        case WARD_TYPE_ICU:
+        case WARD_ICU:
             return ICU_WARD_RATE;
-        case WARD_TYPE_ISOLATION:
+        case WARD_ISOLATION:
             return ISOLATION_WARD_RATE;
-        case WARD_TYPE_SINGLE:
+        case WARD_SINGLE:
             return SINGLE_WARD_RATE;
-        case WARD_TYPE_GENERAL:
+        case WARD_GENERAL:
         default:
             return GENERAL_WARD_RATE;
     }
@@ -85,12 +91,17 @@ static int is_medicine_expiring_soon(const char* expiry_date)
     {
         return 0;
     }
-    
-    // 简单的近效期检查：假设当前日期为 2024-01-01，检查是否在 30 天内过期
-    // 实际项目中应该使用当前系统日期进行比较
-    const char* current_date = "2024-01-01";
+
+    time_t now = time(NULL);
+    struct tm now_tm;
+    char current_date[11];
+
+    localtime_s(&now_tm, &now);
+    snprintf(current_date, sizeof(current_date), "%d-%02d-%02d",
+             now_tm.tm_year + 1900, now_tm.tm_mon + 1, now_tm.tm_mday);
+
     int days_diff = days_between_dates(current_date, expiry_date);
-    
+
     return (days_diff >= 0 && days_diff <= 30);
 }
 
@@ -149,9 +160,9 @@ static double estimate_daily_cost_by_ward_type(WardType ward_type)
 {
     switch (ward_type)
     {
-        case WARD_TYPE_GENERAL:
+        case WARD_GENERAL:
             return 200.0;
-        case WARD_TYPE_ICU:
+        case WARD_ICU:
             return 1500.0;
         default:
             return 200.0;
@@ -963,18 +974,13 @@ static void show_low_stock_warning(void)
                 const char* medicare_name = NULL;
                 switch (curr->m_type)
                 {
-                    case MEDICARE_NONE:
-                        medicare_name = "无医保";
-                        break;
-                    case MEDICARE_CLASS_A:
-                        medicare_name = "甲类医保";
-                        break;
-                    case MEDICARE_CLASS_B:
-                        medicare_name = "乙类医保";
-                        break;
-                    default:
-                        medicare_name = "未知";
-                        break;
+                    case MEDICARE_NONE:       medicare_name = "无医保";       break;
+                    case MEDICARE_CLASS_A:    medicare_name = "甲类医保";     break;
+                    case MEDICARE_CLASS_B:    medicare_name = "乙类医保";     break;
+                    case MEDICARE_BASIC:      medicare_name = "基本医保";     break;
+                    case MEDICARE_GOVERNMENT: medicare_name = "公务员医保";   break;
+                    case MEDICARE_COMMERCIAL: medicare_name = "商业保险";     break;
+                    default:                  medicare_name = "未知";         break;
                 }
                 
                 int current_id_width = get_display_width(curr->id);
@@ -1069,18 +1075,13 @@ static void show_low_stock_warning(void)
                     const char* medicare_name = NULL;
                     switch (curr->m_type)
                     {
-                        case MEDICARE_NONE:
-                            medicare_name = "无医保";
-                            break;
-                        case MEDICARE_CLASS_A:
-                            medicare_name = "甲类医保";
-                            break;
-                        case MEDICARE_CLASS_B:
-                            medicare_name = "乙类医保";
-                            break;
-                        default:
-                            medicare_name = "未知";
-                            break;
+                        case MEDICARE_NONE:       medicare_name = "无医保";       break;
+                        case MEDICARE_CLASS_A:    medicare_name = "甲类医保";     break;
+                        case MEDICARE_CLASS_B:    medicare_name = "乙类医保";     break;
+                        case MEDICARE_BASIC:      medicare_name = "基本医保";     break;
+                        case MEDICARE_GOVERNMENT: medicare_name = "公务员医保";   break;
+                        case MEDICARE_COMMERCIAL: medicare_name = "商业保险";     break;
+                        default:                  medicare_name = "未知";         break;
                     }
                     
                     print_padded_text(curr->id, id_width);
@@ -1208,28 +1209,28 @@ void show_bed_resource_alerts(void)
         
         switch (ward_curr->ward_type)
         {
-            case WARD_TYPE_GENERAL:
+            case WARD_GENERAL:
                 general_total++;
                 if (ward_curr->is_occupied)
                     general_occupied++;
                 else
                     general_free++;
                 break;
-            case WARD_TYPE_ICU:
+            case WARD_ICU:
                 icu_total++;
                 if (ward_curr->is_occupied)
                     icu_occupied++;
                 else
                     icu_free++;
                 break;
-            case WARD_TYPE_ISOLATION:
+            case WARD_ISOLATION:
                 isolation_total++;
                 if (ward_curr->is_occupied)
                     isolation_occupied++;
                 else
                     isolation_free++;
                 break;
-            case WARD_TYPE_SINGLE:
+            case WARD_SINGLE:
                 single_total++;
                 if (ward_curr->is_occupied)
                     single_occupied++;
@@ -3125,18 +3126,13 @@ void handle_medicine_basic_info_update(void)
     // 显示医保类型
     switch (medicine_node->m_type)
     {
-        case MEDICARE_NONE:
-            printf("医保类型：非医保\n");
-            break;
-        case MEDICARE_CLASS_A:
-            printf("医保类型：甲类医保\n");
-            break;
-        case MEDICARE_CLASS_B:
-            printf("医保类型：乙类医保\n");
-            break;
-        default:
-            printf("医保类型：未知\n");
-            break;
+        case MEDICARE_NONE:       printf("医保类型：非医保\n");       break;
+        case MEDICARE_CLASS_A:    printf("医保类型：甲类医保\n");     break;
+        case MEDICARE_CLASS_B:    printf("医保类型：乙类医保\n");     break;
+        case MEDICARE_BASIC:      printf("医保类型：基本医保\n");     break;
+        case MEDICARE_GOVERNMENT: printf("医保类型：公务员医保\n");   break;
+        case MEDICARE_COMMERCIAL: printf("医保类型：商业保险\n");     break;
+        default:                  printf("医保类型：未知\n");         break;
     }
     printf("效期：%s\n", medicine_node->expiry_date);
     printf("----------------------------------------\n");
@@ -3374,18 +3370,13 @@ void handle_medicine_remove(void)
     // 显示医保类型
     switch (medicine->m_type)
     {
-        case MEDICARE_NONE:
-            printf("医保类型：非医保\n");
-            break;
-        case MEDICARE_CLASS_A:
-            printf("医保类型：甲类医保\n");
-            break;
-        case MEDICARE_CLASS_B:
-            printf("医保类型：乙类医保\n");
-            break;
-        default:
-            printf("医保类型：未知\n");
-            break;
+        case MEDICARE_NONE:       printf("医保类型：非医保\n");       break;
+        case MEDICARE_CLASS_A:    printf("医保类型：甲类医保\n");     break;
+        case MEDICARE_CLASS_B:    printf("医保类型：乙类医保\n");     break;
+        case MEDICARE_BASIC:      printf("医保类型：基本医保\n");     break;
+        case MEDICARE_GOVERNMENT: printf("医保类型：公务员医保\n");   break;
+        case MEDICARE_COMMERCIAL: printf("医保类型：商业保险\n");     break;
+        default:                  printf("医保类型：未知\n");         break;
     }
     printf("效期：%s\n", medicine->expiry_date);
     printf("----------------------------------------\n");
@@ -3550,18 +3541,13 @@ void show_all_check_items(void)
         const char* m_type_name = NULL;
         switch (curr->m_type)
         {
-            case MEDICARE_CLASS_A:
-                m_type_name = "甲类";
-                break;
-            case MEDICARE_CLASS_B:
-                m_type_name = "乙类";
-                break;
-            case MEDICARE_NONE:
-                m_type_name = "自费";
-                break;
-            default:
-                m_type_name = "未知";
-                break;
+            case MEDICARE_CLASS_A:    m_type_name = "甲类";       break;
+            case MEDICARE_CLASS_B:    m_type_name = "乙类";       break;
+            case MEDICARE_NONE:       m_type_name = "自费";       break;
+            case MEDICARE_BASIC:      m_type_name = "基本医保";   break;
+            case MEDICARE_GOVERNMENT: m_type_name = "公务员医保"; break;
+            case MEDICARE_COMMERCIAL: m_type_name = "商业保险";   break;
+            default:                  m_type_name = "未知";       break;
         }
         printf("%-10s %-20s %-12s %10.2f %8s\n",
                curr->item_id,
@@ -3649,10 +3635,13 @@ void search_check_item_by_keyword(const char* keyword)
             const char* m_type_name = NULL;
             switch (curr->m_type)
             {
-                case MEDICARE_CLASS_A: m_type_name = "甲类"; break;
-                case MEDICARE_CLASS_B: m_type_name = "乙类"; break;
-                case MEDICARE_NONE:    m_type_name = "自费"; break;
-                default:               m_type_name = "未知"; break;
+                case MEDICARE_CLASS_A:    m_type_name = "甲类";       break;
+                case MEDICARE_CLASS_B:    m_type_name = "乙类";       break;
+                case MEDICARE_NONE:       m_type_name = "自费";       break;
+                case MEDICARE_BASIC:      m_type_name = "基本医保";   break;
+                case MEDICARE_GOVERNMENT: m_type_name = "公务员医保"; break;
+                case MEDICARE_COMMERCIAL: m_type_name = "商业保险";   break;
+                default:                  m_type_name = "未知";       break;
             }
             printf("%-10s %-20s %-12s %10.2f %8s\n",
                    curr->item_id, curr->item_name, curr->dept,
@@ -3776,9 +3765,12 @@ void handle_check_item_update(void)
     printf("检查费用：%.2f\n", target->price);
     switch (target->m_type)
     {
-        case MEDICARE_CLASS_A: printf("医保类型：甲类\n"); break;
-        case MEDICARE_CLASS_B: printf("医保类型：乙类\n"); break;
-        case MEDICARE_NONE:    printf("医保类型：自费\n"); break;
+        case MEDICARE_CLASS_A:    printf("医保类型：甲类\n"); break;
+        case MEDICARE_CLASS_B:    printf("医保类型：乙类\n"); break;
+        case MEDICARE_BASIC:      printf("医保类型：基本医保\n"); break;
+        case MEDICARE_GOVERNMENT: printf("医保类型：公务员医保\n"); break;
+        case MEDICARE_COMMERCIAL: printf("医保类型：商业保险\n"); break;
+        case MEDICARE_NONE:       printf("医保类型：自费\n"); break;
     }
     printf("----------------------------------------\n");
 
@@ -3852,9 +3844,12 @@ void handle_check_item_remove(void)
     printf("检查费用：%.2f\n", target->price);
     switch (target->m_type)
     {
-        case MEDICARE_CLASS_A: printf("医保类型：甲类\n"); break;
-        case MEDICARE_CLASS_B: printf("医保类型：乙类\n"); break;
-        case MEDICARE_NONE:    printf("医保类型：自费\n"); break;
+        case MEDICARE_CLASS_A:    printf("医保类型：甲类\n"); break;
+        case MEDICARE_CLASS_B:    printf("医保类型：乙类\n"); break;
+        case MEDICARE_BASIC:      printf("医保类型：基本医保\n"); break;
+        case MEDICARE_GOVERNMENT: printf("医保类型：公务员医保\n"); break;
+        case MEDICARE_COMMERCIAL: printf("医保类型：商业保险\n"); break;
+        case MEDICARE_NONE:       printf("医保类型：自费\n"); break;
     }
     printf("----------------------------------------\n");
 
@@ -3880,4 +3875,669 @@ void handle_check_item_remove(void)
         printf("提示：检查项目下架成功。\n");
     else
         printf("提示：检查项目下架失败。\n");
+}
+
+static void set_console_color(int color)
+{
+    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), color);
+}
+
+static void reset_console_color(void)
+{
+    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
+}
+
+static void print_red(const char* text)
+{
+    set_console_color(12);
+    printf("%s", text);
+    reset_console_color();
+}
+
+static void print_yellow(const char* text)
+{
+    set_console_color(14);
+    printf("%s", text);
+    reset_console_color();
+}
+
+static void print_green(const char* text)
+{
+    set_console_color(10);
+    printf("%s", text);
+    reset_console_color();
+}
+
+static void print_cyan(const char* text)
+{
+    set_console_color(11);
+    printf("%s", text);
+    reset_console_color();
+}
+
+static void print_progress_bar(const char* label, int value, int total, int width)
+{
+    int completed;
+    double ratio = 0.0;
+    int i;
+
+    printf("%-12s [", label);
+
+    if (total <= 0)
+    {
+        completed = 0;
+        ratio = 0.0;
+    }
+    else
+    {
+        completed = value * width / total;
+        if (completed < 0) completed = 0;
+        if (completed > width) completed = width;
+        ratio = value * 100.0 / total;
+    }
+
+    if (total > 0 && ratio >= 90.0)
+        set_console_color(12);
+    else if (total > 0 && ratio >= 60.0)
+        set_console_color(14);
+    else
+        set_console_color(10);
+
+    for (i = 0; i < completed; i++)
+        printf("█");
+    for (; i < width; i++)
+        printf("-");
+
+    reset_console_color();
+
+    if (total > 0)
+        printf("] %d/%d\n", value, total);
+    else
+        printf("] 0/0\n");
+}
+
+void show_medical_big_screen(void)
+{
+    int running = 1;
+
+    while (running)
+    {
+        system("cls");
+
+        /* ===== 1. 门诊运行统计 ===== */
+        int patient_total = 0;
+        int pending_count = 0;
+        int examining_count = 0;
+        int recheck_pending_count = 0;
+        int unpaid_count = 0;
+        int wait_med_count = 0;
+        int need_hospitalize_count = 0;
+        int hospitalized_count = 0;
+        int completed_count = 0;
+        int no_show_count = 0;
+        int emergency_count = 0;
+        int blacklisted_count = 0;
+        double emergency_debt_total = 0.0;
+
+        if (g_patient_list != NULL)
+        {
+            PatientNode* curr = g_patient_list->next;
+            while (curr != NULL)
+            {
+                patient_total++;
+
+                switch (curr->status)
+                {
+                    case STATUS_PENDING:          pending_count++;          break;
+                    case STATUS_EXAMINING:        examining_count++;        break;
+                    case STATUS_RECHECK_PENDING:  recheck_pending_count++;  break;
+                    case STATUS_UNPAID:           unpaid_count++;           break;
+                    case STATUS_WAIT_MED:         wait_med_count++;         break;
+                    case STATUS_NEED_HOSPITALIZE: need_hospitalize_count++;  break;
+                    case STATUS_HOSPITALIZED:     hospitalized_count++;     break;
+                    case STATUS_COMPLETED:        completed_count++;        break;
+                    case STATUS_NO_SHOW:          no_show_count++;          break;
+                    default:                                                break;
+                }
+
+                if (curr->is_emergency == 1)
+                    emergency_count++;
+                if (curr->is_blacklisted != 0)
+                    blacklisted_count++;
+                emergency_debt_total += curr->emergency_debt;
+
+                curr = curr->next;
+            }
+        }
+
+        /* ===== 2. 预约挂号统计 ===== */
+        int appointment_total = 0;
+        int reserved_count = 0;
+        int checked_in_count = 0;
+        int cancelled_count = 0;
+        int missed_count = 0;
+        int walk_in_count = 0;
+        int appointment_count = 0;
+        int fee_paid_count = 0;
+        int fee_unpaid_count = 0;
+
+        if (g_appointment_list != NULL)
+        {
+            AppointmentNode* curr = g_appointment_list->next;
+            while (curr != NULL)
+            {
+                appointment_total++;
+
+                switch (curr->appointment_status)
+                {
+                    case RESERVED:    reserved_count++;    break;
+                    case CHECKED_IN:  checked_in_count++;  break;
+                    case CANCELLED:   cancelled_count++;   break;
+                    case MISSED:      missed_count++;      break;
+                    default:                               break;
+                }
+
+                if (curr->is_walk_in == 1)
+                    walk_in_count++;
+                else
+                    appointment_count++;
+
+                if (curr->fee_paid == 1)
+                    fee_paid_count++;
+                else
+                    fee_unpaid_count++;
+
+                curr = curr->next;
+            }
+        }
+
+        /* ===== 3. 医护药人员统计 ===== */
+        int admin_count = 0;
+        int doctor_total = 0;
+        int nurse_total = 0;
+        int pharmacist_total = 0;
+        int doctor_on_duty = 0;
+        int nurse_on_duty = 0;
+        int pharmacist_on_duty = 0;
+
+        if (g_account_list != NULL)
+        {
+            AccountNode* curr = g_account_list->next;
+            while (curr != NULL)
+            {
+                switch (curr->role)
+                {
+                    case ROLE_ADMIN:
+                        admin_count++;
+                        break;
+                    case ROLE_DOCTOR:
+                        doctor_total++;
+                        if (curr->is_on_duty == 1)
+                            doctor_on_duty++;
+                        break;
+                    case ROLE_NURSE:
+                        nurse_total++;
+                        if (curr->is_on_duty == 1)
+                            nurse_on_duty++;
+                        break;
+                    case ROLE_PHARMACIST:
+                        pharmacist_total++;
+                        if (curr->is_on_duty == 1)
+                            pharmacist_on_duty++;
+                        break;
+                    default:
+                        break;
+                }
+                curr = curr->next;
+            }
+        }
+
+        /* ===== 4. 床位与住院统计 ===== */
+        int bed_total = 0;
+        int bed_occupied = 0;
+        int bed_free = 0;
+        double bed_occupancy_rate = 0.0;
+
+        int inpatient_total = 0;
+        int inpatient_active = 0;
+        int inpatient_discharged = 0;
+        int deposit_low_count = 0;
+        double deposit_balance_total = 0.0;
+
+        if (g_ward_list != NULL)
+        {
+            WardNode* curr = g_ward_list->next;
+            while (curr != NULL)
+            {
+                bed_total++;
+                if (curr->is_occupied != 0)
+                    bed_occupied++;
+                else
+                    bed_free++;
+                curr = curr->next;
+            }
+        }
+        if (bed_total > 0)
+            bed_occupancy_rate = bed_occupied * 100.0 / bed_total;
+
+        if (g_inpatient_list != NULL)
+        {
+            InpatientRecord* curr = g_inpatient_list->next;
+            while (curr != NULL)
+            {
+                inpatient_total++;
+                if (curr->is_active == 1)
+                {
+                    inpatient_active++;
+                    deposit_balance_total += curr->deposit_balance;
+                    if (curr->deposit_balance < 1000.0)
+                        deposit_low_count++;
+                }
+                else
+                {
+                    inpatient_discharged++;
+                }
+                curr = curr->next;
+            }
+        }
+
+        /* ===== 5. 药品库存统计 ===== */
+        int medicine_kind_total = 0;
+        int medicine_stock_total = 0;
+        int low_stock_count = 0;
+        int expiring_count = 0;
+        int expired_count = 0;
+
+        time_t now = time(NULL);
+        struct tm now_tm;
+        localtime_s(&now_tm, &now);
+        char today_str[11];
+        snprintf(today_str, sizeof(today_str), "%d-%02d-%02d",
+                 now_tm.tm_year + 1900, now_tm.tm_mon + 1, now_tm.tm_mday);
+
+        if (g_medicine_list != NULL)
+        {
+            MedicineNode* curr = g_medicine_list->next;
+            while (curr != NULL)
+            {
+                medicine_kind_total++;
+                medicine_stock_total += curr->stock;
+
+                if (curr->stock < 10)
+                    low_stock_count++;
+
+                int days_left = days_between_dates(today_str, curr->expiry_date);
+                if (days_left < 0)
+                    expired_count++;
+                else if (days_left >= 0 && days_left <= 30)
+                    expiring_count++;
+
+                curr = curr->next;
+            }
+        }
+
+        /* ===== 6. 检查与服务统计 ===== */
+        int check_total = 0;
+        int check_completed = 0;
+        int check_uncompleted = 0;
+        int check_paid = 0;
+        int check_unpaid = 0;
+
+        int alert_total = 0;
+        int complaint_total = 0;
+        int complaint_pending = 0;
+        int complaint_replied = 0;
+        int log_total = 0;
+
+        if (g_check_record_list != NULL)
+        {
+            CheckRecordNode* curr = g_check_record_list->next;
+            while (curr != NULL)
+            {
+                check_total++;
+                if (curr->is_completed == 1)
+                    check_completed++;
+                else
+                    check_uncompleted++;
+                if (curr->is_paid == 1)
+                    check_paid++;
+                else
+                    check_unpaid++;
+                curr = curr->next;
+            }
+        }
+
+        if (g_alert_list != NULL)
+        {
+            AlertNode* curr = g_alert_list->next;
+            while (curr != NULL)
+            {
+                alert_total++;
+                curr = curr->next;
+            }
+        }
+
+        if (g_complaint_list != NULL)
+        {
+            ComplaintNode* curr = g_complaint_list->next;
+            while (curr != NULL)
+            {
+                complaint_total++;
+                if (curr->status == 0)
+                    complaint_pending++;
+                else if (curr->status == 1)
+                    complaint_replied++;
+                curr = curr->next;
+            }
+        }
+
+        if (g_log_list != NULL)
+        {
+            LogNode* curr = g_log_list->next;
+            while (curr != NULL)
+            {
+                log_total++;
+                curr = curr->next;
+            }
+        }
+
+        /* ===== 系统状态判断 ===== */
+        int is_high_risk = (expired_count > 0 || bed_occupancy_rate >= 90.0 || blacklisted_count > 0);
+        int is_warning = (!is_high_risk && (alert_total > 0 || low_stock_count > 0 ||
+                          deposit_low_count > 0 || complaint_pending > 0));
+
+        /* ===== 输出界面 ===== */
+        printf("\n");
+        printf("==============================================================\n");
+        printf("             📊 社区智慧医疗管理系统 - 医疗大屏\n");
+        printf("==============================================================\n");
+
+        printf("  系统状态：");
+        if (is_high_risk)
+            print_red("🔴 高风险，请立即处理");
+        else if (is_warning)
+            print_yellow("🟡 注意运行，存在待处理事项");
+        else
+            print_green("🟢 运行正常");
+        printf("\n");
+
+        /* ===== 风险汇总卡片 ===== */
+        {
+            int has_red_risk = (expired_count > 0 || bed_occupancy_rate >= 90.0 || blacklisted_count > 0);
+            int has_yellow_risk = (low_stock_count > 0 || expiring_count > 0 || 
+                                  deposit_low_count > 0 || complaint_pending > 0 || 
+                                  alert_total > 0 || emergency_debt_total > 0);
+            int has_risk = has_red_risk || has_yellow_risk;
+
+            printf("\n");
+            printf("┌──────────────────────────────────────────────────────────────┐\n");
+            printf("│                      ⚠️  风险汇总                            │\n");
+            printf("├──────────────────────────────────────────────────────────────┤\n");
+
+            if (!has_risk)
+            {
+                printf("│  ");
+                print_green("✅ 当前无明显风险，系统运行正常");
+                printf("                                      │\n");
+            }
+            else
+            {
+                if (has_red_risk)
+                {
+                    printf("│  ");
+                    print_red("⚠️ 当前存在以下高风险：");
+                    printf("                                    │\n");
+                }
+                else
+                {
+                    printf("│  ");
+                    print_yellow("⚠️ 当前存在以下风险：");
+                    printf("                                      │\n");
+                }
+
+                char buf[32];
+
+                if (low_stock_count > 0)
+                {
+                    printf("│  ");
+                    print_yellow("- 低库存药品：");
+                    snprintf(buf, sizeof(buf), "%d", low_stock_count);
+                    print_yellow(buf);
+                    print_yellow(" 种");
+                    printf("                                      │\n");
+                }
+
+                if (expiring_count > 0)
+                {
+                    printf("│  ");
+                    print_yellow("- 近效期药品：");
+                    snprintf(buf, sizeof(buf), "%d", expiring_count);
+                    print_yellow(buf);
+                    print_yellow(" 种");
+                    printf("                                      │\n");
+                }
+
+                if (expired_count > 0)
+                {
+                    printf("│  ");
+                    print_red("- 已过期药品：");
+                    snprintf(buf, sizeof(buf), "%d", expired_count);
+                    print_red(buf);
+                    print_red(" 种");
+                    printf("                                      │\n");
+                }
+
+                if (deposit_low_count > 0)
+                {
+                    printf("│  ");
+                    print_yellow("- 押金不足患者：");
+                    snprintf(buf, sizeof(buf), "%d", deposit_low_count);
+                    print_yellow(buf);
+                    print_yellow(" 人");
+                    printf("                                    │\n");
+                }
+
+                if (complaint_pending > 0)
+                {
+                    printf("│  ");
+                    print_yellow("- 待处理投诉：");
+                    snprintf(buf, sizeof(buf), "%d", complaint_pending);
+                    print_yellow(buf);
+                    print_yellow(" 条");
+                    printf("                                      │\n");
+                }
+
+                if (alert_total > 0)
+                {
+                    printf("│  ");
+                    print_yellow("- 系统预警：");
+                    snprintf(buf, sizeof(buf), "%d", alert_total);
+                    print_yellow(buf);
+                    print_yellow(" 条");
+                    printf("                                        │\n");
+                }
+
+                if (emergency_debt_total > 0)
+                {
+                    printf("│  ");
+                    print_yellow("- 急诊欠费：");
+                    snprintf(buf, sizeof(buf), "%.2f", emergency_debt_total);
+                    print_yellow(buf);
+                    print_yellow(" 元");
+                    printf("                                      │\n");
+                }
+
+                if (bed_occupancy_rate >= 90.0)
+                {
+                    printf("│  ");
+                    print_red("- 床位占用率：");
+                    snprintf(buf, sizeof(buf), "%.1f", bed_occupancy_rate);
+                    print_red(buf);
+                    print_red("%");
+                    printf("                                          │\n");
+                }
+            }
+
+            printf("└──────────────────────────────────────────────────────────────┘\n");
+        }
+
+        /* ===== 输出：门诊运行 ===== */
+        {
+            char buf[64];
+
+            printf("\n");
+            printf("--------------------------  【门诊运行】  -------------------------\n");
+
+            printf("患者总数：%-7d 待诊：%-7d 检查中：%-7d\n",
+                   patient_total, pending_count, examining_count);
+            printf("复诊待处理：%-5d 待缴费：", recheck_pending_count);
+            snprintf(buf, sizeof(buf), "%-7d", unpaid_count);
+            if (unpaid_count > 0) print_red(buf); else print_green(buf);
+            printf(" 待取药：%-7d\n", wait_med_count);
+            printf("需住院登记：%-5d 住院中：%-7d 就诊结束：%-5d\n",
+                   need_hospitalize_count, hospitalized_count, completed_count);
+            printf("过号作废：%-7d 急诊患者：%-5d 黑名单：",
+                   no_show_count, emergency_count);
+            snprintf(buf, sizeof(buf), "%-7d", blacklisted_count);
+            if (blacklisted_count > 0) print_red(buf); else print_green(buf);
+            printf("\n");
+
+            printf("急诊欠费总额：");
+            snprintf(buf, sizeof(buf), "%.2f", emergency_debt_total);
+            if (emergency_debt_total > 0) print_yellow(buf); else print_green(buf);
+            printf(" 元\n");
+
+            print_progress_bar("待诊患者", pending_count, patient_total, 20);
+            print_progress_bar("待缴费患者", unpaid_count, patient_total, 20);
+            print_progress_bar("待取药患者", wait_med_count, patient_total, 20);
+            print_progress_bar("急诊患者", emergency_count, patient_total, 20);
+        }
+
+        /* ===== 输出：预约挂号 ===== */
+        {
+            printf("\n");
+            printf("------------------------  【预约挂号】  -------------------------\n");
+            printf("预约总数：%-7d 已预约：%-7d 已签到/已挂号：%-5d\n",
+                   appointment_total, reserved_count, checked_in_count);
+            printf("已取消：%-9d 已过号：%-7d\n",
+                   cancelled_count, missed_count);
+            printf("现场号：%-9d 预约号：%-7d\n",
+                   walk_in_count, appointment_count);
+            printf("已缴挂号费：%-5d 未缴挂号费：%-5d\n",
+                   fee_paid_count, fee_unpaid_count);
+
+            print_progress_bar("已签到/挂号", checked_in_count, appointment_total, 20);
+            print_progress_bar("已取消预约", cancelled_count, appointment_total, 20);
+            print_progress_bar("已过号预约", missed_count, appointment_total, 20);
+        }
+
+        /* ===== 输出：医护药人员 ===== */
+        {
+            printf("\n");
+            printf("-----------------------  【医护药人员】  ------------------------\n");
+            printf("管理员：%d\n", admin_count);
+            printf("医生：%d / 在岗 %d\n", doctor_total, doctor_on_duty);
+            printf("护士：%d / 在岗 %d\n", nurse_total, nurse_on_duty);
+            printf("药师：%d / 在岗 %d\n", pharmacist_total, pharmacist_on_duty);
+        }
+
+        /* ===== 输出：床位住院 ===== */
+        {
+            char buf[64];
+
+            printf("\n");
+            printf("------------------------  【床位住院】  -------------------------\n");
+            printf("床位总数：%-7d 已占用：%-7d 空闲：%-7d\n",
+                   bed_total, bed_occupied, bed_free);
+
+            printf("床位占用率：");
+            snprintf(buf, sizeof(buf), "%.1f%%", bed_occupancy_rate);
+            if (bed_occupancy_rate >= 90.0) print_red(buf); else print_green(buf);
+            printf("\n");
+
+            printf("住院记录：%-7d 当前住院：%-5d 已出院：%-7d\n",
+                   inpatient_total, inpatient_active, inpatient_discharged);
+
+            printf("押金不足：");
+            snprintf(buf, sizeof(buf), "%-7d", deposit_low_count);
+            if (deposit_low_count > 0) print_yellow(buf); else print_green(buf);
+            printf(" 住院押金总余额：%.2f 元\n", deposit_balance_total);
+
+            print_progress_bar("床位占用", bed_occupied, bed_total, 20);
+        }
+
+        /* ===== 输出：药品库存 ===== */
+        {
+            char buf[64];
+
+            printf("\n");
+            printf("------------------------  【药品库存】  -------------------------\n");
+            printf("药品种类：%-7d 库存总量：%-7d\n",
+                   medicine_kind_total, medicine_stock_total);
+
+            printf("低库存药品：");
+            snprintf(buf, sizeof(buf), "%-5d", low_stock_count);
+            if (low_stock_count > 0) print_yellow(buf); else print_green(buf);
+
+            printf(" 近效期药品：");
+            snprintf(buf, sizeof(buf), "%-5d", expiring_count);
+            if (expiring_count > 0) print_yellow(buf); else print_green(buf);
+
+            printf(" 已过期药品：");
+            snprintf(buf, sizeof(buf), "%-5d", expired_count);
+            if (expired_count > 0) print_red(buf); else print_green(buf);
+            printf("\n");
+        }
+
+        /* ===== 输出：检查与服务 ===== */
+        {
+            char buf[64];
+
+            printf("\n");
+            printf("-----------------------  【检查与服务】  ------------------------\n");
+
+            printf("检查记录：%-7d 已完成：%-7d 未完成：%-7d\n",
+                   check_total, check_completed, check_uncompleted);
+
+            printf("已缴费检查：%-5d 未缴费检查：",
+                   check_paid);
+            snprintf(buf, sizeof(buf), "%-5d", check_unpaid);
+            if (check_unpaid > 0) print_red(buf); else print_green(buf);
+            printf("\n");
+
+            printf("系统预警：");
+            snprintf(buf, sizeof(buf), "%-7d", alert_total);
+            if (alert_total > 0) print_yellow(buf); else print_green(buf);
+
+            printf(" 投诉总数：%-5d 待处理投诉：", complaint_total);
+            snprintf(buf, sizeof(buf), "%-5d", complaint_pending);
+            if (complaint_pending > 0) print_yellow(buf); else print_green(buf);
+            printf("\n");
+
+            printf("已回复投诉：%-5d 操作日志：%-7d\n",
+                   complaint_replied, log_total);
+        }
+
+        printf("\n");
+        printf("------------------------------------------------------------\n");
+        printf("系统提示：数据来自当前内存链表，保存退出时会写入本地 txt 文件。\n");
+        printf("按 R 刷新大屏，按 0 返回主菜单：\n");
+        printf("==============================================================\n");
+
+        char ch = get_single_char("👉 请输入操作: ");
+
+        if (ch == 'R' || ch == 'r')
+        {
+            continue;
+        }
+        else if (ch == '0')
+        {
+            running = 0;
+        }
+        else
+        {
+            printf("\n❌ 无效输入，请重新输入。\n");
+            system("pause");
+        }
+    }
 }
