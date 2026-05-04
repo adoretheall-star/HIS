@@ -100,4 +100,8 @@ void admin_recycle_bin_menu(void);
 void show_recycle_bin(void);
 void handle_restore_medicine_from_recycle(void);
 
+// 医疗大屏
+void show_public_medical_big_screen(void);
+void show_admin_medical_big_screen(void);
+
 #endif // ADMIN_SERVICE_H
