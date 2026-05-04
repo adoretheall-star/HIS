@@ -1627,6 +1627,7 @@ static void admin_check_item_menu()
 
 static void handle_view_waiting_patients()
 {
+    system("cls");
     printf("\n================ 查看待诊患者 ================\n");
     show_waiting_patients_by_doctor(g_current_doctor->id);
     system("pause");
@@ -1634,6 +1635,7 @@ static void handle_view_waiting_patients()
 
 static void handle_doctor_consultation()
 {
+    system("cls");
     PatientNode* patient = NULL;
     char diagnosis_text[MAX_RECORD_LEN];
     char treatment_advice[MAX_RECORD_LEN];
@@ -1786,6 +1788,10 @@ back_to_decision:
     }
 
     decision = get_safe_int("👉 请输入操作编号: ");
+    {
+        int c;
+        while ((c = getchar()) != '\n' && c != EOF);
+    }
 
     if (decision == 0)
         goto enter_diagnosis;
@@ -1993,14 +1999,24 @@ back_to_decision:
         }
 
         printf("\n================ 可用药品列表 ================\n");
+        
+        // 第一步：遍历计算最大商品名列宽
+        int max_name_width = 12;
         med_curr = g_medicine_list->next;
         while (med_curr != NULL)
         {
-            printf("药品编号：%s | 商品名：%s | 单价：%.2f | 当前库存：%d\n",
-                   med_curr->id,
-                   med_curr->name,
-                   med_curr->price,
-                   med_curr->stock);
+            int curr_name_width = get_display_width(med_curr->name);
+            if (curr_name_width > max_name_width) max_name_width = curr_name_width;
+            med_curr = med_curr->next;
+        }
+        
+        // 第二步：动态打印药品数据
+        med_curr = g_medicine_list->next;
+        while (med_curr != NULL)
+        {
+            printf("药品编号: %-5s | 商品名: ", med_curr->id);
+            print_padded_text(med_curr->name, max_name_width);
+            printf(" | 单价: %6.2f | 当前库存: %-4d\n", med_curr->price, med_curr->stock);
             med_curr = med_curr->next;
         }
 
@@ -2129,8 +2145,66 @@ back_to_decision:
         }
 
         printf("\n================ 可用检查项目列表 ================\n");
-        printf("%-12s %-18s %-12s %-10s %s\n", "项目编号", "项目名称", "所属科室", "价格(元)", "医保类型");
-        printf("---------------------------------------------------------\n");
+        
+        // 第一步：遍历计算最大列宽
+        int id_width = get_display_width("项目编号");
+        int name_width = get_display_width("项目名称");
+        int dept_width = get_display_width("所属科室");
+        int price_width = get_display_width("价格(元)");
+        int type_width = get_display_width("医保类型");
+        
+        item_curr = g_check_item_list->next;
+        while (item_curr != NULL)
+        {
+            int curr_id_w = get_display_width(item_curr->item_id);
+            int curr_name_w = get_display_width(item_curr->item_name);
+            int curr_dept_w = get_display_width(item_curr->dept);
+            
+            char price_buf[32];
+            sprintf(price_buf, "%.2f", item_curr->price);
+            int curr_price_w = get_display_width(price_buf);
+            
+            const char* medicare_type = "";
+            switch (item_curr->m_type)
+            {
+                case MEDICARE_CLASS_A: medicare_type = "甲类"; break;
+                case MEDICARE_CLASS_B: medicare_type = "乙类"; break;
+                case MEDICARE_NONE: medicare_type = "自费"; break;
+                default: medicare_type = "未知";
+            }
+            int curr_type_w = get_display_width(medicare_type);
+            
+            if (curr_id_w > id_width) id_width = curr_id_w;
+            if (curr_name_w > name_width) name_width = curr_name_w;
+            if (curr_dept_w > dept_width) dept_width = curr_dept_w;
+            if (curr_price_w > price_width) price_width = curr_price_w;
+            if (curr_type_w > type_width) type_width = curr_type_w;
+            
+            item_curr = item_curr->next;
+        }
+        
+        // 计算总宽度
+        int total_width = id_width + name_width + dept_width + price_width + type_width + 16;
+        
+        // 第二步：打印表头和边框
+        for (int i = 0; i < total_width; i++) printf("=");
+        printf("\n");
+        
+        print_padded_text("项目编号", id_width);
+        printf("    ");
+        print_padded_text("项目名称", name_width);
+        printf("    ");
+        print_padded_text("所属科室", dept_width);
+        printf("    ");
+        print_padded_text("价格(元)", price_width);
+        printf("    ");
+        print_padded_text("医保类型", type_width);
+        printf("\n");
+        
+        for (int i = 0; i < total_width; i++) printf("-");
+        printf("\n");
+        
+        // 第三步：遍历打印数据
         item_curr = g_check_item_list->next;
         while (item_curr != NULL)
         {
@@ -2142,14 +2216,26 @@ back_to_decision:
                 case MEDICARE_NONE: medicare_type = "自费"; break;
                 default: medicare_type = "未知";
             }
-            printf("%-12s %-18s %-12s %-10.2f %s\n",
-                   item_curr->item_id,
-                   item_curr->item_name,
-                   item_curr->dept,
-                   item_curr->price,
-                   medicare_type);
+            
+            char price_buf[32];
+            sprintf(price_buf, "%.2f", item_curr->price);
+            
+            print_padded_text(item_curr->item_id, id_width);
+            printf("    ");
+            print_padded_text(item_curr->item_name, name_width);
+            printf("    ");
+            print_padded_text(item_curr->dept, dept_width);
+            printf("    ");
+            print_padded_text(price_buf, price_width);
+            printf("    ");
+            print_padded_text(medicare_type, type_width);
+            printf("\n");
+            
             item_curr = item_curr->next;
         }
+        
+        for (int i = 0; i < total_width; i++) printf("-");
+        printf("\n");
 
         printf("------------------------------------------\n");
         while (1)
@@ -2332,8 +2418,10 @@ finish_doctor_consultation:
 
 static void handle_doctor_view_patient_overview()
 {
+    system("cls");
     int count;
     int choice;
+    char input_buf[20];
     
     printf("\n================ 查看患者接诊前信息 ================\n");
     
@@ -2352,8 +2440,18 @@ static void handle_doctor_view_patient_overview()
     }
     
     // 选择患者
-    printf("\n请选择要查看的患者序号 (1-%d): ", count);
-    choice = get_safe_int("👉 ");
+    printf("\n提示：输入 Q 取消该操作返回上一级菜单\n\n");
+    printf("请选择要查看的患者序号 (1-%d): ", count);
+    scanf("%s", input_buf);
+    
+    // 拦截 Q/q 退出
+    if (strcasecmp(input_buf, "Q") == 0)
+    {
+        free_patient_ptr_list(waiting_list);
+        return;
+    }
+    
+    choice = atoi(input_buf);
     
     if (choice < 1 || choice > count)
     {
@@ -2383,6 +2481,7 @@ static void handle_doctor_view_processed_patients()
 
 static void handle_doctor_view_processed_patient_detail()
 {
+    system("cls");
     int count = 0;
     int choice;
     
@@ -2473,6 +2572,7 @@ static void handle_doctor_view_consult_history()
 
 static void handle_query_check_records()
 {
+    system("cls");
     char query_str[MAX_ID_LEN];
 
     printf("\n================ 查询检查记录 ================\n");
@@ -2481,6 +2581,8 @@ static void handle_query_check_records()
 
     while (1)
     {
+        int c;
+        while ((c = getchar()) != '\n' && c != EOF);
         get_safe_string("请输入编号：", query_str, MAX_ID_LEN);
         if (my_strcasecmp(query_str, "Q") == 0 || my_strcasecmp(query_str, "B") == 0) return;
         if (is_blank_string(query_str))
@@ -2538,6 +2640,8 @@ static void handle_query_check_records()
 static void doctor_menu()
 {
     int running = 1;
+    int choice;
+    char menu_choice[20];
 
     while (running)
     {
@@ -2556,7 +2660,11 @@ static void doctor_menu()
         printf("  [0] 退出登录\n");
         printf("------------------------------------------------------\n");
 
-        switch (get_safe_int("👉 请输入操作编号: "))
+        printf("👉 请输入操作编号: ");
+        scanf("%s", menu_choice);
+        choice = atoi(menu_choice);
+
+        switch (choice)
         {
             case 1:
                 handle_view_waiting_patients();

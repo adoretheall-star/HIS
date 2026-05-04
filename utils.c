@@ -1034,52 +1034,32 @@ int is_appointment_slot_valid(const char* date_str, const char* slot, char* erro
     return 1;
 }
 
-// 21. 计算字符串的显示宽度（中文算2个宽度）
-int get_display_width(const char* str)
-{
-    if (str == NULL) return 0;
-    
+// 动态计算字符串显示宽度（完美兼容 UTF-8 中英混排）
+int get_display_width(const char* str) {
     int width = 0;
-    const unsigned char* p = (const unsigned char*)str;
-    
-    while (*p != '\0')
-    {
-        if (*p < 128)
-        {
-            // ASCII字符，宽度为1
-            width++;
-            p++;
-        }
-        else
-        {
-            // 中文字符或其他多字节字符，宽度为2
+    int i = 0;
+    while (str[i] != '\0') {
+        if ((unsigned char)str[i] <= 127) {
+            width += 1;
+            i++;
+        } else {
             width += 2;
-            // 跳过UTF-8编码的后续字节
-            if (*p >= 0xE0) p += 3;
-            else if (*p >= 0xC0) p += 2;
-            else p++;
+            i++;
+            while (str[i] != '\0' && ((unsigned char)str[i] & 0xC0) == 0x80) {
+                i++;
+            }
         }
     }
-    
     return width;
 }
 
-// 22. 按指定宽度打印文本并补空格
-void print_padded_text(const char* str, int target_width)
-{
-    if (str == NULL) str = "";
-
-    int current_width = get_display_width(str);
+// 强制左对齐打印并补齐后缀空格
+void print_padded_text(const char* str, int target_width) {
     printf("%s", str);
-
-    // 计算需要补的空格数
+    int current_width = get_display_width(str);
     int spaces = target_width - current_width;
-    if (spaces > 0)
-    {
-        for (int i = 0; i < spaces; i++)
-        {
-            printf(" ");
-        }
+    for (int i = 0; i < spaces; i++) {
+        printf(" ");
     }
 }
 
