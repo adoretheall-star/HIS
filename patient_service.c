@@ -760,6 +760,7 @@ PatientNode* register_patient(
             new_appointment->is_walk_in = is_walk_in;
             new_appointment->reg_fee = is_walk_in ? 10.0 : 30.0; // 现场号10元，预约号30元
             new_appointment->fee_paid = 1; // 假设已缴费
+            strncpy(new_appointment->department, actual_dept, MAX_NAME_LEN - 1);
             insert_appointment_tail(g_appointment_list, new_appointment);
         }
     }
@@ -2387,6 +2388,235 @@ int submit_new_complaint(const char* patient_id)
     return 1;
 }
 
+// ==========================================
+// 患者就诊流程时间轴模块
+// ==========================================
+void show_patient_visit_timeline(const char* patient_id)
+{
+    if (patient_id == NULL || strlen(patient_id) == 0)
+    {
+        printf("⚠️ 患者编号不能为空！\n");
+        return;
+    }
+    
+    // 查找患者
+    PatientNode* patient = find_patient_by_id(g_patient_list, patient_id);
+    if (patient == NULL)
+    {
+        printf("❌ 未找到该患者，请检查患者编号。\n");
+        return;
+    }
+    
+    // 显示患者基础信息
+    printf("\n================ 👤 患者基础信息 ================\n");
+    printf("患者编号：%s\n", patient->id);
+    printf("姓名：%s\n", patient->name);
+    printf("性别：%s\n", patient->gender);
+    printf("年龄：%d\n", patient->age);
+    printf("目标科室：%s\n", patient->target_dept);
+    printf("医生编号：%s\n", patient->doctor_id);
+    printf("当前状态：%s\n", get_patient_status_text(patient->status));
+    printf("账户余额：%.2f 元\n", patient->balance);
+    
+    // 显示时间轴
+    printf("\n=============== 患者就诊流程时间轴 ===============\n");
+    
+    // 步骤1：患者建档（始终完成）
+    printf("[√] 1. 患者建档\n");
+    
+    // 步骤2：预约/挂号（根据状态判断）
+    if (patient->status != STATUS_PENDING || strlen(patient->doctor_id) > 0)
+    {
+        printf("[√] 2. 预约 / 挂号\n");
+    }
+    else
+    {
+        printf("[ ] 2. 预约 / 挂号\n");
+    }
+    
+    // 步骤3：签到候诊
+    if (patient->status == STATUS_PENDING || patient->status == STATUS_EXAMINING ||
+        patient->status == STATUS_RECHECK_PENDING || patient->status == STATUS_UNPAID ||
+        patient->status == STATUS_WAIT_MED || patient->status == STATUS_NEED_HOSPITALIZE ||
+        patient->status == STATUS_HOSPITALIZED || patient->status == STATUS_COMPLETED)
+    {
+        printf("[√] 3. 签到候诊\n");
+    }
+    else
+    {
+        printf("[ ] 3. 签到候诊\n");
+    }
+    
+    // 步骤4：医生接诊
+    if (patient->status == STATUS_EXAMINING || patient->status == STATUS_RECHECK_PENDING ||
+        patient->status == STATUS_UNPAID || patient->status == STATUS_WAIT_MED ||
+        patient->status == STATUS_NEED_HOSPITALIZE || patient->status == STATUS_HOSPITALIZED ||
+        patient->status == STATUS_COMPLETED)
+    {
+        printf("[√] 4. 医生接诊\n");
+    }
+    else
+    {
+        printf("[ ] 4. 医生接诊\n");
+    }
+    
+    // 步骤5：检查/复诊
+    if (patient->status == STATUS_RECHECK_PENDING)
+    {
+        printf("[→] 5. 检查 / 复诊（检查中）\n");
+    }
+    else if (patient->status == STATUS_EXAMINING)
+    {
+        printf("[→] 5. 检查 / 复诊（待复诊）\n");
+    }
+    else if (patient->status == STATUS_UNPAID || patient->status == STATUS_WAIT_MED ||
+             patient->status == STATUS_NEED_HOSPITALIZE || patient->status == STATUS_HOSPITALIZED ||
+             patient->status == STATUS_COMPLETED)
+    {
+        printf("[√] 5. 检查 / 复诊\n");
+    }
+    else
+    {
+        printf("[ ] 5. 检查 / 复诊\n");
+    }
+    
+    // 步骤6：缴费处理
+    if (patient->status == STATUS_WAIT_MED || patient->status == STATUS_NEED_HOSPITALIZE ||
+        patient->status == STATUS_HOSPITALIZED || patient->status == STATUS_COMPLETED)
+    {
+        printf("[√] 6. 缴费处理\n");
+    }
+    else
+    {
+        printf("[ ] 6. 缴费处理\n");
+    }
+    
+    // 步骤7：取药/住院
+    if (patient->status == STATUS_NEED_HOSPITALIZE || patient->status == STATUS_HOSPITALIZED)
+    {
+        printf("[√] 7. 取药 / 住院（住院中）\n");
+    }
+    else if (patient->status == STATUS_COMPLETED)
+    {
+        printf("[√] 7. 取药 / 住院（已取药）\n");
+    }
+    else if (patient->status == STATUS_WAIT_MED)
+    {
+        printf("[→] 7. 取药 / 住院（待取药）\n");
+    }
+    else
+    {
+        printf("[ ] 7. 取药 / 住院\n");
+    }
+    
+    // 步骤8：就诊结束
+    if (patient->status == STATUS_COMPLETED)
+    {
+        printf("[√] 8. 就诊结束\n");
+    }
+    else if (patient->status == STATUS_NO_SHOW)
+    {
+        printf("[×] 8. 就诊结束（已过号作废）\n");
+    }
+    else
+    {
+        printf("[ ] 8. 就诊结束\n");
+    }
+    
+    // 当前进度说明
+    printf("--------------------------------------------------------\n");
+    printf("当前进度：");
+    switch (patient->status)
+    {
+        case STATUS_PENDING:
+            printf("患者已建档，正在等待医生接诊\n");
+            break;
+        case STATUS_EXAMINING:
+            printf("医生已接诊，患者正在进行检查\n");
+            break;
+        case STATUS_RECHECK_PENDING:
+            printf("检查已完成，患者等待医生复诊\n");
+            break;
+        case STATUS_UNPAID:
+            printf("医生已复诊，患者正在等待缴费\n");
+            break;
+        case STATUS_WAIT_MED:
+            printf("缴费已完成，患者正在等待取药\n");
+            break;
+        case STATUS_NEED_HOSPITALIZE:
+            printf("医生建议住院，患者正在办理住院登记\n");
+            break;
+        case STATUS_HOSPITALIZED:
+            printf("患者已办理住院，正在住院治疗中\n");
+            break;
+        case STATUS_COMPLETED:
+            printf("本次就诊流程已全部完成\n");
+            break;
+        case STATUS_NO_SHOW:
+            printf("本次挂号已过号作废\n");
+            break;
+        default:
+            printf("状态未知\n");
+            break;
+    }
+    printf("====================================================\n");
+    
+    // 可选：显示最新预约记录
+    if (g_appointment_list != NULL)
+    {
+        AppointmentNode* appt_curr = g_appointment_list->next;
+        AppointmentNode* latest_appt = NULL;
+        while (appt_curr != NULL)
+        {
+            if (strcmp(appt_curr->patient_id, patient_id) == 0)
+            {
+                latest_appt = appt_curr;
+            }
+            appt_curr = appt_curr->next;
+        }
+        
+        if (latest_appt != NULL)
+        {
+            printf("\n【最新预约信息】\n");
+            printf("预约编号：%s\n", latest_appt->appointment_id);
+            printf("预约日期：%s\n", latest_appt->appointment_date);
+            printf("预约时段：%s\n", latest_appt->appointment_slot);
+            printf("预约科室：%s\n", latest_appt->department);
+            printf("预约医生：%s\n", latest_appt->doctor_name);
+            
+            // 根据预约状态显示不同提示
+            if (latest_appt->appointment_status == CANCELLED)
+            {
+                printf("预约状态：已取消\n");
+                printf("说明：该预约为历史记录，当前不可作为有效候诊凭证。\n");
+            }
+            else if (latest_appt->appointment_status == MISSED)
+            {
+                printf("预约状态：已过号\n");
+                printf("说明：最新预约记录：已过号，本次挂号已失效。\n");
+            }
+            else if (latest_appt->appointment_status == CHECKED_IN)
+            {
+                if (latest_appt->is_walk_in)
+                {
+                    printf("预约状态：已挂号并进入候诊队列\n");
+                }
+                else
+                {
+                    printf("预约状态：已签到并进入候诊队列\n");
+                }
+            }
+            else
+            {
+                printf("预约状态：%s\n", get_appointment_status_text(latest_appt->appointment_status));
+            }
+        }
+    }
+    
+    // 底部说明
+    printf("\n说明：该时间轴根据患者当前就医状态、预约记录和住院记录综合生成，用于展示患者本次就诊流程进度。\n");
+}
+
 void query_patient_complaints(const char* patient_id)
 {
     if (patient_id == NULL || strlen(patient_id) == 0)
@@ -2506,6 +2736,140 @@ void query_patient_complaints(const char* patient_id)
         curr_ptr = curr_ptr->next;
         free(temp);
     }
+}
+
+void show_patient_queue_progress_self_service(void)
+{
+    char patient_id[MAX_ID_LEN] = "";
+    char id_card[MAX_ID_LEN] = "";
+    
+    system("cls");
+    printf("========================================================\n");
+    printf("              📋 查询我的排队进度\n");
+    printf("========================================================\n");
+    
+    get_safe_string("请输入患者编号：", patient_id, MAX_ID_LEN);
+    
+    if (strcmp(patient_id, "0") == 0 || strcmp(patient_id, "B") == 0)
+    {
+        printf("操作已取消。\n");
+        system("pause");
+        return;
+    }
+    
+    PatientNode* patient = find_patient_by_id(g_patient_list, patient_id);
+    
+    if (patient == NULL)
+    {
+        printf("\n❌ 未找到该患者，请检查患者编号。\n");
+        system("pause");
+        return;
+    }
+    
+    get_safe_string("请输入身份证号：", id_card, MAX_ID_LEN);
+    
+    if (strcmp(id_card, patient->id_card) != 0)
+    {
+        printf("\n❌ 身份校验失败，无法查询排队进度。\n");
+        system("pause");
+        return;
+    }
+    
+    // 身份校验通过，显示排队进度
+    system("cls");
+    printf("========================================================\n");
+    printf("              📋 我的排队进度\n");
+    printf("========================================================\n");
+    printf("患者编号：%s\n", patient->id);
+    printf("患者姓名：%s\n", patient->name);
+    printf("当前状态：%s\n", get_patient_status_text(patient->status));
+    printf("目标科室：%s\n", patient->target_dept);
+    printf("接诊医生：%s\n", patient->doctor_id);
+    printf("\n");
+    
+    if (patient->status == STATUS_PENDING)
+    {
+        if (strlen(patient->doctor_id) > 0)
+        {
+            // 计算前方候诊人数
+            int waiting_count = 0;
+            PatientNode* curr = g_patient_list->next;
+            int found_current = 0;
+            
+            while (curr != NULL && !found_current)
+            {
+                if (strcmp(curr->id, patient->id) == 0)
+                {
+                    found_current = 1;
+                }
+                else if (strcmp(curr->doctor_id, patient->doctor_id) == 0 && curr->status == STATUS_PENDING)
+                {
+                    waiting_count++;
+                }
+                curr = curr->next;
+            }
+            
+            printf("【候诊进度】\n");
+            printf("前方候诊人数：%d 人\n", waiting_count);
+            
+            // 计算预计等待时间
+            int total_minutes = waiting_count * 5;
+            if (total_minutes >= 60)
+            {
+                int hours = total_minutes / 60;
+                int minutes = total_minutes % 60;
+                printf("预计等待时间：约 %d 小时 %d 分钟\n", hours, minutes);
+            }
+            else
+            {
+                printf("预计等待时间：约 %d 分钟\n", total_minutes);
+            }
+            
+            printf("\n提示：预计等待时间按每名患者平均 5 分钟估算，仅供参考。\n");
+        }
+        else
+        {
+            printf("【候诊进度】\n");
+            printf("暂未分配接诊医生，请等待护士安排。\n");
+        }
+    }
+    else
+    {
+        // 根据不同状态显示提示
+        switch (patient->status)
+        {
+            case STATUS_EXAMINING:
+                printf("提示：您当前正在检查中，无需等待医生初诊。\n");
+                break;
+            case STATUS_RECHECK_PENDING:
+                printf("提示：您当前检查后待复诊，请等待医生复诊安排。\n");
+                break;
+            case STATUS_UNPAID:
+                printf("提示：您当前已看诊待缴费，请先完成缴费。\n");
+                break;
+            case STATUS_WAIT_MED:
+                printf("提示：您当前已缴费待取药，请前往药房取药。\n");
+                break;
+            case STATUS_NEED_HOSPITALIZE:
+                printf("提示：您当前需住院待登记，请前往住院登记处办理。\n");
+                break;
+            case STATUS_HOSPITALIZED:
+                printf("提示：您当前住院中。\n");
+                break;
+            case STATUS_COMPLETED:
+                printf("提示：您本次就诊已结束。\n");
+                break;
+            case STATUS_NO_SHOW:
+                printf("提示：您本次挂号已过号作废，请重新挂号或咨询服务台。\n");
+                break;
+            default:
+                printf("提示：当前状态未知。\n");
+                break;
+        }
+    }
+    
+    printf("========================================================\n");
+    system("pause");
 }
 
 

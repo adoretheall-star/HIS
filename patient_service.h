@@ -174,4 +174,15 @@ int settle_blacklisted_debt(const char* patient_id);
  */
 int process_patient_payment(const char* patient_id);
 
+/**
+ * @brief 显示患者就诊流程时间轴
+ * @param patient_id 患者编号
+ */
+void show_patient_visit_timeline(const char* patient_id);
+
+/**
+ * @brief 显示患者排队进度（患者自助端使用）
+ */
+void show_patient_queue_progress_self_service(void);
+
 #endif

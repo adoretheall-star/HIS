@@ -59,4 +59,8 @@ DoctorNode* find_best_doctor_for_department(const char* dept);
 
 // 8. 登记预约爽约
 int mark_appointment_missed(const char* appointment_id);
+
+// 患者预约/挂号前置校验
+int can_patient_register_or_appoint(PatientNode* patient);
+
 #endif

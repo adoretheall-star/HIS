@@ -3,6 +3,9 @@
 
 #include "global.h"
 
+// 全局当前登录账号
+extern AccountNode* g_current_account;
+
 // 查看所有员工账号
 void show_all_accounts(void);
 
@@ -102,6 +105,9 @@ void handle_restore_medicine_from_recycle(void);
 
 // 医疗大屏
 void show_public_medical_big_screen(void);
+
+// 个人中心菜单
+void user_profile_menu(AccountNode* current_account);
 void show_admin_medical_big_screen(void);
 
 // 报表导出中心
