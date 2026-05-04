@@ -479,6 +479,47 @@ int check_duplicate_appointment_early(
     return 0;
 }
 
+// ==========================================
+// 患者预约/挂号前置校验
+// ==========================================
+int can_patient_register_or_appoint(PatientNode* patient)
+{
+    if (patient == NULL)
+    {
+        return 0;
+    }
+    
+    // 检查1：黑名单状态
+    if (patient->is_blacklisted != 0)
+    {
+        printf("⚠️ 该患者当前处于黑名单状态，禁止预约/挂号，请先处理异常记录。\n");
+        return 0;
+    }
+    
+    // 检查2：急诊欠费
+    if (patient->emergency_debt > 0)
+    {
+        printf("⚠️ 该患者存在急诊欠费 %.2f 元，禁止预约/挂号，请先补缴欠费。\n", patient->emergency_debt);
+        return 0;
+    }
+    
+    // 检查3：未完成的就诊流程
+    if (patient->status == STATUS_PENDING ||
+        patient->status == STATUS_EXAMINING ||
+        patient->status == STATUS_RECHECK_PENDING ||
+        patient->status == STATUS_UNPAID ||
+        patient->status == STATUS_WAIT_MED ||
+        patient->status == STATUS_NEED_HOSPITALIZE ||
+        patient->status == STATUS_HOSPITALIZED)
+    {
+        printf("⚠️ 该患者当前仍有未完成就诊流程，不能重复预约/挂号。\n");
+        printf("当前状态：%s\n", get_patient_status_text(patient->status));
+        return 0;
+    }
+    
+    return 1;
+}
+
 // 预约登记
 AppointmentNode* register_appointment(
     const char* patient_id,
@@ -506,6 +547,12 @@ AppointmentNode* register_appointment(
     if (patient == NULL)
     {
         printf("⚠️ 未找到对应患者，预约登记失败！\n");
+        return NULL;
+    }
+    
+    // 前置校验：检查患者是否允许预约/挂号
+    if (!can_patient_register_or_appoint(patient))
+    {
         return NULL;
     }
     
@@ -677,6 +724,27 @@ AppointmentNode* register_appointment(
         printf("⚠️ 预约节点创建失败！\n");
         return NULL;
     }
+    
+    // 设置医生姓名和科室名称
+    if (has_doctor)
+    {
+        DoctorNode* doctor = find_doctor_by_id(g_doctor_list, appoint_doctor);
+        if (doctor != NULL)
+        {
+            strncpy(new_appointment->doctor_name, doctor->name, MAX_NAME_LEN - 1);
+            strncpy(new_appointment->department, doctor->department, MAX_NAME_LEN - 1);
+        }
+        else
+        {
+            strncpy(new_appointment->doctor_name, appoint_doctor, MAX_NAME_LEN - 1);
+            strncpy(new_appointment->department, appoint_dept, MAX_NAME_LEN - 1);
+        }
+    }
+    else if (has_dept)
+    {
+        strncpy(new_appointment->department, appoint_dept, MAX_NAME_LEN - 1);
+    }
+    
     insert_appointment_tail(g_appointment_list, new_appointment);
     return new_appointment;
 }

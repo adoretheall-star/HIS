@@ -169,6 +169,7 @@ printf("  [8] 查看药师值班状态\n");
         printf("  [23] 回收站管理\n");
         printf("  [24] 医疗风险大屏\n");
         printf("  [25] 报表导出中心\n");
+        printf("  [26] 个人中心\n");
         printf("  [0] 退出登录\n");
         printf("------------------------------------------------------\n");
 
@@ -295,6 +296,10 @@ printf("  [8] 查看药师值班状态\n");
                 system("cls");
                 admin_report_menu();
                 system("pause");
+                break;
+            case 26:
+                system("cls");
+                user_profile_menu(g_current_account);
                 break;
             case 0:
                 running = 0;
@@ -2564,6 +2569,7 @@ static void doctor_menu()
         printf("  [3] 接诊并做诊疗决策\n");
         printf("  [4] 查看已处理患者详情\n");
         printf("  [5] 查询检查记录\n");
+        printf("  [6] 个人中心\n");
         printf("  [0] 退出登录\n");
         printf("------------------------------------------------------\n");
 
@@ -2583,6 +2589,10 @@ static void doctor_menu()
                 break;
             case 5:
                 handle_query_check_records();
+                break;
+            case 6:
+                system("cls");
+                user_profile_menu(g_current_account);
                 break;
             case 0:
                 running = 0;
@@ -2785,6 +2795,7 @@ static void nurse_menu()
         printf("  [1] 进入快捷挂号业务菜单\n");
         printf("  [2] 患者档案管理\n");
         printf("  [3] 住院床位业务\n");
+        printf("  [4] 个人中心\n");
         printf("  [0] 退出登录\n");
         printf("------------------------------------------------------\n");
 
@@ -2798,6 +2809,10 @@ static void nurse_menu()
                 break;
             case 3:
                 nurse_inpatient_menu();
+                break;
+            case 4:
+                system("cls");
+                user_profile_menu(g_current_account);
                 break;
             case 0:
                 running = 0;
@@ -2985,6 +3000,7 @@ static void pharmacist_menu()
         printf("======================================================\n");
         printf("  [1] 查看待发药患者\n");
         printf("  [2] 执行发药\n");
+        printf("  [3] 个人中心\n");
         printf("  [0] 退出登录\n");
         printf("------------------------------------------------------\n");
 
@@ -2997,6 +3013,10 @@ static void pharmacist_menu()
             case 2:
                 handle_pharmacy_dispense();
                 system("pause");
+                break;
+            case 3:
+                system("cls");
+                user_profile_menu(g_current_account);
                 break;
             case 0:
                 running = 0;
@@ -3092,6 +3112,9 @@ static void internal_login_menu()
     printf("按任意键继续...");
     get_single_char("");
 
+    // 设置当前登录账号
+    g_current_account = account;
+
     switch (account->role)
     {
         case ROLE_ADMIN:
@@ -3108,6 +3131,7 @@ static void internal_login_menu()
                 printf("\n⚠️ 未找到对应医生信息！\n");
                 printf("按任意键继续...");
                 get_single_char("");
+                g_current_account = NULL;
                 return;
             }
             // 根据科室类型进入不同菜单
@@ -3131,6 +3155,9 @@ static void internal_login_menu()
             get_single_char("");
             break;
     }
+    
+    // 退出菜单后，清除当前账号信息
+    g_current_account = NULL;
 }
 
 static void handle_internal_patient_register()
@@ -5978,6 +6005,7 @@ static void patient_archive_menu()
         printf("  [2] 按身份证号查询档案\n");
         printf("  [3] 按姓名查询档案\n");
         printf("  [4] 修改患者信息\n");
+        printf("  [5] 查看患者就诊流程时间轴\n");
         printf("  [0] 返回上一级\n");
         printf("------------------------------------------------------\n");
         switch (get_safe_int("👉 请输入操作编号: "))
@@ -6000,6 +6028,20 @@ static void patient_archive_menu()
             case 4:
                 system("cls");
                 handle_patient_archive_update();
+                system("pause");
+                break;
+            case 5:
+                system("cls");
+                {
+                    char patient_id[MAX_ID_LEN];
+                    printf("\n请输入要查询的患者编号（或输入 B 返回）：\n");
+                    get_safe_string("患者编号：", patient_id, MAX_ID_LEN);
+                    if (my_strcasecmp(patient_id, "B") == 0)
+                    {
+                        break;
+                    }
+                    show_patient_visit_timeline(patient_id);
+                }
                 system("pause");
                 break;
             case 0:
@@ -6171,6 +6213,7 @@ static void patient_self_service_menu()
         printf("  [12] 就诊满意度评价\n");
         printf("  [13] 补缴黑名单欠费\n");
         printf("  [14] 查询账户余额\n");
+        printf("  [15] 查询我的排队进度\n");
         printf("  [0] 返回上一级\n");
         printf("------------------------------------------------------\n");
         switch (get_safe_int("👉 请输入操作编号: "))
@@ -7332,6 +7375,9 @@ static void patient_self_service_menu()
             case 14:
                 handle_patient_self_balance_query();
                 system("pause");
+                break;
+            case 15:
+                show_patient_queue_progress_self_service();
                 break;
             case 0:
                 running = 0;

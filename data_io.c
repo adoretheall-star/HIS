@@ -339,6 +339,22 @@ int load_appointment_list(AppointmentNode** head) {
         new_node->reg_fee = reg_fee;
         new_node->fee_paid = fee_paid;
         new_node->is_walk_in = is_walk_in;
+        
+        // 设置显示用的医生姓名和科室名称
+        strncpy(new_node->department, appoint_dept, MAX_NAME_LEN - 1);
+        if (strlen(appoint_doctor) > 0)
+        {
+            DoctorNode* doctor = find_doctor_by_id(g_doctor_list, appoint_doctor);
+            if (doctor != NULL)
+            {
+                strncpy(new_node->doctor_name, doctor->name, MAX_NAME_LEN - 1);
+                strncpy(new_node->department, doctor->department, MAX_NAME_LEN - 1);
+            }
+            else
+            {
+                strncpy(new_node->doctor_name, appoint_doctor, MAX_NAME_LEN - 1);
+            }
+        }
 
         insert_appointment_tail(*head, new_node);
     }
@@ -1270,7 +1286,7 @@ int load_recycle_list(RecycleNode** head)
         int med_type = 0;
         char med_expiry[MAX_DATE_LEN] = "";
 
-        while ((token = strtok_r(rest, "|", &rest)) != NULL && field_idx < 16)
+        while ((token = strtok_s(rest, "|", &rest)) != NULL && field_idx < 16)
         {
             switch (field_idx)
             {

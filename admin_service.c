@@ -17,6 +17,7 @@
 #include "patient_service.h"
 #include "appointment.h"
 #include "utils.h"
+#include "data_io.h"
 
 // 病房费率定义
 #define GENERAL_WARD_RATE 120.0  // 普通病房每天费用
@@ -6819,6 +6820,151 @@ void admin_report_menu(void)
                 printf("\n");
                 export_all_reports();
                 system("pause");
+                break;
+            case 0:
+                running = 0;
+                break;
+            default:
+                printf("\n⚠️ 无效选项，请重新输入\n");
+                system("pause");
+                break;
+        }
+    }
+}
+
+static const char* get_role_text(RoleType role)
+{
+    switch (role)
+    {
+        case ROLE_ADMIN: return "管理员";
+        case ROLE_DOCTOR: return "医生";
+        case ROLE_NURSE: return "护士";
+        case ROLE_PHARMACIST: return "药师";
+        case ROLE_PATIENT: return "患者";
+        default: return "未知";
+    }
+}
+
+static void show_account_info(AccountNode* account)
+{
+    if (account == NULL) return;
+    
+    system("cls");
+    printf("========== 我的账号信息 ==========\n");
+    printf("登录账号：%s\n", account->username);
+    printf("真实姓名：%s\n", account->real_name);
+    printf("性别：%s\n", account->gender);
+    printf("角色：%s\n", get_role_text(account->role));
+    printf("==================================\n");
+    system("pause");
+}
+
+static void change_password(AccountNode* account)
+{
+    if (account == NULL) return;
+    
+    char old_password[MAX_ID_LEN] = "";
+    char new_password[MAX_ID_LEN] = "";
+    char confirm_password[MAX_ID_LEN] = "";
+    
+    system("cls");
+    printf("========== 修改登录密码 ==========\n");
+    
+    get_password_with_toggle("请输入旧密码：", old_password, MAX_ID_LEN);
+    
+    if (strcmp(old_password, account->password) != 0)
+    {
+        printf("\n❌ 旧密码错误，修改失败。\n");
+        system("pause");
+        return;
+    }
+    
+    get_password_with_toggle("请输入新密码：", new_password, MAX_ID_LEN);
+    
+    if (strlen(new_password) == 0)
+    {
+        printf("\n❌ 新密码不能为空。\n");
+        system("pause");
+        return;
+    }
+    
+    get_password_with_toggle("请再次确认新密码：", confirm_password, MAX_ID_LEN);
+    
+    if (strcmp(new_password, confirm_password) != 0)
+    {
+        printf("\n❌ 两次输入的新密码不一致，修改失败。\n");
+        system("pause");
+        return;
+    }
+    
+    strncpy(account->password, new_password, MAX_ID_LEN - 1);
+    
+    save_account_list(g_account_list);
+    
+    printf("\n✅ 密码修改成功，请牢记新密码。\n");
+    
+    system("pause");
+}
+
+static void show_duty_status(AccountNode* account)
+{
+    if (account == NULL) return;
+    
+    system("cls");
+    printf("========== 我的值班状态 ==========\n");
+    
+    if (account->role == ROLE_ADMIN)
+    {
+        printf("管理员账号无固定值班状态。\n");
+    }
+    else if (account->role == ROLE_DOCTOR || account->role == ROLE_NURSE || account->role == ROLE_PHARMACIST)
+    {
+        printf("当前值班状态：%s\n", account->is_on_duty ? "在岗" : "离岗");
+    }
+    else
+    {
+        printf("该角色无值班状态信息。\n");
+    }
+    
+    printf("==================================\n");
+    system("pause");
+}
+
+void user_profile_menu(AccountNode* current_account)
+{
+    if (current_account == NULL)
+    {
+        printf("⚠️ 未找到当前登录账号信息！\n");
+        system("pause");
+        return;
+    }
+
+    int running = 1;
+    int choice;
+    
+    while (running)
+    {
+        system("cls");
+        printf("========== 个人中心 ==========\n");
+        printf("[1] 查看我的账号信息\n");
+        printf("[2] 修改登录密码\n");
+        printf("[3] 查看我的值班状态\n");
+        printf("[0] 返回上一级\n");
+        printf("==============================\n");
+        printf("请输入选择：");
+        
+        choice = get_safe_int("");
+        
+        switch (choice)
+        {
+            case 1:
+                show_account_info(current_account);
+                break;
+            case 2:
+                change_password(current_account);
+                break;
+            case 3:
+                show_duty_status(current_account);
                 break;
             case 0:
                 running = 0;
