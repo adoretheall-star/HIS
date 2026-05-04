@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // 文件名: doctor_service.c
 // 作用: 医生接诊相关业务层实现
 // ==========================================
@@ -485,23 +485,52 @@ void show_waiting_patients_by_doctor(const char* doctor_id)
     // 使用 get_waiting_patients_by_doctor 获取排序后的待诊患者链表
     waiting_list = get_waiting_patients_by_doctor(doctor_id);
     
+    // 第一步：遍历计算最大列宽
+    int max_name_width = get_display_width("姓名"); // 初始值为表头宽度
+    int max_symptom_width = get_display_width("症状/科室"); // 初始值为表头宽度
+    
     PatientPtrNode* curr = waiting_list;
     while (curr != NULL)
     {
         PatientNode* patient = curr->patient;
         if ((patient->status == STATUS_PENDING || patient->status == STATUS_RECHECK_PENDING) && is_patient_match_doctor(patient, doctor))
         {
+            int name_width = get_display_width(patient->name);
+            if (name_width > max_name_width)
+                max_name_width = name_width;
+            
             const char* brief_text = strlen(patient->symptom) > 0 ? patient->symptom : patient->target_dept;
+            const char* display_text = strlen(brief_text) > 0 ? brief_text : "暂无";
+            int symptom_width = get_display_width(display_text);
+            if (symptom_width > max_symptom_width)
+                max_symptom_width = symptom_width;
+        }
+        curr = curr->next;
+    }
+    
+    // 第二步：动态打印数据
+    curr = waiting_list;
+    index = 1;
+    while (curr != NULL)
+    {
+        PatientNode* patient = curr->patient;
+        if ((patient->status == STATUS_PENDING || patient->status == STATUS_RECHECK_PENDING) && is_patient_match_doctor(patient, doctor))
+        {
+            const char* brief_text = strlen(patient->symptom) > 0 ? patient->symptom : patient->target_dept;
+            const char* display_text = strlen(brief_text) > 0 ? brief_text : "暂无";
             const char* visit_type = patient->status == STATUS_PENDING ? "[初诊]" : "[复诊]";
-            printf("[%d] %s 患者编号: %s | 姓名: %s | 性别: %s | 年龄: %d | 症状/科室: %s | 状态: %s\n",
-                index++,
-                visit_type,
-                patient->id,
-                patient->name,
-                patient->gender,
-                patient->age,
-                strlen(brief_text) > 0 ? brief_text : "暂无",
-                get_med_status_text(patient->status));
+            
+            // 按动态宽度打印每一列
+            printf("[%02d] %s 患者编号: %s | ", index++, visit_type, patient->id);
+            printf("姓名: ");
+            print_padded_text(patient->name, max_name_width);
+            printf(" | ");
+            printf("性别: %-4s | 年龄: %-3d | ", patient->gender, patient->age);
+            printf("症状/科室: ");
+            print_padded_text(display_text, max_symptom_width);
+            printf(" | ");
+            printf("状态: %s\n", get_med_status_text(patient->status));
+            
             found = 1;
         }
         curr = curr->next;
@@ -906,6 +935,7 @@ void doctor_view_processed_patient_detail(const char* doctor_id, const char* pat
     latest_appointment = find_best_appointment_for_doctor(patient_id, doctor);
     
     // 显示患者详情
+    system("cls");
     printf("\n================ 已处理患者详情 ================\n");
     printf("患者编号：%s\n", patient->id);
     printf("姓名：%s\n", patient->name);
@@ -1610,12 +1640,14 @@ void show_check_records_by_patient_id(const char* patient_id)
     if (is_blank_string(patient_id))
     {
         printf("提示：患者编号不能为空。\n");
+        system("pause");
         return;
     }
 
     if (g_check_record_list == NULL || g_check_record_list->next == NULL)
     {
         printf("当前暂无可用的检查记录数据。\n");
+        system("pause");
         return;
     }
 
@@ -1623,6 +1655,7 @@ void show_check_records_by_patient_id(const char* patient_id)
     if (records == NULL)
     {
         printf("\n⚠️ 患者 %s 暂无检查记录。\n", patient_id);
+        system("pause");
         return;
     }
 
@@ -1684,6 +1717,7 @@ void show_check_records_by_patient_id(const char* patient_id)
     printf("\n==============================================================\n");
 
     free_check_record_ptr_list(records);
+    system("pause");
 }
 
 void show_check_record_by_id(const char* record_id)
@@ -1691,12 +1725,14 @@ void show_check_record_by_id(const char* record_id)
     if (is_blank_string(record_id))
     {
         printf("提示：检查记录编号不能为空。\n");
+        system("pause");
         return;
     }
 
     if (g_check_record_list == NULL)
     {
         printf("提示：检查记录链表尚未初始化。\n");
+        system("pause");
         return;
     }
 
@@ -1704,10 +1740,12 @@ void show_check_record_by_id(const char* record_id)
     if (record == NULL)
     {
         printf("\n⚠️ 未找到检查记录 %s。\n", record_id);
+        system("pause");
         return;
     }
 
     show_check_record_detail(record);
+    system("pause");
 }
 
 // 显示医生信息
