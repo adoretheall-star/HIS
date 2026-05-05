@@ -13,6 +13,15 @@ AppointmentNode* register_appointment(
     const char* appoint_doctor,
     const char* appoint_dept
 );
+
+// 1.5 现场挂号专用创建函数（不触发预约校验）
+AppointmentNode* create_walk_in_appointment_record(
+    const char* patient_id,
+    const char* appointment_date,
+    const char* appointment_slot,
+    const char* appoint_doctor,
+    const char* appoint_dept
+);
 // 1.5 提前检查重复预约（日期+时段确定后立即调用）
 int check_duplicate_appointment_early(
     const char* patient_id,

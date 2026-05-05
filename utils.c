@@ -12,6 +12,20 @@
 #include <conio.h> // 用于 _getch()
 #include "global.h" // 需要访问全局链表和结构体
 #include "utils.h" // 必须把自己的说明书引进来
+
+static int str_equal_ignore_case(const char* a, const char* b)
+{
+    if (a == NULL || b == NULL) return 0;
+    while (*a && *b)
+    {
+        if (tolower((unsigned char)*a) != tolower((unsigned char)*b))
+            return 0;
+        a++;
+        b++;
+    }
+    return (*a == *b) ? 1 : 0;
+}
+
 // 1. 工业级安全整数读取（彻底吃掉残留回车）
 int get_safe_int(const char* prompt) 
 {
@@ -219,7 +233,7 @@ int validate_patient_id(const char* patient_id)
     if (patient_id == NULL) return 0;
     
     // 检查长度：P-1001 格式，长度为 6
-    int len = strlen(patient_id);
+    int len = (int)strlen(patient_id);
     if (len != 6) return 0;
     
     // 检查格式：P-数字（兼容小写p）
@@ -564,10 +578,13 @@ int get_form_double(const char* prompt, double* value, double min, const char* e
         }
         
         // 检查是否为nan或inf
-        if (isnan(val) || isinf(val))
         {
-            printf("%s", error_msg);
-            continue;
+            volatile double v = val;
+            if (v != v || v > 1e308 || v < -1e308)
+            {
+                printf("%s", error_msg);
+                continue;
+            }
         }
         
         // 检查范围
@@ -668,7 +685,7 @@ void safe_copy_string(char* dest, int dest_size, const char* src)
         return;
     }
 
-    strncpy(dest, src, dest_size - 1);
+    strncpy(dest, src, (size_t)dest_size - 1);
     dest[dest_size - 1] = '\0';
 }
 
@@ -1106,13 +1123,13 @@ int inputChoice(int min, int max)
         get_safe_string(prompt, buffer, sizeof(buffer));
         
         // 检查是否输入B/b返回上一级
-        if (strcasecmp(buffer, "B") == 0)
+        if (str_equal_ignore_case(buffer, "B"))
         {
             return -1;
         }
         
         // 检查是否输入Q/q退出系统
-        if (strcasecmp(buffer, "Q") == 0)
+        if (str_equal_ignore_case(buffer, "Q"))
         {
             return -2;
         }

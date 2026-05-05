@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // 文件名: doctor_service.c
 // 作用: 医生接诊相关业务层实现
 // ==========================================
@@ -15,6 +15,7 @@
 #include "list_ops.h"
 #include "appointment.h"
 #include "doctor_service.h"
+#include "patient_service.h"
 #include "utils.h"
 
 #pragma pack(pop)
@@ -1534,10 +1535,16 @@ int doctor_update_check_result(const char* doctor_id, const char* record_id, con
             if (patient != NULL)
             {
                 patient->status = STATUS_RECHECK_PENDING;
-                patient->queue_time = time(NULL) - 7200; // 拿CT/验血报告回来的复诊患者，虚拟时间前移2小时，优先看诊
-                
-                // 为检查后复诊的患者生成现场挂号记录
-                if (g_appointment_list != NULL && strlen(patient->target_dept) > 0) {
+                patient->queue_time = (int)(time(NULL) - 7200); // 拿CT/验血报告回来的复诊患者，虚拟时间前移2小时，优先看诊
+
+                if (!can_patient_walk_in_register(patient, patient->symptom, patient->doctor_id, patient->target_dept))
+                {
+                    printf("检查后复诊挂号校验未通过，跳过自动挂号。\n");
+                }
+                else
+                {
+                    // 为检查后复诊的患者生成现场挂号记录
+                    if (g_appointment_list != NULL && strlen(patient->target_dept) > 0) {
                     char appointment_id[MAX_ID_LEN];
                     // 生成预约编号
                     int max_no = 0;
@@ -1586,6 +1593,7 @@ int doctor_update_check_result(const char* doctor_id, const char* record_id, con
                         new_appointment->fee_paid = 1; // 假设已缴费
                         insert_appointment_tail(g_appointment_list, new_appointment);
                     }
+                }
                 }
             }
 

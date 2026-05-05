@@ -114,4 +114,7 @@ void show_admin_medical_big_screen(void);
 // 报表导出中心
 void admin_report_menu(void);
 
+// 系统数据完整性检查
+void check_system_data_integrity(void);
+
 #endif // ADMIN_SERVICE_H
