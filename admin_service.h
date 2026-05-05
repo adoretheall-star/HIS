@@ -101,6 +101,7 @@ void handle_check_item_remove(void);
 // 回收站管理
 void admin_recycle_bin_menu(void);
 void show_recycle_bin(void);
+void handle_restore_from_recycle(void);
 void handle_restore_medicine_from_recycle(void);
 
 // 医疗大屏

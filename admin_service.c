@@ -85,77 +85,13 @@ static double get_ward_rate(WardType ward_type)
 }
 
 // 前置声明
-static void show_expiring_medicine_warning(void);
 static int days_between_dates(const char* start_date, const char* end_date);
-
-// 检查药品是否近效期
-static int is_medicine_expiring_soon(const char* expiry_date)
-{
-    if (expiry_date == NULL)
-    {
-        return 0;
-    }
-
-    time_t now = time(NULL);
-    struct tm now_tm;
-    char current_date[11];
-
-    localtime_s(&now_tm, &now);
-    snprintf(current_date, sizeof(current_date), "%d-%02d-%02d",
-             now_tm.tm_year + 1900, now_tm.tm_mon + 1, now_tm.tm_mday);
-
-    int days_diff = days_between_dates(current_date, expiry_date);
-
-    return (days_diff >= 0 && days_diff <= 30);
-}
-
-// 近效期药品预警
-static void show_expiring_medicine_warning(void)
-{
-    int count = 0;
-    int total_width = 80;
-    
-    // 检查近效期药品
-    if (g_medicine_list != NULL && g_medicine_list->next != NULL)
-    {
-        MedicineNode* curr = g_medicine_list->next;
-        while (curr != NULL)
-        {
-            if (is_medicine_expiring_soon(curr->expiry_date))
-            {
-                count++;
-            }
-            curr = curr->next;
-        }
-    }
-    
-    // 输出统计信息
-    printf("\n======================================================\n");
-    printf("                  近效期药品预警\n");
-    printf("======================================================\n");
-    
-    if (count > 0)
-    {
-        printf("⚠️ 发现 %d 种近效期药品，请及时处理！\n", count);
-    }
-    else
-    {
-        printf("✅ 没有发现近效期药品。\n");
-    }
-    
-    printf("======================================================\n");
-    printf("按任意键返回...\n");
-    get_single_char("");
-}
 
 // 解析日期字符串为 tm 结构
 static int parse_date_string(const char* date_str, struct tm* tm_out);
 
 // 计算两个日期之间的天数差
 static int days_between_dates(const char* start_date, const char* end_date);
-
-// 前置声明
-static void show_expiring_medicine_warning(void);
 
 
 
@@ -316,6 +252,7 @@ void show_all_accounts(void)
 // 注册新员工账号
 int register_account(const char* username, const char* password, const char* real_name, const char* gender, RoleType role)
 {
+    (void)gender;
     if (username == NULL || password == NULL || real_name == NULL)
     {
         return 0;
@@ -423,6 +360,13 @@ int delete_account(const char* username)
         return 0;
     }
 
+    // 检查是否删除当前登录账号
+    if (g_current_account != NULL && strcmp(g_current_account->username, username) == 0)
+    {
+        printf("提示：不能删除当前登录的账号。\n");
+        return 0;
+    }
+
     AccountNode* prev = g_account_list;
     AccountNode* curr = g_account_list->next;
 
@@ -430,14 +374,57 @@ int delete_account(const char* username)
     {
         if (strcmp(curr->username, username) == 0)
         {
+            char reason[MAX_RECORD_LEN] = "管理员操作删除";
+            char deleted_by[MAX_ID_LEN] = "system";
+            char recycle_id[MAX_ID_LEN] = "";
+            RecycleNode* recycle_node = NULL;
+
+            // 获取操作人
+            if (g_current_account != NULL && strlen(g_current_account->username) > 0)
+            {
+                strncpy(deleted_by, g_current_account->username, MAX_ID_LEN - 1);
+            }
+
+            // 生成回收站编号
+            generate_recycle_id(recycle_id);
+
+            // 创建回收站节点
+            recycle_node = create_recycle_account_node(recycle_id, curr, deleted_by, reason);
+            if (recycle_node == NULL)
+            {
+                printf("提示：创建回收站记录失败。\n");
+                return 0;
+            }
+
+            // 插入回收站
+            insert_recycle_tail(g_recycle_list, recycle_node);
+
+            // 从账号链表中断链
             prev->next = curr->next;
+            if (curr->next != NULL)
+            {
+                curr->next->prev = prev;
+            }
+
+            // 释放原账号节点
             free(curr);
+
+            // 添加操作日志
+            add_log("软删除账号", username, "账号已删除并转入回收站");
+
+            // 保存数据
+            save_all_data();
+
+            // 打印提示信息
+            printf("提示：账号已移入回收站，可由管理员在回收站中恢复。\n");
+
             return 1;
         }
         prev = curr;
         curr = curr->next;
     }
 
+    printf("提示：账号不存在，删除失败。\n");
     return 0;
 }
 
@@ -978,12 +965,9 @@ static void show_low_stock_warning(void)
                 const char* medicare_name = NULL;
                 switch (curr->m_type)
                 {
-                    case MEDICARE_NONE:       medicare_name = "无医保";       break;
+                    case MEDICARE_NONE:       medicare_name = "自费";       break;
                     case MEDICARE_CLASS_A:    medicare_name = "甲类医保";     break;
                     case MEDICARE_CLASS_B:    medicare_name = "乙类医保";     break;
-                    case MEDICARE_BASIC:      medicare_name = "基本医保";     break;
-                    case MEDICARE_GOVERNMENT: medicare_name = "公务员医保";   break;
-                    case MEDICARE_COMMERCIAL: medicare_name = "商业保险";     break;
                     default:                  medicare_name = "未知";         break;
                 }
                 
@@ -1079,12 +1063,9 @@ static void show_low_stock_warning(void)
                     const char* medicare_name = NULL;
                     switch (curr->m_type)
                     {
-                        case MEDICARE_NONE:       medicare_name = "无医保";       break;
+                        case MEDICARE_NONE:       medicare_name = "自费";       break;
                         case MEDICARE_CLASS_A:    medicare_name = "甲类医保";     break;
                         case MEDICARE_CLASS_B:    medicare_name = "乙类医保";     break;
-                        case MEDICARE_BASIC:      medicare_name = "基本医保";     break;
-                        case MEDICARE_GOVERNMENT: medicare_name = "公务员医保";   break;
-                        case MEDICARE_COMMERCIAL: medicare_name = "商业保险";     break;
                         default:                  medicare_name = "未知";         break;
                     }
                     
@@ -1744,17 +1725,16 @@ void show_system_alerts(void)
 void admin_recycle_bin_menu(void)
 {
     int running = 1;
-    int choice = 0;
-    
+
     while (running)
     {
         system("cls");
         printf("\n================ 回收站管理 ================\n");
         printf("  [1] 查看回收站\n");
-        printf("  [2] 恢复药品\n");
+        printf("  [2] 恢复回收站数据\n");
         printf("  [0] 返回\n");
         printf("--------------------------------------------\n");
-        
+
         switch (get_safe_int("请输入选择："))
         {
             case 1:
@@ -1764,7 +1744,7 @@ void admin_recycle_bin_menu(void)
                 break;
             case 2:
                 system("cls");
-                handle_restore_medicine_from_recycle();
+                handle_restore_from_recycle();
                 system("pause");
                 break;
             case 0:
@@ -1778,20 +1758,265 @@ void admin_recycle_bin_menu(void)
     }
 }
 
-// 显示回收站
+// 显示回收站内容
 void show_recycle_bin(void)
 {
+    RecycleNode* curr = g_recycle_list->next;
+
     printf("\n================ 回收站内容 ================\n");
-    printf("当前回收站功能开发中...\n");
+    printf("\n");
+    printf("%-12s %-10s %-12s %-24s %-20s %-10s %-20s %-8s\n",
+           "回收编号", "类型", "原编号", "名称", "删除时间", "操作人", "原因", "已恢复");
+    printf("--------------------------------------------------------------------------------------------------------------------------\n");
+
+    if (curr == NULL)
+    {
+        printf("回收站为空，没有任何数据。\n");
+        printf("============================================\n");
+        return;
+    }
+
+    while (curr != NULL)
+    {
+        const char* type_name = "";
+        switch (curr->type)
+        {
+            case RECYCLE_MEDICINE:     type_name = "药品"; break;
+            case RECYCLE_CHECK_ITEM:   type_name = "检查项目"; break;
+            case RECYCLE_WARD:         type_name = "床位"; break;
+            case RECYCLE_ACCOUNT:      type_name = "员工账号"; break;
+            default:                   type_name = "未知"; break;
+        }
+
+        printf("%-12s %-10s %-12s %-24s %-20s %-10s %-20s %-8s\n",
+               curr->recycle_id,
+               type_name,
+               curr->source_id,
+               curr->source_name,
+               curr->delete_time,
+               curr->deleted_by,
+               curr->reason,
+               curr->is_restored ? "是" : "否");
+
+        curr = curr->next;
+    }
+
     printf("============================================\n");
 }
 
-// 从回收站恢复药品
+// 统一恢复回收站数据
+void handle_restore_from_recycle(void)
+{
+    char recycle_id[MAX_ID_LEN] = "";
+    char input_buf[MAX_ID_LEN] = "";
+    RecycleNode* target = NULL;
+    const char* type_name = "";
+
+    printf("\n================ 恢复回收站数据 ================\n");
+    printf("提示：输入 B 返回上一级，输入 Q 退出当前操作\n\n");
+
+    while (1)
+    {
+        get_safe_string("请输入要恢复的回收站编号：", input_buf, sizeof(input_buf));
+
+        if (my_strcasecmp(input_buf, "Q") == 0)
+        {
+            return;
+        }
+        if (my_strcasecmp(input_buf, "B") == 0)
+        {
+            return;
+        }
+
+        if (is_blank_string(input_buf))
+        {
+            printf("⚠️ 回收站编号不能为空，请重新输入\n");
+            continue;
+        }
+
+        strncpy(recycle_id, input_buf, MAX_ID_LEN - 1);
+        break;
+    }
+
+    // 查找回收站记录
+    target = find_recycle_by_id(g_recycle_list, recycle_id);
+    if (target == NULL)
+    {
+        printf("⚠️ 未找到对应的回收站记录，请检查编号是否正确。\n");
+        return;
+    }
+
+    // 检查是否已恢复
+    if (target->is_restored == 1)
+    {
+        printf("⚠️ 该记录已经恢复过，不能重复恢复。\n");
+        return;
+    }
+
+    // 获取类型名称
+    switch (target->type)
+    {
+        case RECYCLE_MEDICINE:     type_name = "药品"; break;
+        case RECYCLE_CHECK_ITEM:   type_name = "检查项目"; break;
+        case RECYCLE_WARD:         type_name = "床位"; break;
+        case RECYCLE_ACCOUNT:      type_name = "员工账号"; break;
+        default:                    type_name = "未知类型"; break;
+    }
+
+    printf("\n---------- 回收站记录信息 ----------\n");
+    printf("回收编号：%s\n", target->recycle_id);
+    printf("类型：%s\n", type_name);
+    printf("原编号：%s\n", target->source_id);
+    printf("名称：%s\n", target->source_name);
+    printf("删除时间：%s\n", target->delete_time);
+    printf("操作人：%s\n", target->deleted_by);
+    printf("删除原因：%s\n", target->reason);
+    printf("-----------------------------------\n");
+
+    // 根据类型执行恢复
+    switch (target->type)
+    {
+        case RECYCLE_MEDICINE:
+        {
+            // 检查原编号是否已存在
+            if (find_medicine_by_id(g_medicine_list, target->source_id) != NULL)
+            {
+                printf("⚠️ 该药品编号已存在，不能恢复。\n");
+                printf("请先删除现有药品或使用不同的编号。\n");
+                return;
+            }
+
+            MedicineNode* new_node = create_medicine_node(
+                target->medicine_backup.id,
+                target->medicine_backup.name,
+                target->medicine_backup.alias,
+                target->medicine_backup.generic_name,
+                target->medicine_backup.price,
+                target->medicine_backup.stock,
+                target->medicine_backup.m_type,
+                target->medicine_backup.expiry_date);
+
+            if (new_node == NULL)
+            {
+                printf("提示：创建药品节点失败。\n");
+                return;
+            }
+
+            insert_medicine_sorted(g_medicine_list, new_node);
+            break;
+        }
+
+        case RECYCLE_CHECK_ITEM:
+        {
+            // 检查原编号是否已存在
+            if (find_check_item_by_id(g_check_item_list, target->source_id) != NULL)
+            {
+                printf("⚠️ 该检查项目编号已存在，不能恢复。\n");
+                printf("请先删除现有检查项目或使用不同的编号。\n");
+                return;
+            }
+
+            CheckItemNode* new_node = (CheckItemNode*)malloc(sizeof(CheckItemNode));
+            if (new_node == NULL)
+            {
+                printf("提示：创建检查项目节点失败。\n");
+                return;
+            }
+
+            *new_node = target->check_item_backup;
+            new_node->prev = NULL;
+            new_node->next = NULL;
+
+            insert_check_item_sorted(g_check_item_list, new_node);
+            break;
+        }
+
+        case RECYCLE_WARD:
+        {
+            // 检查原编号是否已存在
+            if (find_ward_by_id(g_ward_list, target->source_id) != NULL)
+            {
+                printf("⚠️ 该床位编号已存在，不能恢复。\n");
+                printf("请先删除现有床位或使用不同的编号。\n");
+                return;
+            }
+
+            WardNode* new_node = create_ward_node(
+                target->ward_backup.room_id,
+                target->ward_backup.bed_id,
+                target->ward_backup.ward_type,
+                target->ward_backup.dept);
+
+            if (new_node == NULL)
+            {
+                printf("提示：创建床位节点失败。\n");
+                return;
+            }
+
+            // 床位恢复时强制设为空闲，避免占用关系错误
+            new_node->is_occupied = 0;
+            new_node->patient_id[0] = '\0';
+
+            insert_ward_sorted(g_ward_list, new_node);
+            break;
+        }
+
+        case RECYCLE_ACCOUNT:
+        {
+            // 检查原编号是否已存在
+            if (find_account_by_username(g_account_list, target->source_id) != NULL)
+            {
+                printf("⚠️ 该账号用户名已存在，不能恢复。\n");
+                printf("请先删除现有账号或使用不同的用户名。\n");
+                return;
+            }
+
+            AccountNode* new_node = create_account_node(
+                target->account_backup.username,
+                target->account_backup.password,
+                target->account_backup.real_name,
+                target->account_backup.gender,
+                target->account_backup.role);
+
+            if (new_node == NULL)
+            {
+                printf("提示：创建账号节点失败。\n");
+                return;
+            }
+
+            new_node->is_on_duty = target->account_backup.is_on_duty;
+
+            insert_account_sorted(g_account_list, new_node);
+            break;
+        }
+
+        default:
+            printf("⚠️ 未知的数据类型，无法恢复。\n");
+            return;
+    }
+
+    printf("\n✅ %s恢复成功！\n", type_name);
+    if (target->type == RECYCLE_WARD)
+    {
+        printf("提示：床位已恢复为空闲状态。\n");
+    }
+
+    // 从回收站链表中移除该节点
+    if (target->prev != NULL) target->prev->next = target->next;
+    if (target->next != NULL) target->next->prev = target->prev;
+    free(target);
+
+    // 保存数据
+    save_all_data();
+
+    // 添加操作日志
+    add_log("恢复回收站数据", recycle_id, type_name);
+}
+
+// 从回收站恢复药品（保留旧函数兼容）
 void handle_restore_medicine_from_recycle(void)
 {
-    printf("\n================ 恢复药品 ================\n");
-    printf("当前恢复药品功能开发中...\n");
-    printf("==========================================\n");
+    handle_restore_from_recycle();
 }
 
 // ==========================================
@@ -2325,29 +2550,6 @@ void show_evaluation_statistics()
     printf("======================================================\n");
     printf("按任意键返回...\n");
     get_single_char("");
-}
-
-static int str_disp_width(const char* s)
-{
-    int width = 0;
-    while (*s)
-    {
-        unsigned char c = (unsigned char)*s;
-        if (c < 0x80)      { width += 1; s += 1; }
-        else if ((c & 0xE0) == 0xC0) { width += 2; s += 2; }
-        else if ((c & 0xF0) == 0xE0) { width += 2; s += 3; }
-        else if ((c & 0xF8) == 0xF0) { width += 2; s += 4; }
-        else                { s += 1; }
-    }
-    return width;
-}
-
-static void print_field(const char* s, int field_width)
-{
-    int dw = str_disp_width(s);
-    printf("%s", s);
-    int pad = field_width - dw;
-    if (pad > 0) printf("%*s", pad, "");
 }
 
 void show_load_monitoring(void)
@@ -2922,8 +3124,6 @@ void show_public_status_statistics(void)
     int pharmacist_count = 0;
     int medicine_count = 0;
     
-    PatientNode* patient_curr = NULL;
-    DoctorNode* doctor_curr = NULL;
     AccountNode* account_curr = NULL;
 
     // 统计患者数量
@@ -3349,12 +3549,9 @@ void handle_medicine_basic_info_update(void)
     // 显示医保类型
     switch (medicine_node->m_type)
     {
-        case MEDICARE_NONE:       printf("医保类型：非医保\n");       break;
+        case MEDICARE_NONE:       printf("医保类型：自费\n");       break;
         case MEDICARE_CLASS_A:    printf("医保类型：甲类医保\n");     break;
         case MEDICARE_CLASS_B:    printf("医保类型：乙类医保\n");     break;
-        case MEDICARE_BASIC:      printf("医保类型：基本医保\n");     break;
-        case MEDICARE_GOVERNMENT: printf("医保类型：公务员医保\n");   break;
-        case MEDICARE_COMMERCIAL: printf("医保类型：商业保险\n");     break;
         default:                  printf("医保类型：未知\n");         break;
     }
     printf("效期：%s\n", medicine_node->expiry_date);
@@ -3807,12 +4004,9 @@ void handle_remove_medicine_from_shelf(void)
     // 显示医保类型
     switch (medicine->m_type)
     {
-        case MEDICARE_NONE:       printf("医保类型：非医保\n");       break;
+        case MEDICARE_NONE:       printf("医保类型：自费\n");       break;
         case MEDICARE_CLASS_A:    printf("医保类型：甲类医保\n");     break;
         case MEDICARE_CLASS_B:    printf("医保类型：乙类医保\n");     break;
-        case MEDICARE_BASIC:      printf("医保类型：基本医保\n");     break;
-        case MEDICARE_GOVERNMENT: printf("医保类型：公务员医保\n");   break;
-        case MEDICARE_COMMERCIAL: printf("医保类型：商业保险\n");     break;
         default:                  printf("医保类型：未知\n");         break;
     }
     printf("效期：%s\n", medicine->expiry_date);
@@ -4113,9 +4307,6 @@ void show_all_check_items(void)
             case MEDICARE_CLASS_A:    m_type_name = "甲类";       break;
             case MEDICARE_CLASS_B:    m_type_name = "乙类";       break;
             case MEDICARE_NONE:       m_type_name = "自费";       break;
-            case MEDICARE_BASIC:      m_type_name = "基本医保";   break;
-            case MEDICARE_GOVERNMENT: m_type_name = "公务员医保"; break;
-            case MEDICARE_COMMERCIAL: m_type_name = "商业保险";   break;
             default:                  m_type_name = "未知";       break;
         }
         printf("%-10s %-20s %12s %10.2f   %-10s\n",
@@ -4209,9 +4400,6 @@ void search_check_item_by_keyword(const char* keyword)
                 case MEDICARE_CLASS_A:    m_type_name = "甲类";       break;
                 case MEDICARE_CLASS_B:    m_type_name = "乙类";       break;
                 case MEDICARE_NONE:       m_type_name = "自费";       break;
-                case MEDICARE_BASIC:      m_type_name = "基本医保";   break;
-                case MEDICARE_GOVERNMENT: m_type_name = "公务员医保"; break;
-                case MEDICARE_COMMERCIAL: m_type_name = "商业保险";   break;
                 default:                  m_type_name = "未知";       break;
             }
             printf("%-12s %-28s %-16s %-12.2f %-8s\n",
@@ -4227,7 +4415,7 @@ void search_check_item_by_keyword(const char* keyword)
 
 void handle_check_item_register(void)
 {
-    char item_name[MAX_NAME_LEN] = "";
+    char item_name[MAX_MED_NAME_LEN] = "";
     char dept[MAX_NAME_LEN] = "";
     double price = 0.0;
     int medicare_type = -1;
@@ -4259,7 +4447,7 @@ void handle_check_item_register(void)
                     printf("检查项目名称不能为空，请重新输入\n\n");
                     continue;
                 }
-                strncpy(item_name, input_buf, MAX_NAME_LEN - 1);
+                strncpy(item_name, input_buf, sizeof(item_name) - 1);
                 if (g_check_item_list != NULL && g_check_item_list->next != NULL)
                 {
                     CheckItemNode* curr = g_check_item_list->next;
@@ -4269,7 +4457,7 @@ void handle_check_item_register(void)
                             strstr(item_name, curr->item_name) != NULL)
                         {
                             printf("⚠️ 拦截：系统中已存在相似项目【%s %s】，请勿重复添加！\n\n", curr->item_id, curr->item_name);
-                            memset(item_name, 0, MAX_NAME_LEN);
+                            memset(item_name, 0, sizeof(item_name));
                             break;
                         }
                         curr = curr->next;
@@ -4405,7 +4593,7 @@ void handle_check_item_register(void)
 void handle_check_item_update(void)
 {
     char item_id[MAX_ID_LEN];
-    char new_name[MAX_NAME_LEN];
+    char new_name[MAX_MED_NAME_LEN];
     char new_dept[MAX_NAME_LEN];
     double new_price = -1.0;
     int new_m_type = -1;
@@ -4442,20 +4630,17 @@ void handle_check_item_update(void)
     {
         case MEDICARE_CLASS_A:    printf("医保类型：甲类\n"); break;
         case MEDICARE_CLASS_B:    printf("医保类型：乙类\n"); break;
-        case MEDICARE_BASIC:      printf("医保类型：基本医保\n"); break;
-        case MEDICARE_GOVERNMENT: printf("医保类型：公务员医保\n"); break;
-        case MEDICARE_COMMERCIAL: printf("医保类型：商业保险\n"); break;
         case MEDICARE_NONE:       printf("医保类型：自费\n"); break;
     }
     printf("----------------------------------------\n\n");
 
     int has_modified = 0;
 
-    get_safe_string("请输入新项目名称：", new_name, MAX_NAME_LEN);
+    get_safe_string("请输入新项目名称：", new_name, sizeof(new_name));
     if (my_strcasecmp(new_name, "Q") == 0 || my_strcasecmp(new_name, "B") == 0) return;
     if (!is_blank_string(new_name) && strcmp(new_name, target->item_name) != 0)
     {
-        strncpy(target->item_name, new_name, MAX_NAME_LEN - 1);
+        strncpy(target->item_name, new_name, sizeof(target->item_name) - 1);
         has_modified = 1;
     }
 
@@ -4502,7 +4687,7 @@ void handle_check_item_update(void)
             printf("医保类型必须为 0/1/2，请重新输入\n\n");
             continue;
         }
-        if (new_m_type != target->m_type)
+        if (new_m_type != (int)target->m_type)
         {
             target->m_type = (MedicareType)new_m_type;
             has_modified = 1;
@@ -4526,6 +4711,10 @@ void handle_check_item_remove(void)
     CheckItemNode* target = NULL;
     int confirm;
     char input_buf[64];
+    char reason[MAX_RECORD_LEN] = "";
+    char deleted_by[MAX_ID_LEN] = "system";
+    char recycle_id[MAX_ID_LEN] = "";
+    RecycleNode* recycle_node = NULL;
 
     while (1)
     {
@@ -4562,9 +4751,6 @@ void handle_check_item_remove(void)
             case MEDICARE_CLASS_A:    printf("医保类型：甲类\n"); break;
             case MEDICARE_CLASS_B:    printf("医保类型：乙类\n"); break;
             case MEDICARE_NONE:       printf("医保类型：自费\n"); break;
-            case MEDICARE_BASIC:      printf("医保类型：基本医保\n"); break;
-            case MEDICARE_GOVERNMENT: printf("医保类型：公务员医保\n"); break;
-            case MEDICARE_COMMERCIAL: printf("医保类型：商业保险\n"); break;
             default:                  printf("医保类型：未知\n"); break;
         }
         printf("----------------------------------------\n");
@@ -4599,51 +4785,56 @@ void handle_check_item_remove(void)
             continue;
         }
 
-        if (delete_check_item_by_id(g_check_item_list, item_id))
-            printf("提示：检查项目下架成功。\n");
-        else
-            printf("提示：检查项目下架失败。\n");
+        // 获取删除原因
+        get_safe_string("请输入下架原因（回车默认为管理员操作删除）：", reason, MAX_RECORD_LEN);
+        if (is_blank_string(reason))
+        {
+            strncpy(reason, "管理员操作删除", MAX_RECORD_LEN - 1);
+        }
+
+        // 获取操作人
+        if (g_current_account != NULL && strlen(g_current_account->username) > 0)
+        {
+            strncpy(deleted_by, g_current_account->username, MAX_ID_LEN - 1);
+        }
+
+        // 生成回收站编号
+        generate_recycle_id(recycle_id);
+
+        // 创建回收站节点
+        recycle_node = create_recycle_check_item_node(recycle_id, target, deleted_by, reason);
+        if (recycle_node == NULL)
+        {
+            printf("提示：创建回收站记录失败。\n");
+            return;
+        }
+
+        // 插入回收站
+        insert_recycle_tail(g_recycle_list, recycle_node);
+
+        // 从检查项目链表中断链
+        if (target->prev != NULL)
+        {
+            target->prev->next = target->next;
+        }
+        if (target->next != NULL)
+        {
+            target->next->prev = target->prev;
+        }
+
+        // 释放原检查项目节点
+        free(target);
+
+        // 添加操作日志
+        add_log("软删除检查项目", item_id, "检查项目已下架并转入回收站");
+
+        // 保存数据
+        save_all_data();
+
+        // 打印提示信息
+        printf("提示：检查项目已移入回收站，可由管理员在回收站中恢复。\n");
         return;
     }
-
-    printf("\n当前检查项目信息：\n");
-    printf("项目编号：%s\n", target->item_id);
-    printf("项目名称：%s\n", target->item_name);
-    printf("所属科室：%s\n", target->dept);
-    printf("检查费用：%.2f\n", target->price);
-    switch (target->m_type)
-    {
-        case MEDICARE_CLASS_A:    printf("医保类型：甲类\n"); break;
-        case MEDICARE_CLASS_B:    printf("医保类型：乙类\n"); break;
-        case MEDICARE_BASIC:      printf("医保类型：基本医保\n"); break;
-        case MEDICARE_GOVERNMENT: printf("医保类型：公务员医保\n"); break;
-        case MEDICARE_COMMERCIAL: printf("医保类型：商业保险\n"); break;
-        case MEDICARE_NONE:       printf("医保类型：自费\n"); break;
-    }
-    printf("----------------------------------------\n");
-
-    if (is_check_item_referenced_by_active_record(item_id))
-    {
-        printf("提示：当前检查项目仍被未完成检查记录引用，暂不能下架。\n");
-        printf("请先完成相关患者的检查流程后再重试。\n");
-        return;
-    }
-
-    printf("是否确定下架该检查项目？\n");
-    printf("[1] 确定下架\n");
-    printf("[0] 取消返回\n");
-    confirm = get_safe_int("请输入操作编号: ");
-
-    if (confirm != 1)
-    {
-        printf("提示：已取消下架操作。\n");
-        return;
-    }
-
-    if (delete_check_item_by_id(g_check_item_list, item_id))
-        printf("提示：检查项目下架成功。\n");
-    else
-        printf("提示：检查项目下架失败。\n");
 }
 
 static void set_console_color(int color)
@@ -4673,13 +4864,6 @@ static void print_yellow(const char* text)
 static void print_green(const char* text)
 {
     set_console_color(10);
-    printf("%s", text);
-    reset_console_color();
-}
-
-static void print_cyan(const char* text)
-{
-    set_console_color(11);
     printf("%s", text);
     reset_console_color();
 }

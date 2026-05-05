@@ -45,6 +45,7 @@ MedicineNode* create_medicine_node(
     const char* expiry_date
 );
 void insert_medicine_tail(MedicineNode* head, MedicineNode* new_node);
+void insert_medicine_sorted(MedicineNode* head, MedicineNode* new_node);
 MedicineNode* find_medicine_by_id(MedicineNode* head, const char* target_id);
 // ==========================================
 // ==========================================
@@ -52,6 +53,7 @@ MedicineNode* find_medicine_by_id(MedicineNode* head, const char* target_id);
 WardNode* init_ward_list();
 WardNode* create_ward_node(const char* room_id, const char* bed_id, WardType ward_type, const char* dept);
 void insert_ward_tail(WardNode* head, WardNode* new_node);
+void insert_ward_sorted(WardNode* head, WardNode* new_node);
 WardNode* find_ward_by_id(WardNode* head, const char* target_bed_id);
 // ==========================================
 // ==========================================
@@ -59,6 +61,7 @@ WardNode* find_ward_by_id(WardNode* head, const char* target_bed_id);
 AccountNode* init_account_list();
 AccountNode* create_account_node(const char* username, const char* pwd, const char* real_name, const char* gender, RoleType role);
 void insert_account_tail(AccountNode* head, AccountNode* new_node);
+void insert_account_sorted(AccountNode* head, AccountNode* new_node);
 AccountNode* find_account_by_username(AccountNode* head, const char* target_username);
 // ==========================================
 // ==========================================
@@ -85,6 +88,7 @@ ConsultRecordNode* find_consult_record_by_id(ConsultRecordNode* head, const char
 CheckItemNode* init_check_item_list();
 CheckItemNode* create_check_item_node(const char* item_id, const char* item_name, const char* dept, double price, MedicareType m_type);
 void insert_check_item_tail(CheckItemNode* head, CheckItemNode* new_node);
+void insert_check_item_sorted(CheckItemNode* head, CheckItemNode* new_node);
 CheckItemNode* find_check_item_by_id(CheckItemNode* head, const char* target_item_id);
 
 // ==========================================
@@ -148,6 +152,27 @@ RecycleNode* init_recycle_list(void);
 RecycleNode* create_recycle_medicine_node(
     const char* recycle_id,
     const MedicineNode* medicine,
+    const char* deleted_by,
+    const char* reason
+);
+
+RecycleNode* create_recycle_check_item_node(
+    const char* recycle_id,
+    const CheckItemNode* item,
+    const char* deleted_by,
+    const char* reason
+);
+
+RecycleNode* create_recycle_ward_node(
+    const char* recycle_id,
+    const WardNode* ward,
+    const char* deleted_by,
+    const char* reason
+);
+
+RecycleNode* create_recycle_account_node(
+    const char* recycle_id,
+    const AccountNode* account,
     const char* deleted_by,
     const char* reason
 );

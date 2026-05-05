@@ -47,12 +47,9 @@ typedef enum //就医状态
 
 typedef enum //医保类型
 {
-    MEDICARE_NONE = 0,    // 无医保 (报销 0%)
-    MEDICARE_BASIC = 1,   // 基本医保 (报销 70%)
-    MEDICARE_GOVERNMENT = 2, // 公务员医保 (报销 90%)
-    MEDICARE_COMMERCIAL = 3, // 商业保险 (报销 80%)
-    MEDICARE_CLASS_A = 4,   // 甲类医保 (报销 95%)
-    MEDICARE_CLASS_B = 5    // 乙类医保 (报销 85%)
+    MEDICARE_NONE = 0,    // 自费 (报销 0%)
+    MEDICARE_CLASS_A = 1, // 甲类医保 (报销 80%)
+    MEDICARE_CLASS_B = 2  // 乙类医保 (报销 50%)
 } MedicareType;
 
 typedef enum //预约状态
@@ -73,9 +70,10 @@ typedef enum //病房类型
 
 typedef enum //回收站类型
 {
-    RECYCLE_MEDICINE = 1,  // 药品
-    RECYCLE_DOCTOR = 2,    // 医生
-    RECYCLE_PATIENT = 3    // 患者
+    RECYCLE_MEDICINE = 1,     // 药品
+    RECYCLE_CHECK_ITEM = 2,   // 检查项目
+    RECYCLE_ACCOUNT = 3,      // 员工账号
+    RECYCLE_WARD = 4          // 床位
 } RecycleType;
 
 // ==========================================
@@ -324,7 +322,10 @@ typedef struct RecycleNode
     char deleted_by[MAX_ID_LEN];        // 操作人
     char reason[MAX_RECORD_LEN];        // 删除/下架原因
 
-    MedicineNode medicine_backup;       // 当前备份的药品信息
+    MedicineNode medicine_backup;       // 备份的药品信息
+    CheckItemNode check_item_backup;    // 备份的检查项目信息
+    WardNode ward_backup;               // 备份的床位信息
+    AccountNode account_backup;         // 备份的员工账号信息
     int is_restored;                    // 0=未恢复, 1=已恢复
 
     struct RecycleNode* prev;
@@ -340,6 +341,7 @@ extern DoctorNode* g_doctor_list;
 extern MedicineNode* g_medicine_list;
 extern WardNode* g_ward_list;
 extern AccountNode* g_account_list;
+extern AccountNode* g_current_account;
 extern ConsultRecordNode* g_consult_record_list;
 extern CheckItemNode* g_check_item_list;     // 检查项目字典
 extern CheckRecordNode* g_check_record_list; // 检查记录
@@ -358,7 +360,8 @@ int delete_patient_by_id(PatientNode* head, const char* target_id);
 int delete_doctor_by_id(DoctorNode* head, const char* target_id);
 int delete_medicine_by_id(MedicineNode* head, const char* target_id);
 int delete_ward_by_id(WardNode* head, const char* target_bed_id);
-int delete_account_by_username(AccountNode* head, const char* target_username); 
+int delete_account_by_username(AccountNode* head, const char* target_username);
+int delete_account(const char* username); 
 
 // ==========================================
 // 8. 处方管理链表：给患者的"处方本"开单

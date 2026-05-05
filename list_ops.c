@@ -170,23 +170,23 @@ AppointmentNode* create_appointment_node(const char* appointment_id, const char*
     AppointmentNode* new_node = (AppointmentNode*)malloc(sizeof(AppointmentNode));
     if (new_node == NULL) return NULL;
     
-    strncpy(new_node->appointment_id, appointment_id, MAX_ID_LEN - 1);
-    new_node->appointment_id[MAX_ID_LEN - 1] = '\0';
+    strncpy(new_node->appointment_id, appointment_id, sizeof(new_node->appointment_id) - 1);
+    new_node->appointment_id[sizeof(new_node->appointment_id) - 1] = '\0';
     
-    strncpy(new_node->patient_id, patient_id, MAX_ID_LEN - 1);
-    new_node->patient_id[MAX_ID_LEN - 1] = '\0';
+    strncpy(new_node->patient_id, patient_id, sizeof(new_node->patient_id) - 1);
+    new_node->patient_id[sizeof(new_node->patient_id) - 1] = '\0';
     
-    strncpy(new_node->appointment_date, appointment_date, MAX_NAME_LEN - 1);
-    new_node->appointment_date[MAX_NAME_LEN - 1] = '\0';
+    strncpy(new_node->appointment_date, appointment_date, sizeof(new_node->appointment_date) - 1);
+    new_node->appointment_date[sizeof(new_node->appointment_date) - 1] = '\0';
     
-    strncpy(new_node->appointment_slot, appointment_slot, MAX_NAME_LEN - 1);
-    new_node->appointment_slot[MAX_NAME_LEN - 1] = '\0';
+    strncpy(new_node->appointment_slot, appointment_slot, sizeof(new_node->appointment_slot) - 1);
+    new_node->appointment_slot[sizeof(new_node->appointment_slot) - 1] = '\0';
     
-    strncpy(new_node->appoint_doctor, appoint_doctor, MAX_NAME_LEN - 1);
-    new_node->appoint_doctor[MAX_NAME_LEN - 1] = '\0';
+    strncpy(new_node->appoint_doctor, appoint_doctor, sizeof(new_node->appoint_doctor) - 1);
+    new_node->appoint_doctor[sizeof(new_node->appoint_doctor) - 1] = '\0';
     
-    strncpy(new_node->appoint_dept, appoint_dept, MAX_NAME_LEN - 1);
-    new_node->appoint_dept[MAX_NAME_LEN - 1] = '\0';
+    strncpy(new_node->appoint_dept, appoint_dept, sizeof(new_node->appoint_dept) - 1);
+    new_node->appoint_dept[sizeof(new_node->appoint_dept) - 1] = '\0';
     
     new_node->appointment_status = appointment_status;
     new_node->reg_fee = 0.0;
@@ -339,17 +339,132 @@ void insert_medicine_tail(MedicineNode* head, MedicineNode* new_node)
     while (curr->next != NULL) curr = curr->next;
     curr->next = new_node; new_node->prev = curr;
 }
-MedicineNode* find_medicine_by_id(MedicineNode* head, const char* target_id) 
+MedicineNode* find_medicine_by_id(MedicineNode* head, const char* target_id)
 {
     if (head == NULL || target_id == NULL) return NULL;
     MedicineNode* curr = head->next;
-    while (curr != NULL) 
+    while (curr != NULL)
     {
         if (strcmp(curr->id, target_id) == 0) return curr;
         curr = curr->next;
     }
     return NULL;
 }
+
+static int extract_numeric_id(const char* id)
+{
+    if (id == NULL) return -1;
+    const char* dash = strchr(id, '-');
+    if (dash == NULL) return -1;
+    char* endptr = NULL;
+    long num = strtol(dash + 1, &endptr, 10);
+    if (endptr == dash + 1 || *endptr != '\0') return -1;
+    return (int)num;
+}
+
+int compare_numeric_id(const char* id1, const char* id2)
+{
+    int num1 = extract_numeric_id(id1);
+    int num2 = extract_numeric_id(id2);
+    if (num1 != -1 && num2 != -1)
+    {
+        return num1 - num2;
+    }
+    return strcmp(id1, id2);
+}
+
+void insert_medicine_sorted(MedicineNode* head, MedicineNode* new_node)
+{
+    if (head == NULL || new_node == NULL) return;
+    MedicineNode* curr = head->next;
+    while (curr != NULL)
+    {
+        if (compare_numeric_id(curr->id, new_node->id) > 0)
+        {
+            new_node->next = curr;
+            new_node->prev = curr->prev;
+            if (curr->prev != NULL) curr->prev->next = new_node;
+            curr->prev = new_node;
+            return;
+        }
+        curr = curr->next;
+    }
+    curr = head;
+    while (curr->next != NULL) curr = curr->next;
+    curr->next = new_node;
+    new_node->prev = curr;
+    new_node->next = NULL;
+}
+
+void insert_check_item_sorted(CheckItemNode* head, CheckItemNode* new_node)
+{
+    if (head == NULL || new_node == NULL) return;
+    CheckItemNode* curr = head->next;
+    while (curr != NULL)
+    {
+        if (compare_numeric_id(curr->item_id, new_node->item_id) > 0)
+        {
+            new_node->next = curr;
+            new_node->prev = curr->prev;
+            if (curr->prev != NULL) curr->prev->next = new_node;
+            curr->prev = new_node;
+            return;
+        }
+        curr = curr->next;
+    }
+    curr = head;
+    while (curr->next != NULL) curr = curr->next;
+    curr->next = new_node;
+    new_node->prev = curr;
+    new_node->next = NULL;
+}
+
+void insert_ward_sorted(WardNode* head, WardNode* new_node)
+{
+    if (head == NULL || new_node == NULL) return;
+    WardNode* curr = head->next;
+    while (curr != NULL)
+    {
+        if (compare_numeric_id(curr->bed_id, new_node->bed_id) > 0)
+        {
+            new_node->next = curr;
+            new_node->prev = curr->prev;
+            if (curr->prev != NULL) curr->prev->next = new_node;
+            curr->prev = new_node;
+            return;
+        }
+        curr = curr->next;
+    }
+    curr = head;
+    while (curr->next != NULL) curr = curr->next;
+    curr->next = new_node;
+    new_node->prev = curr;
+    new_node->next = NULL;
+}
+
+void insert_account_sorted(AccountNode* head, AccountNode* new_node)
+{
+    if (head == NULL || new_node == NULL) return;
+    AccountNode* curr = head->next;
+    while (curr != NULL)
+    {
+        if (compare_numeric_id(curr->username, new_node->username) > 0)
+        {
+            new_node->next = curr;
+            new_node->prev = curr->prev;
+            if (curr->prev != NULL) curr->prev->next = new_node;
+            curr->prev = new_node;
+            return;
+        }
+        curr = curr->next;
+    }
+    curr = head;
+    while (curr->next != NULL) curr = curr->next;
+    curr->next = new_node;
+    new_node->prev = curr;
+    new_node->next = NULL;
+}
+
 //五、病房床位链表操作
 WardNode* init_ward_list() 
 {
@@ -512,14 +627,10 @@ int delete_ward_by_id(WardNode* head, const char* target_bed_id)
     return 1;
 }
 
-int delete_account_by_username(AccountNode* head, const char* target_username) 
+int delete_account_by_username(AccountNode* head, const char* target_username)
 {
-    AccountNode* target = find_account_by_username(head, target_username);
-    if (!target) return 0;
-    if (target->prev) target->prev->next = target->next;
-    if (target->next) target->next->prev = target->prev;
-    free(target);
-    return 1;
+    (void)head;
+    return delete_account(target_username);
 }
 
 // ==========================================
@@ -844,11 +955,11 @@ CheckItemNode* create_check_item_node(const char* item_id, const char* item_name
     strncpy(new_node->item_id, item_id, MAX_ID_LEN - 1);
     new_node->item_id[MAX_ID_LEN - 1] = '\0';
     
-    strncpy(new_node->item_name, item_name, MAX_NAME_LEN - 1);
-    new_node->item_name[MAX_NAME_LEN - 1] = '\0';
+    strncpy(new_node->item_name, item_name, sizeof(new_node->item_name) - 1);
+    new_node->item_name[sizeof(new_node->item_name) - 1] = '\0';
     
-    strncpy(new_node->dept, dept, MAX_NAME_LEN - 1);
-    new_node->dept[MAX_NAME_LEN - 1] = '\0';
+    strncpy(new_node->dept, dept, sizeof(new_node->dept) - 1);
+    new_node->dept[sizeof(new_node->dept) - 1] = '\0';
     
     new_node->price = price;
     new_node->m_type = m_type;
@@ -976,11 +1087,11 @@ CheckRecordNode* create_check_record_node(
     strncpy(new_node->item_id, item_id, MAX_ID_LEN - 1);
     new_node->item_id[MAX_ID_LEN - 1] = '\0';
     
-    strncpy(new_node->item_name, item_name, MAX_NAME_LEN - 1);
-    new_node->item_name[MAX_NAME_LEN - 1] = '\0';
+    strncpy(new_node->item_name, item_name, sizeof(new_node->item_name) - 1);
+    new_node->item_name[sizeof(new_node->item_name) - 1] = '\0';
     
-    strncpy(new_node->dept, dept, MAX_NAME_LEN - 1);
-    new_node->dept[MAX_NAME_LEN - 1] = '\0';
+    strncpy(new_node->dept, dept, sizeof(new_node->dept) - 1);
+    new_node->dept[sizeof(new_node->dept) - 1] = '\0';
     
     if (check_time != NULL)
     {
@@ -1632,6 +1743,177 @@ RecycleNode* create_recycle_medicine_node(
     new_node->is_restored = 0;
     
     // 初始化链表指针
+    new_node->prev = NULL;
+    new_node->next = NULL;
+    
+    return new_node;
+}
+
+RecycleNode* create_recycle_check_item_node(
+    const char* recycle_id,
+    const CheckItemNode* item,
+    const char* deleted_by,
+    const char* reason
+) {
+    if (item == NULL) return NULL;
+    
+    RecycleNode* new_node = (RecycleNode*)malloc(sizeof(RecycleNode));
+    if (new_node == NULL) return NULL;
+    
+    if (recycle_id != NULL) {
+        strncpy(new_node->recycle_id, recycle_id, MAX_ID_LEN - 1);
+    } else {
+        new_node->recycle_id[0] = '\0';
+    }
+    new_node->recycle_id[MAX_ID_LEN - 1] = '\0';
+    
+    new_node->type = RECYCLE_CHECK_ITEM;
+    
+    strncpy(new_node->source_id, item->item_id, MAX_ID_LEN - 1);
+    new_node->source_id[MAX_ID_LEN - 1] = '\0';
+    strncpy(new_node->source_name, item->item_name, MAX_NAME_LEN - 1);
+    new_node->source_name[MAX_NAME_LEN - 1] = '\0';
+    
+    if (deleted_by != NULL && strlen(deleted_by) > 0) {
+        strncpy(new_node->deleted_by, deleted_by, MAX_ID_LEN - 1);
+    } else {
+        strncpy(new_node->deleted_by, "SYSTEM", MAX_ID_LEN - 1);
+    }
+    new_node->deleted_by[MAX_ID_LEN - 1] = '\0';
+    
+    if (reason != NULL && strlen(reason) > 0) {
+        strncpy(new_node->reason, reason, MAX_RECORD_LEN - 1);
+    } else {
+        strncpy(new_node->reason, "管理员下架检查项目", MAX_RECORD_LEN - 1);
+    }
+    new_node->reason[MAX_RECORD_LEN - 1] = '\0';
+    
+    time_t now = time(NULL);
+    struct tm* t = localtime(&now);
+    sprintf(new_node->delete_time, "%04d-%02d-%02d %02d:%02d:%02d",
+            t->tm_year + 1900, t->tm_mon + 1, t->tm_mday,
+            t->tm_hour, t->tm_min, t->tm_sec);
+    
+    new_node->check_item_backup = *item;
+    new_node->check_item_backup.prev = NULL;
+    new_node->check_item_backup.next = NULL;
+    
+    new_node->is_restored = 0;
+    
+    new_node->prev = NULL;
+    new_node->next = NULL;
+    
+    return new_node;
+}
+
+RecycleNode* create_recycle_ward_node(
+    const char* recycle_id,
+    const WardNode* ward,
+    const char* deleted_by,
+    const char* reason
+) {
+    if (ward == NULL) return NULL;
+    
+    RecycleNode* new_node = (RecycleNode*)malloc(sizeof(RecycleNode));
+    if (new_node == NULL) return NULL;
+    
+    if (recycle_id != NULL) {
+        strncpy(new_node->recycle_id, recycle_id, MAX_ID_LEN - 1);
+    } else {
+        new_node->recycle_id[0] = '\0';
+    }
+    new_node->recycle_id[MAX_ID_LEN - 1] = '\0';
+    
+    new_node->type = RECYCLE_WARD;
+    
+    strncpy(new_node->source_id, ward->bed_id, MAX_ID_LEN - 1);
+    new_node->source_id[MAX_ID_LEN - 1] = '\0';
+    strncpy(new_node->source_name, ward->room_id, MAX_NAME_LEN - 1);
+    new_node->source_name[MAX_NAME_LEN - 1] = '\0';
+    
+    if (deleted_by != NULL && strlen(deleted_by) > 0) {
+        strncpy(new_node->deleted_by, deleted_by, MAX_ID_LEN - 1);
+    } else {
+        strncpy(new_node->deleted_by, "SYSTEM", MAX_ID_LEN - 1);
+    }
+    new_node->deleted_by[MAX_ID_LEN - 1] = '\0';
+    
+    if (reason != NULL && strlen(reason) > 0) {
+        strncpy(new_node->reason, reason, MAX_RECORD_LEN - 1);
+    } else {
+        strncpy(new_node->reason, "管理员下架床位", MAX_RECORD_LEN - 1);
+    }
+    new_node->reason[MAX_RECORD_LEN - 1] = '\0';
+    
+    time_t now = time(NULL);
+    struct tm* t = localtime(&now);
+    sprintf(new_node->delete_time, "%04d-%02d-%02d %02d:%02d:%02d",
+            t->tm_year + 1900, t->tm_mon + 1, t->tm_mday,
+            t->tm_hour, t->tm_min, t->tm_sec);
+    
+    new_node->ward_backup = *ward;
+    new_node->ward_backup.prev = NULL;
+    new_node->ward_backup.next = NULL;
+    
+    new_node->is_restored = 0;
+    
+    new_node->prev = NULL;
+    new_node->next = NULL;
+    
+    return new_node;
+}
+
+RecycleNode* create_recycle_account_node(
+    const char* recycle_id,
+    const AccountNode* account,
+    const char* deleted_by,
+    const char* reason
+) {
+    if (account == NULL) return NULL;
+    
+    RecycleNode* new_node = (RecycleNode*)malloc(sizeof(RecycleNode));
+    if (new_node == NULL) return NULL;
+    
+    if (recycle_id != NULL) {
+        strncpy(new_node->recycle_id, recycle_id, MAX_ID_LEN - 1);
+    } else {
+        new_node->recycle_id[0] = '\0';
+    }
+    new_node->recycle_id[MAX_ID_LEN - 1] = '\0';
+    
+    new_node->type = RECYCLE_ACCOUNT;
+    
+    strncpy(new_node->source_id, account->username, MAX_ID_LEN - 1);
+    new_node->source_id[MAX_ID_LEN - 1] = '\0';
+    strncpy(new_node->source_name, account->real_name, MAX_NAME_LEN - 1);
+    new_node->source_name[MAX_NAME_LEN - 1] = '\0';
+    
+    if (deleted_by != NULL && strlen(deleted_by) > 0) {
+        strncpy(new_node->deleted_by, deleted_by, MAX_ID_LEN - 1);
+    } else {
+        strncpy(new_node->deleted_by, "SYSTEM", MAX_ID_LEN - 1);
+    }
+    new_node->deleted_by[MAX_ID_LEN - 1] = '\0';
+    
+    if (reason != NULL && strlen(reason) > 0) {
+        strncpy(new_node->reason, reason, MAX_RECORD_LEN - 1);
+    } else {
+        strncpy(new_node->reason, "管理员禁用账号", MAX_RECORD_LEN - 1);
+    }
+    new_node->reason[MAX_RECORD_LEN - 1] = '\0';
+    
+    time_t now = time(NULL);
+    struct tm* t = localtime(&now);
+    sprintf(new_node->delete_time, "%04d-%02d-%02d %02d:%02d:%02d",
+            t->tm_year + 1900, t->tm_mon + 1, t->tm_mday,
+            t->tm_hour, t->tm_min, t->tm_sec);
+    
+    new_node->account_backup = *account;
+    new_node->account_backup.prev = NULL;
+    new_node->account_backup.next = NULL;
+    
+    new_node->is_restored = 0;
+    
     new_node->prev = NULL;
     new_node->next = NULL;
     

@@ -52,7 +52,7 @@ static DoctorNode* g_current_doctor = NULL;
 // 辅助函数声明
 static int my_strcasecmp(const char* s1, const char* s2);
 static int is_digit_string(const char* str);
-static int utf8_char_count(const char* str);
+__attribute__((unused)) static int utf8_char_count(const char* str);
 
 // 内部业务相关处理函数（需要内部登录后访问）
 static void quick_register_menu();
@@ -69,8 +69,8 @@ static void handle_patient_self_first_visit();
 static void handle_patient_self_appointment_register();
 static void handle_patient_self_registration();
 static void handle_patient_self_appointment_cancel();
-static void handle_patient_self_basic_record_query();
-static void handle_patient_self_visit_overview_query();
+__attribute__((unused)) static void handle_patient_self_basic_record_query();
+__attribute__((unused)) static void handle_patient_self_visit_overview_query();
 
 static void handle_patient_self_consult_history_query(const char* patient_id, const char* id_card);
 static void handle_patient_self_current_visit_overview();
@@ -112,7 +112,7 @@ static void handle_doctor_consultation();
 static void handle_doctor_view_patient_overview();
 static void handle_query_check_records();
 static int is_check_department(const char* dept);
-static RoleType prompt_admin_staff_role();
+__attribute__((unused)) static RoleType prompt_admin_staff_role();
 static void handle_admin_register_account();
 static void handle_admin_update_account();
 static void handle_admin_update_doctor_duty();
@@ -120,7 +120,7 @@ static void handle_admin_update_nurse_duty();
 static void handle_admin_update_pharmacist_duty();
 static void handle_pharmacy_dispense();
 static int is_current_emergency_request(const char* appoint_doctor, const char* appoint_dept, const char* symptom);
-static void inpatient_menu();
+__attribute__((unused)) static void inpatient_menu();
 static void nurse_inpatient_menu();
 static void handle_inpatient_register();
 static void handle_bed_assign();
@@ -684,7 +684,6 @@ static void handle_admin_update_account()
     RoleType target_role = 0;
     int step = 0;
     int need_department = 0;
-    int confirm = 0;
     int hasChanges = 0;
 
     printf("\n================ 修改员工资料 ================\n");
@@ -951,7 +950,6 @@ static void handle_admin_update_account()
                 
                 if (strcmp(input_buffer, "Y") == 0 || strcmp(input_buffer, "y") == 0)
                 {
-                    confirm = 1;
                     step = 6;
                 }
                 else if (strcmp(input_buffer, "N") == 0 || strcmp(input_buffer, "n") == 0)
@@ -1479,7 +1477,6 @@ static int is_current_emergency_request(const char* appoint_doctor, const char* 
 static void admin_medicine_menu()
 {
     int running = 1;
-    int threshold;
 
     while (running)
     {
@@ -1661,9 +1658,6 @@ static void handle_doctor_consultation()
     int count;
     int consult_success = 0;
     static int check_record_counter = 1001;
-    int estimated_days;
-    int condition_level;
-    double deposit;
 
     printf("\n================ 医生接诊 ================\n");
 
@@ -1780,9 +1774,6 @@ back_to_decision:
         temp_check_record_list = temp_check_record_list->next;
         free(temp);
     }
-    estimated_days = 0;
-    condition_level = 0;
-    deposit = 0.0;
     printf("\n请选择诊疗决策:\n");
     printf("  [1] 结束就诊\n");
     printf("  [2] 开药\n");
@@ -2145,8 +2136,8 @@ back_to_decision:
         }
 
         printf("\n================ 可用检查项目列表 ================\n");
-        printf("%-12s %-18s %-12s %-10s %s\n", "项目编号", "项目名称", "所属科室", "价格(元)", "医保类型");
-        printf("---------------------------------------------------------\n");
+        printf("%-12s %-22s %-14s %-10s %s\n", "项目编号", "项目名称", "所属科室", "价格(元)", "医保类型");
+        printf("--------------------------------------------------------------------\n");
         item_curr = g_check_item_list->next;
         while (item_curr != NULL)
         {
@@ -2158,7 +2149,7 @@ back_to_decision:
                 case MEDICARE_NONE: medicare_type = "自费"; break;
                 default: medicare_type = "未知";
             }
-            printf("%-12s %-18s %-12s %-10.2f %s\n",
+            printf("%-12s %-22s %-14s %-10.2f %s\n",
                    item_curr->item_id,
                    item_curr->item_name,
                    item_curr->dept,
@@ -2390,7 +2381,7 @@ static void handle_doctor_view_patient_overview()
     system("pause");
 }
 
-static void handle_doctor_view_processed_patients()
+__attribute__((unused)) static void handle_doctor_view_processed_patients()
 {
     printf("\n================ 查看已处理患者 ================\n");
     doctor_view_processed_patients(g_current_doctor->id);
@@ -2442,7 +2433,7 @@ static void handle_doctor_view_processed_patient_detail()
     system("pause");
 }
 
-static void handle_doctor_view_consult_history()
+__attribute__((unused)) static void handle_doctor_view_consult_history()
 {
     int count = 0;
     int choice;
@@ -3333,7 +3324,6 @@ static void handle_internal_appointment_register()
     char appointment_slot[MAX_NAME_LEN];
     char appoint_doctor[MAX_NAME_LEN];
     char appoint_dept[MAX_NAME_LEN];
-    PatientNode* patient = NULL;
     
     printf("\n================ 预约登记 ================\n");
     printf("提示：输入 '0' 可以回退上一步，输入 '00' 可以退出操作\n");
@@ -3764,7 +3754,6 @@ static void handle_patient_self_basic_record_query()
     }
     
     // 身份证号输入环节
-    input_id_card:
     get_safe_string("请输入身份证号：", id_card, MAX_ID_LEN);
     if (strcmp(id_card, "Q") == 0 || strcmp(id_card, "q") == 0)
     {
@@ -4500,13 +4489,6 @@ static void handle_patient_self_first_visit()
     char symptom[MAX_SYMPTOM_LEN] = "";
     char target_dept[MAX_NAME_LEN] = "";
     char gender_str[8] = "";
-    char input_buffer[128];
-    char error_msg[256] = "";
-    char auto_recommended_dept[MAX_NAME_LEN] = "";
-    char final_dept[MAX_NAME_LEN] = "";
-    int is_recommended_dept = 0;
-    int is_night_mode = 0;
-    int step = 0;
 
     printf("\n================ 首次来院登记 ================\n");
     printf("温馨提示：本功能用于首次来院患者建档或已建档患者复用档案\n");
@@ -5132,7 +5114,6 @@ static void handle_patient_self_registration()
     }
     
     // 医生输入环节（急诊也保留选择权）
-    input_doctor:
     printf("\n【当前步骤：填写意向医生编号】\n");
     get_safe_string("请输入意向医生编号（可留空，直接回车表示由值班医生接诊）：", appoint_doctor, MAX_NAME_LEN);
     if (strcmp(appoint_doctor, "Q") == 0 || strcmp(appoint_doctor, "q") == 0)
@@ -5254,8 +5235,7 @@ static void handle_patient_self_appointment_cancel()
     char id_card[MAX_ID_LEN] = "";
     char appointment_id[MAX_ID_LEN] = "";
     int step = 1;
-    int loop = 1;
-    
+
     printf("\n================ 自助预约取消 ================\n");
     printf("温馨提示：请确保您输入的是本人信息\n");
     printf("提示：输入 '0' 可以回退上一步，输入 '00' 可以退出操作\n");
@@ -5486,7 +5466,6 @@ static void handle_patient_self_appointment_cancel()
                 // 失败信息已在cancel_appointment函数内部打印
                 
                 system("pause");
-                loop = 0;  // 结束流程
                 break;
             }
         }
@@ -5926,7 +5905,6 @@ static void handle_patient_archive_update()
     }
 
     // 输入新余额环节
-    input_balance:
     balance = patient->balance;
     printf("当前余额：%.2f\n", balance);
     get_safe_string("请输入新余额：", temp_input, MAX_SYMPTOM_LEN);
@@ -6357,7 +6335,7 @@ static void patient_self_service_menu()
                         break;
                     
                     // 身份证号输入环节
-                    input_apt_id_card:
+                    input_check_patient_id:
                     get_safe_string("请输入身份证号：", local_id_card, MAX_ID_LEN);
                     if (strcmp(local_id_card, "Q") == 0 || strcmp(local_id_card, "q") == 0)
                     {
@@ -6600,9 +6578,7 @@ static void patient_self_service_menu()
                 printf("\n身份核验成功！欢迎，%s\n", check_patient->name);
                 printf("\n================ 检查报告列表 ================\n");
                 
-                int check_count = 0;
                 CheckRecordNode* curr = g_check_record_list->next;
-                input_check_patient_id:
                 while (curr != NULL)
                 {
                     if (strcmp(curr->patient_id, patient_id) == 0)
@@ -6647,7 +6623,6 @@ static void patient_self_service_menu()
                         break;
                     
                     // 身份证号输入环节
-                    input_check_id_card:
                     get_safe_string("请输入身份证号：", local_id_card, MAX_ID_LEN);
                     if (strcmp(local_id_card, "Q") == 0 || strcmp(local_id_card, "q") == 0)
                     {
@@ -7053,7 +7028,6 @@ static void patient_self_service_menu()
                         break;
                     
                     // 身份证号输入环节
-                    input_complaint_id_card:
                     get_safe_string("请输入身份证号：", local_id_card, MAX_ID_LEN);
                     if (strcmp(local_id_card, "Q") == 0 || strcmp(local_id_card, "q") == 0)
                     {
@@ -7490,13 +7464,12 @@ int main()
 
     // 加载存档数据
     #if STARTUP_DEBUG
-    printf("DEBUG: 开始加载数据...\n");
-    #endif
     int load_result = load_all_data();
-    #if STARTUP_DEBUG
     printf("DEBUG: 数据加载完成，结果: %d\n", load_result);
-    
-    // 检查患者链表状态
+    #else
+    load_all_data();
+    #endif
+    #if STARTUP_DEBUG
     if (g_patient_list->next == NULL) {
         printf("DEBUG: 患者链表为空\n");
     } else {
@@ -7508,7 +7481,9 @@ int main()
                    first_patient->id, first_patient->name, first_patient->id_card);
         }
     }
+    #endif
     
+    #if STARTUP_DEBUG
     // 检查账号链表状态
     if (g_account_list->next == NULL) {
         printf("DEBUG: 账号链表为空，准备注入初始数据\n");
@@ -7517,7 +7492,7 @@ int main()
         // 打印第一个账号信息
         AccountNode* first_account = g_account_list->next;
         if (first_account != NULL) {
-            printf("DEBUG: 第一个账号: %s, 密码: %s, 角色: %d\n", 
+            printf("DEBUG: 第一个账号: %s, 密码: %s, 角色: %d\n",
                    first_account->username, first_account->password, first_account->role);
         }
     }
@@ -8737,6 +8712,10 @@ static void handle_admin_delete_ward_bed()
 {
     char bed_id[MAX_ID_LEN] = "";
     char confirm;
+    char reason[MAX_RECORD_LEN] = "";
+    char deleted_by[MAX_ID_LEN] = "system";
+    char recycle_id[MAX_ID_LEN] = "";
+    RecycleNode* recycle_node = NULL;
 
     printf("\n================ 删除/停用床位 ================\n");
     printf("提示：输入 B 返回上一级，Q 退出当前操作\n\n");
@@ -8809,15 +8788,54 @@ static void handle_admin_delete_ward_bed()
 
             if (confirm == 'Y' || confirm == 'y')
             {
-                if (delete_ward_by_id(g_ward_list, bed_id))
+                // 获取删除原因
+                get_safe_string("请输入删除原因（回车默认为管理员操作删除）：", reason, MAX_RECORD_LEN);
+                if (is_blank_string(reason))
                 {
-                    add_log("删除床位", bed_id, "管理员删除/停用床位");
-                    printf("\n✅ 床位删除/停用成功！\n");
+                    strncpy(reason, "管理员操作删除", MAX_RECORD_LEN - 1);
                 }
-                else
+
+                // 获取操作人
+                if (g_current_account != NULL && strlen(g_current_account->username) > 0)
                 {
-                    printf("\n❌ 床位删除失败！\n");
+                    strncpy(deleted_by, g_current_account->username, MAX_ID_LEN - 1);
                 }
+
+                // 生成回收站编号
+                generate_recycle_id(recycle_id);
+
+                // 创建回收站节点
+                recycle_node = create_recycle_ward_node(recycle_id, target, deleted_by, reason);
+                if (recycle_node == NULL)
+                {
+                    printf("提示：创建回收站记录失败。\n");
+                    return;
+                }
+
+                // 插入回收站
+                insert_recycle_tail(g_recycle_list, recycle_node);
+
+                // 从床位链表中断链
+                if (target->prev != NULL)
+                {
+                    target->prev->next = target->next;
+                }
+                if (target->next != NULL)
+                {
+                    target->next->prev = target->prev;
+                }
+
+                // 释放原床位节点
+                free(target);
+
+                // 添加操作日志
+                add_log("软删除床位", bed_id, "床位已删除并转入回收站");
+
+                // 保存数据
+                save_all_data();
+
+                // 打印提示信息
+                printf("\n✅ 床位已移入回收站，可由管理员在回收站中恢复。\n");
                 return;
             }
 
@@ -9478,7 +9496,7 @@ enter_patient_bed:
     }
     
     // 类型不匹配检查
-    int type_mismatch = (target_bed->ward_type != recommended_type);
+    int type_mismatch = ((int)target_bed->ward_type != recommended_type);
     if (type_mismatch)
     {
         printf("\n⚠️ 警告：所选床位类型与推荐类型不一致！\n");
