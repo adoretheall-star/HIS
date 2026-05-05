@@ -63,13 +63,13 @@ int my_strcasecmp(const char* s1, const char* s2)
 static double get_ward_rate(WardType ward_type)
 {
     switch (ward_type) {
-        case WARD_TYPE_ICU:
+        case WARD_ICU:
             return ICU_WARD_RATE;
-        case WARD_TYPE_ISOLATION:
+        case WARD_ISOLATION:
             return ISOLATION_WARD_RATE;
-        case WARD_TYPE_SINGLE:
+        case WARD_SINGLE:
             return SINGLE_WARD_RATE;
-        case WARD_TYPE_GENERAL:
+        case WARD_GENERAL:
         default:
             return GENERAL_WARD_RATE;
     }
@@ -141,7 +141,7 @@ static int parse_date_string(const char* date_str, struct tm* tm_out);
 static int days_between_dates(const char* start_date, const char* end_date);
 
 // 计算字符串的显示宽度（中文算2个宽度）
-static int get_display_width(const char* str)
+int get_display_width(const char* str)
 {
     if (str == NULL) return 0;
     
@@ -170,7 +170,7 @@ static int get_display_width(const char* str)
 }
 
 // 按指定宽度打印文本并填充空格
-static void print_padded_text(const char* str, int target_width)
+void print_padded_text(const char* str, int target_width)
 {
     if (str == NULL) str = "";
 
@@ -193,9 +193,9 @@ static double estimate_daily_cost_by_ward_type(WardType ward_type)
 {
     switch (ward_type)
     {
-        case WARD_TYPE_GENERAL:
+        case WARD_GENERAL:
             return 200.0;
-        case WARD_TYPE_ICU:
+        case WARD_ICU:
             return 1500.0;
         default:
             return 200.0;
@@ -1242,28 +1242,28 @@ void show_bed_resource_alerts(void)
                 occupied_beds++;
             }
             
-            if (ward_curr->ward_type == WARD_TYPE_GENERAL)
+            if (ward_curr->ward_type == WARD_GENERAL)
             {
                 if (ward_curr->is_occupied)
                     general_occupied++;
                 else
                     general_free++;
             }
-            else if (ward_curr->ward_type == WARD_TYPE_SINGLE)
+            else if (ward_curr->ward_type == WARD_SINGLE)
             {
                 if (ward_curr->is_occupied)
                     special_occupied++;
                 else
                     special_free++;
             }
-            else if (ward_curr->ward_type == WARD_TYPE_ICU)
+            else if (ward_curr->ward_type == WARD_ICU)
             {
                 if (ward_curr->is_occupied)
                     icu_occupied++;
                 else
                     icu_free++;
             }
-            else if (ward_curr->ward_type == WARD_TYPE_ISOLATION)
+            else if (ward_curr->ward_type == WARD_ISOLATION)
             {
                 // 隔离病房单独统计
                 if (ward_curr->is_occupied)
@@ -3701,56 +3701,6 @@ void show_logs(void)
     
     printf("\n按任意键返回...\n");
     getchar();
-}
-
-// 处理药品基本信息更新
-void handle_medicine_basic_info_update(void)
-{
-    char med_id[MAX_ID_LEN];
-    char new_name[MAX_MED_NAME_LEN];
-    char new_alias[MAX_ALIAS_LEN];
-    char new_generic_name[MAX_GENERIC_NAME_LEN];
-    double new_price;
-    char new_expiry_date[MAX_DATE_LEN];
-    
-    printf("\n==============================================================\n");
-    printf("                      更新药品基本信息\n");
-    printf("==============================================================\n");
-    
-    get_safe_string("请输入药品编号：", med_id, sizeof(med_id));
-    
-    // 检查药品是否存在
-    MedicineNode* medicine = find_medicine_by_id(g_medicine_list, med_id);
-    if (medicine == NULL)
-    {
-        printf("药品不存在！\n");
-        printf("==============================================================\n");
-        return;
-    }
-    
-    get_safe_string("请输入新的药品名称：", new_name, sizeof(new_name));
-    get_safe_string("请输入新的药品别名：", new_alias, sizeof(new_alias));
-    get_safe_string("请输入新的药品通用名：", new_generic_name, sizeof(new_generic_name));
-    new_price = get_safe_double("请输入新的药品价格：");
-    get_safe_string("请输入新的有效期(YYYY-MM-DD)：", new_expiry_date, sizeof(new_expiry_date));
-    
-    // 调用更新药品基本信息函数
-    int result = update_medicine_basic_info(
-        med_id, new_name, new_alias, new_generic_name, new_price, new_expiry_date
-    );
-    
-    if (result == 1)
-    {
-        printf("\n药品基本信息更新成功！\n");
-        add_log("药品信息更新", med_id, "更新药品基本信息");
-    }
-    else
-    {
-        printf("\n药品基本信息更新失败！\n");
-        add_log("药品信息更新", med_id, "更新药品基本信息失败");
-    }
-    
-    printf("==============================================================\n");
 }
 
 // 处理近效期药品检查

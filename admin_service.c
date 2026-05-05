@@ -3655,7 +3655,7 @@ void handle_medicine_dispense(void)
     char patient_id[MAX_ID_LEN];
 
     printf("\n================ 发药处理 ================\n");
-    printf("提示：输入 '0' 可以回退上一步，输入 '00' 可以退出操作\n");
+    printf("提示：输入 B 返回上一步，输入 Q 退出当前操作\n");
     show_paid_patients_waiting_for_dispense();
     printf("------------------------------------------------------\n");
     
@@ -3684,7 +3684,7 @@ void handle_medicine_dispense(void)
         else
         {
             printf("⚠️ 患者编号格式不合法，正确格式为 P-1001，请重新输入！\n");
-            printf("提示：输入 '0' 可以回退上一步，输入 '00' 可以退出操作\n");
+            printf("提示：输入 B 返回上一步，输入 Q 退出当前操作\n");
         }
     }
     
