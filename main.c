@@ -26,19 +26,26 @@
 // 启动调试开关，默认关闭（设为1显示详细调试信息）
 #define STARTUP_DEBUG 0
 
+/*
+ * 开发阶段测试数据生成器：
+ * 仅用于早期生成测试数据（data 目录下的 txt 文件），正式运行默认关闭。
+ * 系统正式业务数据均从 txt 文件加载，并通过链表维护。
+ */
+#define ENABLE_DEV_DATA_GENERATOR 0
+
 // 辅助函数：不区分大小写的字符串比较
 static int my_strcasecmp(const char* s1, const char* s2)
 {
     while (*s1 && *s2)
     {
-        char c1 = tolower((unsigned char)*s1);
-        char c2 = tolower((unsigned char)*s2);
+        char c1 = (char)tolower((unsigned char)*s1);
+        char c2 = (char)tolower((unsigned char)*s2);
         if (c1 != c2)
-            return c1 - c2;
+            return (int)((unsigned char)c1 - (unsigned char)c2);
         s1++;
         s2++;
     }
-    return *s1 - *s2;
+    return (int)((unsigned char)*s1 - (unsigned char)*s2);
 }
 
 // 当前登录的医生信息
@@ -86,6 +93,9 @@ static void display_recent_alerts();
 static int is_check_department(const char* dept)
 {
     if (dept == NULL) return 0;
+    /*
+     * 固定科室判断常量，仅用于科室类别判断，不存储业务数据。
+     */
     const char* check_depts[] = {"放射科", "影像科", "检验科", "超声科", "心电图室", NULL};
     for (int i = 0; check_depts[i] != NULL; i++) {
         if (strcmp(dept, check_depts[i]) == 0) {
@@ -170,6 +180,7 @@ printf("  [8] 查看药师值班状态\n");
         printf("  [24] 医疗风险大屏\n");
         printf("  [25] 报表导出中心\n");
         printf("  [26] 个人中心\n");
+        printf("  [27] 系统数据完整性检查\n");
         printf("  [0] 退出登录\n");
         printf("------------------------------------------------------\n");
 
@@ -300,6 +311,10 @@ printf("  [8] 查看药师值班状态\n");
             case 26:
                 system("cls");
                 user_profile_menu(g_current_account);
+                break;
+            case 27:
+                check_system_data_integrity();
+                system("pause");
                 break;
             case 0:
                 running = 0;
@@ -1923,17 +1938,17 @@ back_to_decision:
                     }
                     else
                     {
-                        patient->queue_time = time(NULL);
+                        patient->queue_time = (int)time(NULL);
                     }
                 }
                 else
                 {
-                    patient->queue_time = time(NULL);
+                    patient->queue_time = (int)time(NULL);
                 }
             }
             else
             {
-                patient->queue_time = time(NULL);
+                patient->queue_time = (int)time(NULL);
             }
             
             // 释放临时链表
@@ -2507,7 +2522,7 @@ static void handle_query_check_records()
         }
         else if (strncmp(query_str, "CRK-", 4) == 0)
         {
-            int len = strlen(query_str);
+            int len = (int)strlen(query_str);
             int valid = (len == 8);
             for (int i = 4; valid && i < 8; i++)
                 if (!isdigit((unsigned char)query_str[i])) valid = 0;
@@ -2521,7 +2536,7 @@ static void handle_query_check_records()
         }
         else if (strncmp(query_str, "CR-", 3) == 0)
         {
-            int len = strlen(query_str);
+            int len = (int)strlen(query_str);
             int valid = (len == 6);
             for (int i = 3; valid && i < 6; i++)
                 if (!isdigit((unsigned char)query_str[i])) valid = 0;
@@ -3047,7 +3062,7 @@ static void internal_login_menu()
     if (account->error_count >= 3)
     {
         time_t current_time = time(NULL);
-        int lock_duration = current_time - account->lock_time;
+        int lock_duration = (int)(current_time - account->lock_time);
         
         if (lock_duration < 60)
         {
@@ -3474,7 +3489,24 @@ static void handle_internal_appointment_register()
     {
         goto input_dept;
     }
-    
+
+    {
+        PatientNode* patient = find_patient_by_id(g_patient_list, patient_id);
+        if (patient == NULL)
+        {
+            printf("\n⚠️ 未找到该患者，操作已取消。\n");
+            system("pause");
+            return;
+        }
+
+        if (!can_patient_make_appointment(patient, patient->symptom, appoint_doctor, appoint_dept))
+        {
+            printf("\n预约已取消。\n");
+            system("pause");
+            return;
+        }
+    }
+
     AppointmentNode* new_appt = register_appointment(
         patient_id,
         appointment_date,
@@ -4417,7 +4449,16 @@ static void handle_patient_self_appointment_register()
         }
     }
     // ==========================================
-    
+
+    if (!can_patient_make_appointment(patient, current_symptom, appoint_doctor, appoint_dept))
+    {
+        printf("\n预约已取消。\n");
+        safe_copy_string(patient->symptom, MAX_SYMPTOM_LEN, old_symptom);
+        patient->is_emergency = old_is_emergency;
+        system("pause");
+        return;
+    }
+
     AppointmentNode* new_appt = register_appointment(
         patient_id,
         appointment_date,
@@ -4862,7 +4903,8 @@ static void handle_patient_self_first_visit()
         printf("\n🎉 建档成功！\n");
         printf("您的患者编号是：%s\n", new_patient->id);
         printf("您的姓名是：%s\n", new_patient->name);
-        printf("请使用上述患者编号进行后续的预约/挂号操作\n");
+        printf("\n如需预约，请返回患者自助服务选择[预约登记]。\n");
+        printf("如需现场挂号，请选择[现场挂号]。\n");
     }
     else
     {
@@ -5160,9 +5202,19 @@ static void handle_patient_self_registration()
         }
     }
     // ==========================================
-    
-    // 接收生成的预约节点
-    AppointmentNode* new_appt = register_appointment(
+
+    if (!can_patient_walk_in_register(patient, current_symptom, appoint_doctor, appoint_dept))
+    {
+        printf("\n现场挂号已取消。\n");
+        strncpy(patient->symptom, old_symptom, MAX_SYMPTOM_LEN - 1);
+        patient->symptom[MAX_SYMPTOM_LEN - 1] = '\0';
+        patient->is_emergency = old_is_emergency;
+        system("pause");
+        return;
+    }
+
+    // 创建现场号记录（不触发预约校验，由上游 can_patient_walk_in_register 已完成校验）
+    AppointmentNode* new_appt = create_walk_in_appointment_record(
         patient_id,
         appointment_date,
         appointment_slot,
@@ -5213,7 +5265,7 @@ static void handle_patient_self_registration()
         // 现场挂号强制使用当前物理时间戳，不享受预约的1800秒虚拟提前优惠
         PatientNode* p = find_patient_by_id(g_patient_list, patient_id);
         if (p != NULL) { 
-            p->queue_time = time(NULL); 
+            p->queue_time = (int)time(NULL); 
         }
         
         printf("\n✅ 现场挂号与分诊全部完成！请关注叫号屏幕，前往对应科室候诊。\n" );
@@ -7498,7 +7550,9 @@ int main()
     }
     #endif
 
+#if ENABLE_DEV_DATA_GENERATOR
     // ==============================================
+    // 开发阶段测试数据生成器（默认关闭）
     // 仅当没有读取到管理员账号时，才注入系统初始数据
     // ==============================================
     if (g_account_list->next == NULL)
@@ -7648,8 +7702,8 @@ int main()
             for (int j = 0; j < doctors_needed && doctor_count < 120; j++) {
                 sprintf(temp_id, "D-2%02d", doc_id++);
                 // 生成更多样化的名字
-                int surname_idx = (doctor_count * 7) % (sizeof(surnames)/sizeof(surnames[0]));
-                int given_name_idx = (doctor_count * 11) % (sizeof(given_names)/sizeof(given_names[0]));
+                int surname_idx = (doctor_count * 7) % (int)(sizeof(surnames)/sizeof(surnames[0]));
+                int given_name_idx = (doctor_count * 11) % (int)(sizeof(given_names)/sizeof(given_names[0]));
                 sprintf(temp_name, "%s%s", surnames[surname_idx], given_names[given_name_idx]);
                 char* temp_gender = (doctor_count % 2 == 0) ? "男" : "女";
                 insert_doctor_tail(g_doctor_list, create_doctor_node(temp_id, temp_name, temp_gender, dept));
@@ -7795,8 +7849,8 @@ int main()
             if (i == 1 || i == 2) sprintf(temp_name, "张伟");
             else {
                 // 生成更多样化的名字
-                int surname_idx = (i * 13) % (sizeof(surnames)/sizeof(surnames[0]));
-                int given_name_idx = (i * 17) % (sizeof(given_names)/sizeof(given_names[0]));
+                int surname_idx = (i * 13) % (int)(sizeof(surnames)/sizeof(surnames[0]));
+                int given_name_idx = (i * 17) % (int)(sizeof(given_names)/sizeof(given_names[0]));
                 sprintf(temp_name, "%s%s", surnames[surname_idx], given_names[given_name_idx]);
             }
             
@@ -8000,6 +8054,15 @@ int main()
         }
         
         printf("✅ 安全预警数据生成完毕！\n");
+    }
+    else
+    {
+        printf("📂 成功从本地加载了存档数据！\n");
+    }
+#endif
+    if (g_account_list->next == NULL)
+    {
+        printf("⚠️ 当前未检测到测试数据，请确认 data 文件夹是否存在。\n");
     }
     else
     {
@@ -8882,9 +8945,7 @@ static void nurse_inpatient_menu()
         printf("  [9] 查询住院记录\n");
         printf("  [0] 返回护士菜单\n");
         printf("--------------------------------------------\n");
-        printf("请输入选择：");
-        scanf("%d", &choice);
-        getchar(); // 清空缓冲区
+        choice = get_safe_int("请输入选择：");
 
         switch (choice)
         {

@@ -38,7 +38,8 @@ int my_strcasecmp(const char* s1, const char* s2)
 {
     if (s1 == NULL || s2 == NULL)
     {
-        return s1 - s2;
+        if (s1 == s2) return 0;
+        return (s1 == NULL) ? -1 : 1;
     }
     
     while (*s1 && *s2)
@@ -352,6 +353,27 @@ int update_account_basic_info(const char* username, const char* new_real_name, c
     return 1;
 }
 
+static DoctorNode* find_doctor_by_account(const AccountNode* account)
+{
+    if (account == NULL || g_doctor_list == NULL) return NULL;
+
+    DoctorNode* curr = g_doctor_list->next;
+    while (curr != NULL)
+    {
+        if (strcmp(curr->id, account->username) == 0) return curr;
+        curr = curr->next;
+    }
+
+    curr = g_doctor_list->next;
+    while (curr != NULL)
+    {
+        if (strcmp(curr->name, account->real_name) == 0) return curr;
+        curr = curr->next;
+    }
+
+    return NULL;
+}
+
 // 删除员工账号
 int delete_account(const char* username)
 {
@@ -385,6 +407,21 @@ int delete_account(const char* username)
                 strncpy(deleted_by, g_current_account->username, MAX_ID_LEN - 1);
             }
 
+            // 如果是医生账号，先同步医生离岗
+            if (curr->role == ROLE_DOCTOR)
+            {
+                DoctorNode* doctor = find_doctor_by_account(curr);
+                if (doctor != NULL)
+                {
+                    doctor->is_on_duty = 0;
+                    printf("提示：该医生账号已移入回收站，对应医生已自动设置为离岗状态。\n");
+                }
+                else
+                {
+                    printf("提示：未找到对应医生信息，仅删除登录账号。\n");
+                }
+            }
+
             // 生成回收站编号
             generate_recycle_id(recycle_id);
 
@@ -414,9 +451,6 @@ int delete_account(const char* username)
 
             // 保存数据
             save_all_data();
-
-            // 打印提示信息
-            printf("提示：账号已移入回收站，可由管理员在回收站中恢复。\n");
 
             return 1;
         }
@@ -1238,6 +1272,9 @@ void show_bed_resource_alerts(void)
     int occupied_w = str_display_width("已占用");
     int free_w = str_display_width("空闲");
     
+    /*
+     * 固定显示标签，不属于业务数据存储。
+     */
     // 病房类型列宽度
     const char* types[] = {"普通病房", "ICU", "隔离病房", "单人病房"};
     for (int i = 0; i < 4; i++) {
@@ -1524,12 +1561,51 @@ void show_inpatient_alerts(void)
         printf("当前无住院数据\n");
     }
     printf("------------------------------------------------------\n");
-    
-    // 显示欠费患者预警（待启用）
-    printf("【欠费患者预警】\n");
-    printf("------------------------------------------------------\n");
-    printf("当前版本欠费患者预警功能待收费/结算模块完全接入后启用。\n");
-    
+
+    // 欠费患者预警
+    {
+        printf("【欠费患者预警】\n");
+        printf("------------------------------------------------------\n");
+
+        int ed_count = 0;
+        double ed_total = 0.0;
+        int up_count = 0;
+        int di_count = 0;
+
+        if (g_patient_list != NULL && g_patient_list->next != NULL)
+        {
+            PatientNode* curr = g_patient_list->next;
+            while (curr != NULL)
+            {
+                if (curr->emergency_debt > 0) { ed_count++; ed_total += curr->emergency_debt; }
+                if (curr->status == STATUS_UNPAID) up_count++;
+                curr = curr->next;
+            }
+        }
+
+        if (g_inpatient_list != NULL && g_inpatient_list->next != NULL)
+        {
+            InpatientRecord* curr = g_inpatient_list->next;
+            while (curr != NULL)
+            {
+                if (curr->is_active && curr->deposit_balance < 1000.0) di_count++;
+                curr = curr->next;
+            }
+        }
+
+        if (ed_count > 0 || up_count > 0 || di_count > 0)
+        {
+            printf("急诊欠费：%d 人，合计 %.2f 元\n", ed_count, ed_total);
+            printf("待缴费患者：%d 人\n", up_count);
+            printf("住院押金不足：%d 人\n", di_count);
+            printf("详情请查看 [欠费/待缴费预警]。\n");
+        }
+        else
+        {
+            printf("✅ 当前无欠费相关预警。\n");
+        }
+    }
+
     printf("======================================================\n");
 }
 
@@ -1703,10 +1779,51 @@ void show_system_alerts(void)
     }
     printf("------------------------------------------------------\n");
     
-    // 5. 显示欠费患者预警（待启用）
-    printf("【欠费患者预警】\n");
-    printf("------------------------------------------------------\n");
-    printf("当前版本欠费患者预警功能待收费/结算模块完全接入后启用。\n");
+    // 5. 欠费患者预警
+    {
+        printf("【欠费患者预警】\n");
+        printf("------------------------------------------------------\n");
+
+        int ed_count = 0;
+        double ed_total = 0.0;
+        int up_count = 0;
+        int di_count = 0;
+        int found = 0;
+
+        if (g_patient_list != NULL && g_patient_list->next != NULL)
+        {
+            PatientNode* curr = g_patient_list->next;
+            while (curr != NULL)
+            {
+                if (curr->emergency_debt > 0) { ed_count++; ed_total += curr->emergency_debt; found = 1; }
+                if (curr->status == STATUS_UNPAID) { up_count++; found = 1; }
+                curr = curr->next;
+            }
+        }
+
+        if (g_inpatient_list != NULL && g_inpatient_list->next != NULL)
+        {
+            InpatientRecord* curr = g_inpatient_list->next;
+            while (curr != NULL)
+            {
+                if (curr->is_active && curr->deposit_balance < 1000.0) { di_count++; found = 1; }
+                curr = curr->next;
+            }
+        }
+
+        if (found)
+        {
+            printf("急诊欠费：%d 人，合计 %.2f 元\n", ed_count, ed_total);
+            printf("待缴费患者：%d 人\n", up_count);
+            printf("住院押金不足：%d 人\n", di_count);
+            printf("详情请查看 [欠费/待缴费预警]。\n");
+            has_alerts = 1;
+        }
+        else
+        {
+            printf("✅ 当前无欠费相关预警。\n");
+        }
+    }
     printf("------------------------------------------------------\n");
     
     printf("======================================================\n");
@@ -1987,6 +2104,20 @@ void handle_restore_from_recycle(void)
             new_node->is_on_duty = target->account_backup.is_on_duty;
 
             insert_account_sorted(g_account_list, new_node);
+
+            if (target->account_backup.role == ROLE_DOCTOR)
+            {
+                DoctorNode* doctor = find_doctor_by_account(&target->account_backup);
+                if (doctor != NULL)
+                {
+                    doctor->is_on_duty = target->account_backup.is_on_duty;
+                    printf("提示：医生账号已恢复，对应医生值班状态已同步。\n");
+                }
+                else
+                {
+                    printf("提示：医生账号已恢复，但未找到对应医生基础信息，请管理员检查医生档案。\n");
+                }
+            }
             break;
         }
 
@@ -2486,21 +2617,25 @@ void show_evaluation_statistics()
     }
     
     int total_evaluations = 0;
-    int star_counts[6] = {0}; // star_counts[0] 表示未评价, star_counts[1-5] 表示各星级
+    int star_unrated = 0;
+    int star_1 = 0;
+    int star_2 = 0;
+    int star_3 = 0;
+    int star_4 = 0;
+    int star_5 = 0;
     float total_score = 0.0;
     
     ConsultRecordNode* curr = g_consult_record_list->next;
     while (curr != NULL)
     {
-        if (curr->star_rating > 0)
+        switch (curr->star_rating)
         {
-            total_evaluations++;
-            star_counts[curr->star_rating]++;
-            total_score += curr->star_rating;
-        }
-        else
-        {
-            star_counts[0]++;
+            case 1: star_1++; total_evaluations++; total_score += 1.0f; break;
+            case 2: star_2++; total_evaluations++; total_score += 2.0f; break;
+            case 3: star_3++; total_evaluations++; total_score += 3.0f; break;
+            case 4: star_4++; total_evaluations++; total_score += 4.0f; break;
+            case 5: star_5++; total_evaluations++; total_score += 5.0f; break;
+            default: star_unrated++; break;
         }
         curr = curr->next;
     }
@@ -2512,30 +2647,30 @@ void show_evaluation_statistics()
     
     if (total_evaluations > 0)
     {
-        float average_score = total_score / total_evaluations;
+        float average_score = total_score / (float)total_evaluations;
         printf("平均满意度：%.2f 星\n", average_score);
         printf("------------------------------------------------------\n");
         printf("各星级评价分布：\n");
         printf("  ⭐⭐⭐⭐⭐ (5星): %d 条 (%.1f%%)\n", 
-               star_counts[5], (float)star_counts[5] / total_evaluations * 100);
+               star_5, (float)star_5 / (float)total_evaluations * 100.0f);
         printf("  ⭐⭐⭐⭐ (4星): %d 条 (%.1f%%)\n", 
-               star_counts[4], (float)star_counts[4] / total_evaluations * 100);
+               star_4, (float)star_4 / (float)total_evaluations * 100.0f);
         printf("  ⭐⭐⭐ (3星): %d 条 (%.1f%%)\n", 
-               star_counts[3], (float)star_counts[3] / total_evaluations * 100);
+               star_3, (float)star_3 / (float)total_evaluations * 100.0f);
         printf("  ⭐⭐ (2星): %d 条 (%.1f%%)\n", 
-               star_counts[2], (float)star_counts[2] / total_evaluations * 100);
+               star_2, (float)star_2 / (float)total_evaluations * 100.0f);
         printf("  ⭐ (1星): %d 条 (%.1f%%)\n", 
-               star_counts[1], (float)star_counts[1] / total_evaluations * 100);
+               star_1, (float)star_1 / (float)total_evaluations * 100.0f);
         
         // 好评率（4星及以上）
-        int positive_count = star_counts[5] + star_counts[4];
-        float positive_rate = (float)positive_count / total_evaluations * 100;
+        int positive_count = star_5 + star_4;
+        float positive_rate = (float)positive_count / (float)total_evaluations * 100.0f;
         printf("------------------------------------------------------\n");
         printf("好评率（4星及以上）：%.1f%%\n", positive_rate);
         
         // 差评率（2星及以下）
-        int negative_count = star_counts[2] + star_counts[1];
-        float negative_rate = (float)negative_count / total_evaluations * 100;
+        int negative_count = star_2 + star_1;
+        float negative_rate = (float)negative_count / (float)total_evaluations * 100.0f;
         printf("差评率（2星及以下）：%.1f%%\n", negative_rate);
     }
     else
@@ -3051,58 +3186,163 @@ static void show_arrears_warning(void)
 {
     system("cls");
     printf("\n======================================================\n");
-    printf("              欠费 / 待缴费预警\n");
+    printf("              欠费 / 缴费异常预警\n");
     printf("======================================================\n");
 
-    int count = 0;
+    int emergency_debt_count = 0;
+    double emergency_debt_total = 0.0;
+    int unpaid_count = 0;
+    int negative_balance_count = 0;
+    int inpatient_count = 0;
+    int deposit_insufficient_count = 0;
+    double deposit_total = 0.0;
+    int has_any_alerts = 0;
 
+    // 遍历患者
     if (g_patient_list != NULL && g_patient_list->next != NULL)
     {
         PatientNode* curr = g_patient_list->next;
-        
         while (curr != NULL)
         {
+            if (curr->emergency_debt > 0)
+            {
+                emergency_debt_count++;
+                emergency_debt_total += curr->emergency_debt;
+            }
             if (curr->status == STATUS_UNPAID)
             {
-                count++;
-                printf("患者编号：%s\n", curr->id);
-                printf("患者姓名：%s\n", curr->name);
-                printf("当前状态：待缴费\n");
-                printf("账户余额：%.2f\n", curr->balance);
-                
-                // 检查是否为住院患者
-                int is_inpatient = 0;
-                if (g_inpatient_list != NULL && g_inpatient_list->next != NULL)
-                {
-                    InpatientRecord* inpatient_curr = g_inpatient_list->next;
-                    while (inpatient_curr != NULL)
-                    {
-                        if (inpatient_curr->is_active && strcmp(inpatient_curr->patient_id, curr->id) == 0)
-                        {
-                            is_inpatient = 1;
-                            break;
-                        }
-                        inpatient_curr = inpatient_curr->next;
-                    }
-                }
-                
-                printf("是否住院：%s\n", is_inpatient ? "是" : "否");
-                printf("备注：%s\n", curr->balance < 0 ? "欠费" : "待缴费");
-                printf("------------------------------------------------------\n");
+                unpaid_count++;
+            }
+            if (curr->balance < 0)
+            {
+                negative_balance_count++;
             }
             curr = curr->next;
         }
     }
 
-    if (count == 0)
+    // 遍历住院记录
+    if (g_inpatient_list != NULL && g_inpatient_list->next != NULL)
     {
-        printf("当前暂无欠费 / 待缴费预警。\n");
+        InpatientRecord* curr = g_inpatient_list->next;
+        while (curr != NULL)
+        {
+            if (curr->is_active)
+            {
+                inpatient_count++;
+                deposit_total += curr->deposit_balance;
+                if (curr->deposit_balance < 1000.0)
+                {
+                    deposit_insufficient_count++;
+                }
+            }
+            curr = curr->next;
+        }
+    }
+
+    printf("\n【患者费用异常】\n");
+    printf("急诊欠费患者数量：%d\n", emergency_debt_count);
+    printf("急诊欠费总金额：%.2f 元\n", emergency_debt_total);
+    printf("待缴费患者数量：%d\n", unpaid_count);
+    printf("账户余额为负患者数量：%d\n", negative_balance_count);
+
+    printf("\n【住院押金异常】\n");
+    printf("当前住院中：%d\n", inpatient_count);
+    printf("押金不足患者数量：%d\n", deposit_insufficient_count);
+    printf("当前住院押金总余额：%.2f 元\n", deposit_total);
+
+    // 预警等级
+    printf("\n");
+    if (emergency_debt_total > 0 || deposit_insufficient_count > 0 || unpaid_count > 0)
+    {
+        printf("⚠️ 存在费用相关待处理事项，请管理员及时核查。\n");
+        has_any_alerts = 1;
     }
     else
     {
-        printf("欠费 / 待缴费患者总数：%d\n", count);
+        printf("✅ 费用状态正常。\n");
     }
-    
+    printf("======================================================\n");
+
+    // 明细
+    // 急诊欠费患者明细
+    if (emergency_debt_count > 0)
+    {
+        printf("\n-----------------------------------------------------------\n");
+        printf("【急诊欠费患者明细】\n");
+        printf("-----------------------------------------------------------\n");
+
+        PatientNode* curr = g_patient_list->next;
+        while (curr != NULL)
+        {
+            if (curr->emergency_debt > 0)
+            {
+                printf("患者编号：%s\n", curr->id);
+                printf("姓名：%s\n", curr->name);
+                printf("当前状态：%s\n", get_patient_status_text(curr->status));
+                printf("账户余额：%.2f 元\n", curr->balance);
+                printf("急诊欠费：%.2f 元\n", curr->emergency_debt);
+                printf("-----------------------------------------------------------\n");
+            }
+            curr = curr->next;
+        }
+    }
+
+    // 待缴费患者明细
+    if (unpaid_count > 0)
+    {
+        printf("\n-----------------------------------------------------------\n");
+        printf("【待缴费患者明细】\n");
+        printf("-----------------------------------------------------------\n");
+
+        PatientNode* curr = g_patient_list->next;
+        while (curr != NULL)
+        {
+            if (curr->status == STATUS_UNPAID)
+            {
+                printf("患者编号：%s\n", curr->id);
+                printf("姓名：%s\n", curr->name);
+                printf("当前状态：%s\n", get_patient_status_text(curr->status));
+                printf("账户余额：%.2f 元\n", curr->balance);
+                printf("-----------------------------------------------------------\n");
+            }
+            curr = curr->next;
+        }
+    }
+
+    // 押金不足住院患者明细
+    if (deposit_insufficient_count > 0)
+    {
+        printf("\n-----------------------------------------------------------\n");
+        printf("【押金不足住院患者明细】\n");
+        printf("-----------------------------------------------------------\n");
+
+        InpatientRecord* curr = g_inpatient_list->next;
+        while (curr != NULL)
+        {
+            if (curr->is_active && curr->deposit_balance < 1000.0)
+            {
+                printf("住院编号：%s\n", curr->inpatient_id);
+                printf("患者编号：%s\n", curr->patient_id);
+                printf("床位编号：%s\n", curr->bed_id);
+                printf("押金余额：%.2f 元\n", curr->deposit_balance);
+
+                PatientNode* p = find_patient_by_id(g_patient_list, curr->patient_id);
+                if (p != NULL)
+                {
+                    printf("患者姓名：%s\n", p->name);
+                }
+                printf("-----------------------------------------------------------\n");
+            }
+            curr = curr->next;
+        }
+    }
+
+    if (!has_any_alerts)
+    {
+        printf("\n✅ 当前未发现明显欠费或缴费异常。\n");
+    }
+
     printf("======================================================\n");
     printf("\n请按任意键返回...\n");
     system("pause");
@@ -4839,7 +5079,7 @@ void handle_check_item_remove(void)
 
 static void set_console_color(int color)
 {
-    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), color);
+    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), (WORD)color);
 }
 
 static void reset_console_color(void)
@@ -5851,7 +6091,7 @@ static void get_current_time_string(char* buffer, int size)
     time_t now = time(NULL);
     struct tm local_tm;
     localtime_s(&local_tm, &now);
-    strftime(buffer, size, "%Y-%m-%d %H:%M:%S", &local_tm);
+    strftime(buffer, (size_t)size, "%Y-%m-%d %H:%M:%S", &local_tm);
 }
 
 // 生成带时间戳的报表文件名
@@ -5860,7 +6100,7 @@ static void build_report_filename(char* buffer, int size, const char* prefix)
     time_t now = time(NULL);
     struct tm local_tm;
     localtime_s(&local_tm, &now);
-    snprintf(buffer, size, "report/%s_%04d%02d%02d_%02d%02d%02d.txt",
+    snprintf(buffer, (size_t)size, "report/%s_%04d%02d%02d_%02d%02d%02d.txt",
              prefix,
              local_tm.tm_year + 1900,
              local_tm.tm_mon + 1,
@@ -7016,6 +7256,262 @@ void admin_report_menu(void)
     }
 }
 
+void check_system_data_integrity(void)
+{
+    int patient_count = 0;
+    int doctor_count = 0;
+    int medicine_count = 0;
+    int ward_count = 0;
+    int appointment_count = 0;
+    int inpatient_count = 0;
+    int check_item_count = 0;
+    int check_record_count = 0;
+    int complaint_count = 0;
+    int log_count = 0;
+    int account_count = 0;
+    int recycle_count = 0;
+    int unique_dept_count = 0;
+    int appt_patient_orphan = 0;
+    int inpatient_patient_orphan = 0;
+    int checkrecord_patient_orphan = 0;
+    int checkrecord_item_orphan = 0;
+    int script_med_orphan = 0;
+    int ward_occ_patient_orphan = 0;
+    int all_ok = 1;
+
+    system("cls");
+    printf("\n======================================================\n");
+    printf("               系统数据完整性检查\n");
+    printf("======================================================\n");
+
+    if (g_patient_list && g_patient_list->next) {
+        PatientNode* p = g_patient_list->next;
+        while (p) { patient_count++; p = p->next; }
+    }
+    if (g_doctor_list && g_doctor_list->next) {
+        DoctorNode* d = g_doctor_list->next;
+        while (d) { doctor_count++; d = d->next; }
+    }
+    if (g_medicine_list && g_medicine_list->next) {
+        MedicineNode* m = g_medicine_list->next;
+        while (m) { medicine_count++; m = m->next; }
+    }
+    if (g_ward_list && g_ward_list->next) {
+        WardNode* w = g_ward_list->next;
+        while (w) { ward_count++; w = w->next; }
+    }
+    if (g_appointment_list && g_appointment_list->next) {
+        AppointmentNode* a = g_appointment_list->next;
+        while (a) { appointment_count++; a = a->next; }
+    }
+    if (g_inpatient_list && g_inpatient_list->next) {
+        InpatientRecord* ip = g_inpatient_list->next;
+        while (ip) { inpatient_count++; ip = ip->next; }
+    }
+    if (g_check_item_list && g_check_item_list->next) {
+        CheckItemNode* ci = g_check_item_list->next;
+        while (ci) { check_item_count++; ci = ci->next; }
+    }
+    if (g_check_record_list && g_check_record_list->next) {
+        CheckRecordNode* cr = g_check_record_list->next;
+        while (cr) { check_record_count++; cr = cr->next; }
+    }
+    if (g_complaint_list && g_complaint_list->next) {
+        ComplaintNode* cp = g_complaint_list->next;
+        while (cp) { complaint_count++; cp = cp->next; }
+    }
+    if (g_log_list) {
+        LogNode* l = g_log_list->next;
+        while (l) { log_count++; l = l->next; }
+    }
+    if (g_account_list && g_account_list->next) {
+        AccountNode* ac = g_account_list->next;
+        while (ac) { account_count++; ac = ac->next; }
+    }
+    if (g_recycle_list && g_recycle_list->next) {
+        RecycleNode* r = g_recycle_list->next;
+        while (r) { recycle_count++; r = r->next; }
+    }
+
+    printf("\n【基础数据数量】\n");
+    printf("患者数量：%d\n", patient_count);
+    printf("医生数量：%d\n", doctor_count);
+    printf("药品种类：%d\n", medicine_count);
+    printf("床位数量：%d\n", ward_count);
+    printf("预约记录：%d\n", appointment_count);
+    printf("住院记录：%d\n", inpatient_count);
+    printf("检查项目：%d\n", check_item_count);
+    printf("检查记录：%d\n", check_record_count);
+    printf("投诉记录：%d\n", complaint_count);
+    printf("操作日志：%d\n", log_count);
+    printf("账号数量：%d\n", account_count);
+    printf("回收站记录：%d\n", recycle_count);
+    printf("======================================================\n");
+
+    if (g_doctor_list && g_doctor_list->next && doctor_count > 0) {
+        DoctorNode* d1 = g_doctor_list->next;
+        while (d1) {
+            int is_new = 1;
+            DoctorNode* d2 = g_doctor_list->next;
+            while (d2 != d1) {
+                if (strcmp(d2->department, d1->department) == 0) {
+                    is_new = 0;
+                    break;
+                }
+                d2 = d2->next;
+            }
+            if (is_new) unique_dept_count++;
+            d1 = d1->next;
+        }
+    }
+
+    printf("\n【数据规模检查】\n");
+    #define CHECK_THRESHOLD(current, threshold, label) \
+    do { \
+        printf("%s：%d / %d    ", label, current, threshold); \
+        if (current >= threshold) { printf("✅ 达标\n"); } \
+        else { printf("⚠️ 不达标，建议补充测试数据。\n"); all_ok = 0; } \
+    } while(0)
+
+    CHECK_THRESHOLD(patient_count, 100, "患者数量");
+    CHECK_THRESHOLD(inpatient_count, 30, "住院记录");
+    CHECK_THRESHOLD(doctor_count, 20, "医生数量");
+    CHECK_THRESHOLD(medicine_count, 20, "药品种类");
+    CHECK_THRESHOLD(unique_dept_count, 5, "科室数量");
+    CHECK_THRESHOLD(check_item_count, 20, "检查项目");
+
+    #undef CHECK_THRESHOLD
+    printf("======================================================\n");
+
+    printf("\n【关系一致性检查】\n");
+    if (g_appointment_list && g_patient_list) {
+        AppointmentNode* a = g_appointment_list->next;
+        while (a) {
+            if (strlen(a->patient_id) > 0 &&
+                find_patient_by_id(g_patient_list, a->patient_id) == NULL) {
+                appt_patient_orphan++;
+            }
+            a = a->next;
+        }
+    }
+    printf("预约患者引用异常：%d 条 ", appt_patient_orphan);
+    if (appt_patient_orphan > 0) {
+        printf("⚠️ 存在 %d 条异常，请检查 data 文件。\n", appt_patient_orphan);
+        all_ok = 0;
+    } else {
+        printf("✅\n");
+    }
+
+    if (g_inpatient_list && g_patient_list) {
+        InpatientRecord* ip = g_inpatient_list->next;
+        while (ip) {
+            if (strlen(ip->patient_id) > 0 &&
+                find_patient_by_id(g_patient_list, ip->patient_id) == NULL) {
+                inpatient_patient_orphan++;
+            }
+            ip = ip->next;
+        }
+    }
+    printf("住院患者引用异常：%d 条 ", inpatient_patient_orphan);
+    if (inpatient_patient_orphan > 0) {
+        printf("⚠️ 存在 %d 条异常，请检查 data 文件。\n", inpatient_patient_orphan);
+        all_ok = 0;
+    } else {
+        printf("✅\n");
+    }
+
+    if (g_check_record_list && g_patient_list) {
+        CheckRecordNode* cr = g_check_record_list->next;
+        while (cr) {
+            if (strlen(cr->patient_id) > 0 &&
+                find_patient_by_id(g_patient_list, cr->patient_id) == NULL) {
+                checkrecord_patient_orphan++;
+            }
+            cr = cr->next;
+        }
+    }
+    printf("检查患者引用异常：%d 条 ", checkrecord_patient_orphan);
+    if (checkrecord_patient_orphan > 0) {
+        printf("⚠️ 存在 %d 条异常，请检查 data 文件。\n", checkrecord_patient_orphan);
+        all_ok = 0;
+    } else {
+        printf("✅\n");
+    }
+
+    if (g_check_record_list && g_check_item_list) {
+        CheckRecordNode* cr = g_check_record_list->next;
+        while (cr) {
+            if (strlen(cr->item_id) > 0 &&
+                find_check_item_by_id(g_check_item_list, cr->item_id) == NULL) {
+                checkrecord_item_orphan++;
+            }
+            cr = cr->next;
+        }
+    }
+    printf("检查项目引用异常：%d 条 ", checkrecord_item_orphan);
+    if (checkrecord_item_orphan > 0) {
+        printf("⚠️ 存在 %d 条异常，请检查 data 文件。\n", checkrecord_item_orphan);
+        all_ok = 0;
+    } else {
+        printf("✅\n");
+    }
+
+    if (g_patient_list && g_medicine_list) {
+        PatientNode* p = g_patient_list->next;
+        while (p) {
+            PrescriptionNode* sc = p->script_head;
+            while (sc) {
+                if (sc->med_id[0] != '\0' &&
+                    find_medicine_by_id(g_medicine_list, sc->med_id) == NULL) {
+                    script_med_orphan++;
+                }
+                sc = sc->next;
+            }
+            p = p->next;
+        }
+    }
+    printf("处方药品引用异常：%d 条 ", script_med_orphan);
+    if (script_med_orphan > 0) {
+        printf("⚠️ 存在 %d 条异常，请检查 data 文件。\n", script_med_orphan);
+        all_ok = 0;
+    } else {
+        printf("✅\n");
+    }
+
+    if (g_ward_list && g_patient_list) {
+        WardNode* w = g_ward_list->next;
+        while (w) {
+            if (w->is_occupied == 1 && strlen(w->patient_id) > 0 &&
+                find_patient_by_id(g_patient_list, w->patient_id) == NULL) {
+                ward_occ_patient_orphan++;
+            }
+            w = w->next;
+        }
+    }
+    printf("床位占用引用异常：%d 条 ", ward_occ_patient_orphan);
+    if (ward_occ_patient_orphan > 0) {
+        printf("⚠️ 存在 %d 条异常，请检查 data 文件。\n", ward_occ_patient_orphan);
+        all_ok = 0;
+    } else {
+        printf("✅\n");
+    }
+
+    printf("======================================================\n");
+
+    printf("\n说明：\n");
+    printf("系统正式运行时不再依赖代码中的数组批量生成业务数据。\n");
+    printf("患者、医生、药品、预约、住院、检查、投诉等业务数据均来自\n");
+    printf("data/*.txt，并加载到链表中维护。\n");
+    printf("======================================================\n");
+
+    if (all_ok) {
+        printf("\n✅ 系统数据检查通过，当前测试数据适合答辩演示。\n");
+    } else {
+        printf("\n⚠️ 系统数据检查发现异常，建议答辩前修复 data 文件或补充测试数据。\n");
+    }
+    printf("======================================================\n");
+}
+
 static const char* get_role_text(RoleType role)
 {
     switch (role)
@@ -7039,8 +7535,17 @@ static void show_account_info(AccountNode* account)
     printf("真实姓名：%s\n", account->real_name);
     printf("性别：%s\n", account->gender);
     printf("角色：%s\n", get_role_text(account->role));
+
+    if (account->role == ROLE_ADMIN)
+    {
+        printf("值班状态：管理员账号无固定值班状态。\n");
+    }
+    else if (account->role == ROLE_DOCTOR || account->role == ROLE_NURSE || account->role == ROLE_PHARMACIST)
+    {
+        printf("值班状态：%s\n", account->is_on_duty ? "在岗" : "离岗");
+    }
+
     printf("==================================\n");
-    system("pause");
 }
 
 static void change_password(AccountNode* account)
@@ -7059,7 +7564,6 @@ static void change_password(AccountNode* account)
     if (strcmp(old_password, account->password) != 0)
     {
         printf("\n❌ 旧密码错误，修改失败。\n");
-        system("pause");
         return;
     }
     
@@ -7068,7 +7572,6 @@ static void change_password(AccountNode* account)
     if (strlen(new_password) == 0)
     {
         printf("\n❌ 新密码不能为空。\n");
-        system("pause");
         return;
     }
     
@@ -7077,7 +7580,6 @@ static void change_password(AccountNode* account)
     if (strcmp(new_password, confirm_password) != 0)
     {
         printf("\n❌ 两次输入的新密码不一致，修改失败。\n");
-        system("pause");
         return;
     }
     
@@ -7086,8 +7588,6 @@ static void change_password(AccountNode* account)
     save_account_list(g_account_list);
     
     printf("\n✅ 密码修改成功，请牢记新密码。\n");
-    
-    system("pause");
 }
 
 static void show_duty_status(AccountNode* account)
@@ -7111,7 +7611,6 @@ static void show_duty_status(AccountNode* account)
     }
     
     printf("==================================\n");
-    system("pause");
 }
 
 void user_profile_menu(AccountNode* current_account)
@@ -7143,12 +7642,15 @@ void user_profile_menu(AccountNode* current_account)
         {
             case 1:
                 show_account_info(current_account);
+                system("pause");
                 break;
             case 2:
                 change_password(current_account);
+                system("pause");
                 break;
             case 3:
                 show_duty_status(current_account);
+                system("pause");
                 break;
             case 0:
                 running = 0;

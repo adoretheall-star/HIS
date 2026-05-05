@@ -22,6 +22,10 @@ typedef struct {
     const char* dept;    // 推荐科室
 } SymptomRule;
 
+/*
+ * 智能分诊规则表：固定算法规则，不属于业务数据存储。
+ * 实际患者、医生、预约、药品等业务数据均使用链表管理。
+ */
 // 全量症状权重字典（逐步构建中...）
 static const SymptomRule g_symptom_dict[] = {
     // 🚨 1. 极危重（1000分，一票否决进急诊）
@@ -232,7 +236,7 @@ static void copy_text_field(char* dest, int max_len, const char* src)
     }
 
     // 使用 strncpy 进行安全复制，确保以 '\0' 结尾
-    strncpy(dest, src, max_len - 1);
+    strncpy(dest, src, (size_t)max_len - 1);
     dest[max_len - 1] = '\0';
 }
 
@@ -340,6 +344,131 @@ static char get_chinese_pinyin_initial_utf8(const char* ch, int len)
     return 0;
 }
 
+int can_patient_make_appointment(
+    PatientNode* patient,
+    const char* current_symptom,
+    const char* appoint_doctor,
+    const char* appoint_dept
+)
+{
+    (void)current_symptom;
+    (void)appoint_doctor;
+    (void)appoint_dept;
+
+    if (patient == NULL)
+    {
+        printf("⚠️ 患者信息不存在，无法预约。\n");
+        return 0;
+    }
+
+    if (patient->is_blacklisted != 0)
+    {
+        printf("⚠️ 该患者当前存在爽约/黑名单记录，暂不允许预约；如需就诊，请到现场挂号或联系服务台处理。\n");
+        return 0;
+    }
+
+    if (patient->emergency_debt > 0)
+    {
+        printf("⚠️ 该患者存在急诊欠费 %.2f 元，暂不允许预约，请先补缴欠费或到现场处理。\n", patient->emergency_debt);
+        return 0;
+    }
+
+    if (patient->status == STATUS_NO_SHOW)
+    {
+        printf("⚠️ 该患者本次预约已过号/爽约，暂不允许再次预约；如需就诊，请选择现场挂号。\n");
+        return 0;
+    }
+
+    if (patient->status == STATUS_PENDING ||
+        patient->status == STATUS_EXAMINING ||
+        patient->status == STATUS_RECHECK_PENDING ||
+        patient->status == STATUS_UNPAID ||
+        patient->status == STATUS_WAIT_MED ||
+        patient->status == STATUS_NEED_HOSPITALIZE ||
+        patient->status == STATUS_HOSPITALIZED)
+    {
+        printf("⚠️ 该患者当前仍有未完成就诊流程，不能重复预约。\n");
+        printf("当前状态：%s\n", get_patient_status_text(patient->status));
+        return 0;
+    }
+
+    return 1;
+}
+
+int can_patient_walk_in_register(
+    PatientNode* patient,
+    const char* current_symptom,
+    const char* appoint_doctor,
+    const char* appoint_dept
+)
+{
+    int is_emergency = 0;
+    const char* symptom_to_check = NULL;
+
+    if (patient == NULL)
+    {
+        printf("⚠️ 患者信息不存在，无法现场挂号。\n");
+        return 0;
+    }
+
+    symptom_to_check = (!is_blank_string(current_symptom)) ? current_symptom : patient->symptom;
+    is_emergency = is_emergency_request_by_existing_triage(symptom_to_check, appoint_doctor, appoint_dept);
+
+    if (patient->status == STATUS_NO_SHOW)
+    {
+        printf("提示：该患者存在过号/爽约记录，但已到现场，允许现场挂号重新排队。\n");
+    }
+
+    if (patient->is_blacklisted != 0)
+    {
+        if (is_emergency)
+        {
+            printf("⚠️ 系统检测到急诊症状，当前患者虽处于黑名单/预约限制状态，但已启动急诊绿色通道，允许先行救治。\n");
+        }
+        else
+        {
+            printf("⚠️ 该患者当前处于黑名单状态，请先联系服务台处理。\n");
+            return 0;
+        }
+    }
+
+    if (patient->emergency_debt > 0)
+    {
+        if (is_emergency)
+        {
+            printf("⚠️ 系统检测到急诊症状，患者存在急诊欠费 %.2f 元，但已启动急诊绿色通道，允许先行救治。\n", patient->emergency_debt);
+        }
+        else
+        {
+            printf("⚠️ 该患者存在急诊欠费 %.2f 元，普通现场挂号前请先补缴欠费。\n", patient->emergency_debt);
+            return 0;
+        }
+    }
+
+    if (patient->status == STATUS_PENDING ||
+        patient->status == STATUS_EXAMINING ||
+        patient->status == STATUS_RECHECK_PENDING ||
+        patient->status == STATUS_UNPAID ||
+        patient->status == STATUS_WAIT_MED ||
+        patient->status == STATUS_NEED_HOSPITALIZE ||
+        patient->status == STATUS_HOSPITALIZED)
+    {
+        if (is_emergency)
+        {
+            printf("⚠️ 该患者当前已有未完成就诊流程，但当前症状符合急诊绿色通道条件，请医护人员核实后优先处理。\n");
+            return 1;
+        }
+        else
+        {
+            printf("⚠️ 该患者当前仍有未完成就诊流程，不能重复现场挂号。\n");
+            printf("当前状态：%s\n", get_patient_status_text(patient->status));
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
 static void name_to_pinyin(const char* name, char* pinyin, int max_len)
 {
     if (name == NULL || pinyin == NULL || max_len <= 0)
@@ -356,9 +485,9 @@ static void name_to_pinyin(const char* name, char* pinyin, int max_len)
         if (clen == 1)
         {
             if (uc >= 'a' && uc <= 'z')
-                pinyin[pos++] = uc - 32;
+                pinyin[pos++] = (char)(uc - 32);
             else if (uc >= 'A' && uc <= 'Z')
-                pinyin[pos++] = uc;
+                pinyin[pos++] = (char)uc;
             i++;
         }
         else
@@ -434,9 +563,13 @@ const char* recommend_dept_by_symptom(const char* symptom)
     lower_symptom[MAX_SYMPTOM_LEN - 1] = '\0';
     for (int i = 0; lower_symptom[i]; i++)
     {
-        lower_symptom[i] = tolower(lower_symptom[i]);
+        lower_symptom[i] = (char)tolower((unsigned char)lower_symptom[i]);
     }
     
+    /*
+     * 智能分诊临时计分板：仅用于一次症状分析过程中的科室得分统计，
+     * 不存储患者、医生、药品、预约等业务数据。
+     */
     // 定义科室计分板：记录每个科室的累计权重分数
     struct {
         const char* dept;
@@ -591,7 +724,7 @@ PatientNode* register_patient(
     }
     
     // 检查患者姓名长度是否合法
-    int name_len = strlen(name);
+    int name_len = (int)strlen(name);
     if (name_len < 2 || name_len > 20)
     {
         printf("⚠️ 患者姓名长度必须在 2-20 个字符之间！\n");
@@ -708,62 +841,8 @@ PatientNode* register_patient(
     }
     // 将患者节点插入到链表尾部
     insert_patient_tail(g_patient_list, new_patient);
-    
-    // 为直接建档的患者生成挂号记录
-    if (g_appointment_list != NULL && strlen(actual_dept) > 0) {
-        char appointment_id[MAX_ID_LEN];
-        // 生成预约编号
-        int max_no = 0;
-        AppointmentNode* appt_curr = NULL;
-        if (g_appointment_list != NULL)
-        {
-            appt_curr = g_appointment_list->next;
-            while (appt_curr != NULL)
-            {
-                if (strncmp(appt_curr->appointment_id, "A-", 2) == 0)
-                {
-                    int current_no = atoi(appt_curr->appointment_id + 2);
-                    if (current_no > max_no)
-                    {
-                        max_no = current_no;
-                    }
-                }
-                appt_curr = appt_curr->next;
-            }
-        }
-        snprintf(appointment_id, MAX_ID_LEN, "A-%03d", max_no + 1);
-        
-        // 获取当前日期
-        char current_date[MAX_NAME_LEN];
-        time_t now = time(NULL);
-        struct tm* tm_now = localtime(&now);
-        strftime(current_date, sizeof(current_date), "%Y-%m-%d", tm_now);
-        
-        // 随机分配上午或下午
-        const char* slot = (rand() % 2 == 0) ? "上午" : "下午";
-        
-        // 随机分配现场号和预约号（50%概率）
-        int is_walk_in = rand() % 2;
-        
-        // 创建预约记录
-        AppointmentNode* new_appointment = create_appointment_node(
-            appointment_id,
-            new_id,
-            current_date,
-            slot,
-            "", // 直接建档时没有指定医生
-            actual_dept,
-            CHECKED_IN
-        );
-        
-        if (new_appointment != NULL) {
-            new_appointment->is_walk_in = is_walk_in;
-            new_appointment->reg_fee = is_walk_in ? 10.0 : 30.0; // 现场号10元，预约号30元
-            new_appointment->fee_paid = 1; // 假设已缴费
-            strncpy(new_appointment->department, actual_dept, MAX_NAME_LEN - 1);
-            insert_appointment_tail(g_appointment_list, new_appointment);
-        }
-    }
+
+    new_patient->status = STATUS_COMPLETED;
 
     return new_patient;
 }
@@ -1035,7 +1114,7 @@ int update_patient_archive(const char* patient_id, const char* name, int age, co
     if (name != NULL && strlen(name) > 0)
     {
         // 检查患者姓名长度是否合法
-        int name_len = strlen(name);
+        int name_len = (int)strlen(name);
         if (name_len < 2 || name_len > 20)
         {
             printf("⚠️ 患者姓名长度必须在 2-20 个字符之间！\n");
@@ -2418,35 +2497,83 @@ void show_patient_visit_timeline(const char* patient_id)
     printf("当前状态：%s\n", get_patient_status_text(patient->status));
     printf("账户余额：%.2f 元\n", patient->balance);
     
+    // 查询该患者最新预约/挂号记录
+    AppointmentNode* latest_appt = NULL;
+    if (g_appointment_list != NULL)
+    {
+        AppointmentNode* appt_curr = g_appointment_list->next;
+        while (appt_curr != NULL)
+        {
+            if (strcmp(appt_curr->patient_id, patient_id) == 0)
+            {
+                latest_appt = appt_curr;
+            }
+            appt_curr = appt_curr->next;
+        }
+    }
+
     // 显示时间轴
     printf("\n=============== 患者就诊流程时间轴 ===============\n");
-    
+
     // 步骤1：患者建档（始终完成）
     printf("[√] 1. 患者建档\n");
-    
-    // 步骤2：预约/挂号（根据状态判断）
-    if (patient->status != STATUS_PENDING || strlen(patient->doctor_id) > 0)
+
+    // 步骤2：根据 is_walk_in 动态显示
+    if (latest_appt != NULL)
     {
-        printf("[√] 2. 预约 / 挂号\n");
+        if (latest_appt->is_walk_in == 1)
+        {
+            printf("[√] 2. 现场挂号\n");
+        }
+        else
+        {
+            printf("[√] 2. 预约登记\n");
+        }
     }
     else
     {
-        printf("[ ] 2. 预约 / 挂号\n");
+        printf("[ ] 2. 暂无预约/挂号记录\n");
     }
-    
-    // 步骤3：签到候诊
-    if (patient->status == STATUS_PENDING || patient->status == STATUS_EXAMINING ||
-        patient->status == STATUS_RECHECK_PENDING || patient->status == STATUS_UNPAID ||
-        patient->status == STATUS_WAIT_MED || patient->status == STATUS_NEED_HOSPITALIZE ||
-        patient->status == STATUS_HOSPITALIZED || patient->status == STATUS_COMPLETED)
+
+    // 步骤3：根据 is_walk_in 和 appointment_status 动态显示
+    if (latest_appt != NULL)
     {
-        printf("[√] 3. 签到候诊\n");
+        if (latest_appt->appointment_status == CANCELLED)
+        {
+            printf("[×] 3. 预约/挂号记录已取消，未进入候诊队列\n");
+        }
+        else if (latest_appt->appointment_status == MISSED)
+        {
+            printf("[×] 3. 预约/挂号已过号，本次记录失效\n");
+        }
+        else if (latest_appt->is_walk_in == 1)
+        {
+            if (latest_appt->appointment_status == CHECKED_IN)
+            {
+                printf("[√] 3. 现场号已挂号，直接进入候诊队列\n");
+            }
+            else
+            {
+                printf("[~] 3. 现场号已创建，等待入队处理\n");
+            }
+        }
+        else
+        {
+            if (latest_appt->appointment_status == CHECKED_IN)
+            {
+                printf("[√] 3. 预约号已签到，进入候诊队列\n");
+            }
+            else
+            {
+                printf("[ ] 3. 预约号已登记，等待到院签到\n");
+            }
+        }
     }
     else
     {
-        printf("[ ] 3. 签到候诊\n");
+        printf("[ ] 3. 尚未进入候诊队列\n");
     }
-    
+
     // 步骤4：医生接诊
     if (patient->status == STATUS_EXAMINING || patient->status == STATUS_RECHECK_PENDING ||
         patient->status == STATUS_UNPAID || patient->status == STATUS_WAIT_MED ||
@@ -2459,7 +2586,7 @@ void show_patient_visit_timeline(const char* patient_id)
     {
         printf("[ ] 4. 医生接诊\n");
     }
-    
+
     // 步骤5：检查/复诊
     if (patient->status == STATUS_RECHECK_PENDING)
     {
@@ -2479,7 +2606,7 @@ void show_patient_visit_timeline(const char* patient_id)
     {
         printf("[ ] 5. 检查 / 复诊\n");
     }
-    
+
     // 步骤6：缴费处理
     if (patient->status == STATUS_WAIT_MED || patient->status == STATUS_NEED_HOSPITALIZE ||
         patient->status == STATUS_HOSPITALIZED || patient->status == STATUS_COMPLETED)
@@ -2490,7 +2617,7 @@ void show_patient_visit_timeline(const char* patient_id)
     {
         printf("[ ] 6. 缴费处理\n");
     }
-    
+
     // 步骤7：取药/住院
     if (patient->status == STATUS_NEED_HOSPITALIZE || patient->status == STATUS_HOSPITALIZED)
     {
@@ -2508,7 +2635,7 @@ void show_patient_visit_timeline(const char* patient_id)
     {
         printf("[ ] 7. 取药 / 住院\n");
     }
-    
+
     // 步骤8：就诊结束
     if (patient->status == STATUS_COMPLETED)
     {
@@ -2522,7 +2649,7 @@ void show_patient_visit_timeline(const char* patient_id)
     {
         printf("[ ] 8. 就诊结束\n");
     }
-    
+
     // 当前进度说明
     printf("--------------------------------------------------------\n");
     printf("当前进度：");
@@ -2560,59 +2687,61 @@ void show_patient_visit_timeline(const char* patient_id)
             break;
     }
     printf("====================================================\n");
-    
-    // 可选：显示最新预约记录
-    if (g_appointment_list != NULL)
+
+    // 最新预约/挂号信息
+    if (latest_appt != NULL)
     {
-        AppointmentNode* appt_curr = g_appointment_list->next;
-        AppointmentNode* latest_appt = NULL;
-        while (appt_curr != NULL)
+        printf("\n【最新预约/挂号信息】\n");
+        printf("号源类型：%s\n", latest_appt->is_walk_in == 1 ? "现场号" : "预约号");
+        printf("编号：%s\n", latest_appt->appointment_id);
+        printf("日期：%s\n", latest_appt->appointment_date);
+        printf("时段：%s\n", latest_appt->appointment_slot);
+        printf("科室：%s\n", latest_appt->department);
+        printf("医生：%s\n", latest_appt->doctor_name);
+
+        if (latest_appt->appointment_status == CANCELLED)
         {
-            if (strcmp(appt_curr->patient_id, patient_id) == 0)
-            {
-                latest_appt = appt_curr;
-            }
-            appt_curr = appt_curr->next;
+            printf("状态：已取消\n");
+            printf("当前说明：该预约/挂号记录已取消，仅作为历史记录展示。\n");
         }
-        
-        if (latest_appt != NULL)
+        else if (latest_appt->appointment_status == MISSED)
         {
-            printf("\n【最新预约信息】\n");
-            printf("预约编号：%s\n", latest_appt->appointment_id);
-            printf("预约日期：%s\n", latest_appt->appointment_date);
-            printf("预约时段：%s\n", latest_appt->appointment_slot);
-            printf("预约科室：%s\n", latest_appt->department);
-            printf("预约医生：%s\n", latest_appt->doctor_name);
-            
-            // 根据预约状态显示不同提示
-            if (latest_appt->appointment_status == CANCELLED)
+            printf("状态：已过号\n");
+            printf("当前说明：该预约/挂号记录已过号，本次记录已失效。\n");
+        }
+        else if (latest_appt->is_walk_in == 1)
+        {
+            if (latest_appt->appointment_status == CHECKED_IN)
             {
-                printf("预约状态：已取消\n");
-                printf("说明：该预约为历史记录，当前不可作为有效候诊凭证。\n");
-            }
-            else if (latest_appt->appointment_status == MISSED)
-            {
-                printf("预约状态：已过号\n");
-                printf("说明：最新预约记录：已过号，本次挂号已失效。\n");
-            }
-            else if (latest_appt->appointment_status == CHECKED_IN)
-            {
-                if (latest_appt->is_walk_in)
-                {
-                    printf("预约状态：已挂号并进入候诊队列\n");
-                }
-                else
-                {
-                    printf("预约状态：已签到并进入候诊队列\n");
-                }
+                printf("状态：已挂号\n");
+                printf("当前说明：患者已现场挂号并进入候诊队列，无需额外签到。\n");
             }
             else
             {
-                printf("预约状态：%s\n", get_appointment_status_text(latest_appt->appointment_status));
+                printf("状态：已预约\n");
+                printf("当前说明：现场号已创建，待入队处理。\n");
+            }
+        }
+        else
+        {
+            if (latest_appt->appointment_status == CHECKED_IN)
+            {
+                printf("状态：已签到\n");
+                printf("当前说明：患者已完成预约签到并进入候诊队列。\n");
+            }
+            else
+            {
+                printf("状态：已预约\n");
+                printf("当前说明：患者已完成预约登记，请在就诊当天到院签到。\n");
             }
         }
     }
-    
+    else
+    {
+        printf("\n【最新预约/挂号信息】\n");
+        printf("暂无预约/挂号记录。\n");
+    }
+
     // 底部说明
     printf("\n说明：该时间轴根据患者当前就医状态、预约记录和住院记录综合生成，用于展示患者本次就诊流程进度。\n");
 }
@@ -2870,6 +2999,38 @@ void show_patient_queue_progress_self_service(void)
     
     printf("========================================================\n");
     system("pause");
+}
+
+int is_emergency_request_by_existing_triage(
+    const char* symptom,
+    const char* appoint_doctor,
+    const char* appoint_dept
+)
+{
+    if (!is_blank_string(symptom))
+    {
+        const char* recommended_dept = recommend_dept_by_symptom(symptom);
+        if (recommended_dept != NULL && strcmp(recommended_dept, "急诊科") == 0)
+        {
+            return 1;
+        }
+    }
+
+    if (!is_blank_string(appoint_dept) && strcmp(appoint_dept, "急诊科") == 0)
+    {
+        return 1;
+    }
+
+    if (!is_blank_string(appoint_doctor) && g_doctor_list != NULL)
+    {
+        DoctorNode* doctor = find_doctor_by_id(g_doctor_list, appoint_doctor);
+        if (doctor != NULL && strcmp(doctor->department, "急诊科") == 0)
+        {
+            return 1;
+        }
+    }
+
+    return 0;
 }
 
 
