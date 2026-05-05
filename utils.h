@@ -115,4 +115,22 @@ void print_line_separator(int length);
 // 返回值：-1=返回上一级，-2=退出系统，其他值=有效选择
 int inputChoice(int min, int max);
 
+// 28. 按显示宽度截断字符串（带省略号），然后对齐打印
+void print_truncated_col(const char* str, int max_width);
+
+// 29. 从 UTF-8 字符串中读取下一个 Unicode code point
+unsigned int utf8_next_codepoint(const char** p);
+
+// 30. 根据 Unicode code point 返回对应拼音首字母
+char get_chinese_initial_utf8(unsigned int codepoint);
+
+// 31. 把 UTF-8 字符串转换为拼音首字母字符串
+void get_pinyin_initials_utf8(const char* src, char* dest, int dest_size);
+
+// 32. 字符串转大写
+void to_upper_string(const char* src, char* dest, int dest_size);
+
+// 33. 不区分大小写的子字符串包含检查
+int contains_ignore_case(const char* text, const char* keyword);
+
 #endif

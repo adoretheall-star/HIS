@@ -419,15 +419,14 @@ static void print_col_num_dbl(const char* str, double val, int col_width)
 }
 
 static const char* ward_type_str(WardType t)
-
 {
-
-    return t == WARD_ICU ? "ICU" :
-
-           (t == WARD_ISOLATION ? "隔离病房" :
-
-           (t == WARD_SINGLE ? "单人病房" : "普通病房"));
-
+    switch (t) {
+        case 1: return "普通病房";
+        case 2: return "ICU";
+        case 3: return "隔离病房";
+        case 4: return "单人病房";
+        default: return "未知类型";
+    }
 }
 
 void show_hospitalized_patients()
@@ -1658,36 +1657,6 @@ int assign_bed_to_patient(const char* patient_id, const char* bed_id)
 
     }
 
-    // 检查床位类型是否与推荐类型一 ?
-
-    if (bed->ward_type != inpatient_record->recommended_ward_type)
-
-    {
-
-        printf("   所选床位类型与推荐类型不一致 \n");
-
-        printf("   推荐 %s 实际 %s\n", 
-
-            inpatient_record->recommended_ward_type == WARD_ICU ? "ICU" : (inpatient_record->recommended_ward_type == WARD_ISOLATION ? "隔离病房" : (inpatient_record->recommended_ward_type == WARD_SINGLE ? "单人病房" : "普通病房")),
-
-            bed->ward_type == WARD_ICU ? "ICU" : (bed->ward_type == WARD_ISOLATION ? "隔离病房" : (bed->ward_type == WARD_SINGLE ? "单人病房" : "普通病房")));
-
-        printf("   继续分配 ?1= ?0=： ");
-
-        int confirm = get_safe_int("");
-
-        if (confirm != 1)
-
-        {
-
-            printf(" 分配取消 \n");
-
-            return 0;
-
-        }
-
-    }
-
     // 分配床位
 
     bed->is_occupied = 1;
@@ -2160,8 +2129,7 @@ int recharge_inpatient_deposit(const char* patient_id, double amount)
 
     add_log("押金充值", patient_id, description);
 
-    printf(" ?押金充值成功 当前押金余额：%.2f 元\n",
-
+    printf("[成功] 押金充值成功！当前押金余额：%.2f 元\n",
         inpatient_record->deposit_balance);
 
     return 1;
@@ -2707,12 +2675,26 @@ void show_patients_need_hospitalize()
     curr = g_patient_list->next;
 
     while (curr != NULL)
-
     {
-
         if (curr->status == STATUS_NEED_HOSPITALIZE)
-
         {
+            if (find_active_inpatient_by_patient_id(curr->id) != NULL)
+            {
+                curr = curr->next;
+                continue;
+            }
+
+            if (patient_has_bed(curr->id))
+            {
+                curr = curr->next;
+                continue;
+            }
+
+            if (curr->status == STATUS_HOSPITALIZED)
+            {
+                curr = curr->next;
+                continue;
+            }
 
             count++;
 

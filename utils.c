@@ -1034,52 +1034,32 @@ int is_appointment_slot_valid(const char* date_str, const char* slot, char* erro
     return 1;
 }
 
-// 21. 计算字符串的显示宽度（中文算2个宽度）
-int get_display_width(const char* str)
-{
-    if (str == NULL) return 0;
-    
+// 动态计算字符串显示宽度（完美兼容 UTF-8 中英混排）
+int get_display_width(const char* str) {
     int width = 0;
-    const unsigned char* p = (const unsigned char*)str;
-    
-    while (*p != '\0')
-    {
-        if (*p < 128)
-        {
-            // ASCII字符，宽度为1
-            width++;
-            p++;
-        }
-        else
-        {
-            // 中文字符或其他多字节字符，宽度为2
+    int i = 0;
+    while (str[i] != '\0') {
+        if ((unsigned char)str[i] <= 127) {
+            width += 1;
+            i++;
+        } else {
             width += 2;
-            // 跳过UTF-8编码的后续字节
-            if (*p >= 0xE0) p += 3;
-            else if (*p >= 0xC0) p += 2;
-            else p++;
+            i++;
+            while (str[i] != '\0' && ((unsigned char)str[i] & 0xC0) == 0x80) {
+                i++;
+            }
         }
     }
-    
     return width;
 }
 
-// 22. 按指定宽度打印文本并补空格
-void print_padded_text(const char* str, int target_width)
-{
-    if (str == NULL) str = "";
-
-    int current_width = get_display_width(str);
+// 强制左对齐打印并补齐后缀空格
+void print_padded_text(const char* str, int target_width) {
     printf("%s", str);
-
-    // 计算需要补的空格数
+    int current_width = get_display_width(str);
     int spaces = target_width - current_width;
-    if (spaces > 0)
-    {
-        for (int i = 0; i < spaces; i++)
-        {
-            printf(" ");
-        }
+    for (int i = 0; i < spaces; i++) {
+        printf(" ");
     }
 }
 
@@ -1153,4 +1133,323 @@ int inputChoice(int min, int max)
         
         return value;
     }
+}
+
+// 28. 按显示宽度截断字符串（带省略号），然后对齐打印
+void print_truncated_col(const char* str, int max_width) {
+    if (str == NULL || max_width <= 0) {
+        for (int i = 0; i < max_width; i++) printf(" ");
+        return;
+    }
+    
+    int width = get_display_width(str);
+    if (width <= max_width) {
+        // 不需要截断，直接打印并对齐
+        printf("%s", str);
+        for (int i = width; i < max_width; i++) printf(" ");
+        return;
+    }
+    
+    // 需要截断，保留 max_width - 3 的宽度给内容，然后加 ...
+    int target_content_width = max_width - 3;
+    int i = 0;
+    int current_width = 0;
+    
+    while (str[i] != '\0' && current_width < target_content_width) {
+        if ((unsigned char)str[i] <= 127) {
+            if (current_width + 1 > target_content_width) break;
+            current_width += 1;
+            i++;
+        } else {
+            if (current_width + 2 > target_content_width) break;
+            current_width += 2;
+            i++;
+            while (str[i] != '\0' && ((unsigned char)str[i] & 0xC0) == 0x80) {
+                i++;
+            }
+        }
+    }
+    
+    // 打印截断后的内容 + ...
+    for (int j = 0; j < i; j++) {
+        printf("%c", str[j]);
+    }
+    printf("...");
+    
+    // 补空格到 max_width
+    int total_printed_width = current_width + 3;
+    for (int j = total_printed_width; j < max_width; j++) {
+        printf(" ");
+    }
+}
+
+// 拼音首字母映射表（只包含药品数据中的常用汉字）
+typedef struct {
+    unsigned int codepoint;
+    char initial;
+} PinyinInitialMap;
+
+static PinyinInitialMap g_pinyin_map[] = {
+    {0x963F, 'A'}, // 阿
+    {0x83AB, 'M'}, // 莫
+    {0x897F, 'X'}, // 西
+    {0x6797, 'L'}, // 林
+    {0x80F6, 'J'}, // 胶
+    {0x56CA, 'N'}, // 囊
+    {0x5C0F, 'X'}, // 小
+    {0x513F, 'E'}, // 儿
+    {0x6C28, 'A'}, // 氨
+    {0x915A, 'F'}, // 酚
+    {0x9EC4, 'H'}, // 黄
+    {0x90A3, 'N'}, // 那
+    {0x654F, 'M'}, // 敏
+    {0x9897, 'K'}, // 颗
+    {0x7C92, 'L'}, // 粒
+    {0x785D, 'X'}, // 硝
+    {0x82EF, 'B'}, // 苯
+    {0x5730, 'D'}, // 地
+    {0x5E73, 'P'}, // 平
+    {0x7F13, 'H'}, // 缓
+    {0x91CA, 'S'}, // 释
+    {0x7247, 'P'}, // 片
+    {0x5E03, 'B'}, // 布
+    {0x5948, 'N'}, // 奈
+    {0x5FB7, 'D'}, // 德
+    {0x798F, 'F'}, // 福
+    {0x7279, 'T'}, // 特
+    {0x7F57, 'L'}, // 罗
+    {0x7C89, 'F'}, // 粉
+    {0x5174, 'X'}, // 儿
+    {0x79D1, 'K'}, // 科
+    {0x4E13, 'Z'}, // 专
+    {0x5C5E, 'S'}, // 属
+    {0x7F13, 'H'}, // 缓
+    {0x89E3, 'J'}, // 解
+    {0x666E, 'P'}, // 普
+    {0x901A, 'T'}, // 通
+    {0x611F, 'G'}, // 感
+    {0x5192, 'M'}, // 冒
+    {0x53CA, 'J'}, // 及
+    {0x6D41, 'L'}, // 流
+    {0x884C, 'X'}, // 行
+    {0x611F, 'G'}, // 感
+    {0x5F15, 'Y'}, // 引
+    {0x8D77, 'Q'}, // 起
+    {0x7684, 'D'}, // 的
+    {0x91CD, 'Z'}, // 重
+    {0x5EA6, 'D'}, // 度
+    {0x53D1, 'F'}, // 发
+    {0x70ED, 'R'}, // 热
+    {0x5FC3, 'X'}, // 心
+    {0x8840, 'X'}, // 血
+    {0x7BA1, 'G'}, // 管
+    {0x5185, 'N'}, // 内
+    {0x79D1, 'K'}, // 科
+    {0x9AD8, 'G'}, // 高
+    {0x8840, 'X'}, // 血
+    {0x538B, 'Y'}, // 压
+    {0x53CA, 'J'}, // 及
+    {0x5FC3, 'X'}, // 心
+    {0x75DB, 'T'}, // 绞
+    {0x75DB, 'T'}, // 痛
+    {0x6C14, 'Q'}, // 气
+    {0x7BA1, 'G'}, // 管
+    {0x54BC, 'K'}, // 哮
+    {0x5598, 'C'}, // 喘
+    {0x845E, 'S'}, // 肾
+    {0x4E0A, 'S'}, // 上
+    {0x817A, 'X'}, // 腺
+    {0x7C92, 'L'}, // 粒
+    {0x7EC6, 'X'}, // 细
+    {0x80DE, 'B'}, // 胞
+    {0x589E, 'Z'}, // 增
+    {0x591A, 'D'}, // 多
+    {0x75C7, 'Z'}, // 症
+    {0x6025, 'J'}, // 急
+    {0x6027, 'X'}, // 性
+    {0x809A, 'B'}, // 白
+    {0x8840, 'X'}, // 血
+    {0x75C7, 'Z'}, // 症
+    {0x817A, 'X'}, // 腺
+    {0x767D, 'P'}, // 皮
+    {0x8D28, 'Z'}, // 质
+    {0x75C7, 'Z'}, // 症
+    {0x98CE, 'F'}, // 风
+    {0x6E7F, 'S'}, // 湿
+    {0x6027, 'X'}, // 性
+    {0x5173, 'G'}, // 关
+    {0x8282, 'J'}, // 节
+    {0x708E, 'Y'}, // 炎
+    {0x7CFB, 'X'}, // 系
+    {0x7EDF, 'T'}, // 统
+    {0x7EA2, 'H'}, // 红
+    {0x6591, 'B'}, // 斑
+    {0x72FC, 'L'}, // 狼
+    {0x75AE, 'C'}, // 疮
+    {0x91CD, 'Z'}, // 重
+    {0x75C7, 'Z'}, // 症
+    {0x808C, 'J'}, // 肌
+    {0x8089, 'R'}, // 肉
+    {0x708E, 'Y'}, // 炎
+    {0x7B2C, 'D'}, // 第
+    {0x4E09, 'S'}, // 二
+    {0x6E05, 'Q'}, // 轻
+    {0x5EA6, 'D'}, // 度
+    {0x5B89, 'A'}, // 安
+    {0x514D, 'M'}, // 眠
+    {0x836F, 'Y'}, // 药
+    {0x751F, 'S'}, // 生
+    {0x7269, 'W'}, // 物
+    {0x5236, 'Z'}, // 制
+    {0x5242, 'J'}, // 剂
+};
+
+// 29. 从 UTF-8 字符串中读取下一个 Unicode code point
+unsigned int utf8_next_codepoint(const char** p) {
+    if (p == NULL || *p == NULL) {
+        return 0;
+    }
+    
+    const unsigned char* s = (const unsigned char*)(*p);
+    unsigned int codepoint = 0;
+    
+    if (*s < 0x80) {
+        // 1字节字符 (ASCII)
+        codepoint = *s;
+        (*p)++;
+    } else if ((*s & 0xE0) == 0xC0) {
+        // 2字节字符
+        codepoint = (*s & 0x1F) << 6;
+        s++;
+        codepoint |= (*s & 0x3F);
+        (*p) += 2;
+    } else if ((*s & 0xF0) == 0xE0) {
+        // 3字节字符 (中文)
+        codepoint = (*s & 0x0F) << 12;
+        s++;
+        codepoint |= (*s & 0x3F) << 6;
+        s++;
+        codepoint |= (*s & 0x3F);
+        (*p) += 3;
+    } else if ((*s & 0xF8) == 0xF0) {
+        // 4字节字符
+        codepoint = (*s & 0x07) << 18;
+        s++;
+        codepoint |= (*s & 0x3F) << 12;
+        s++;
+        codepoint |= (*s & 0x3F) << 6;
+        s++;
+        codepoint |= (*s & 0x3F);
+        (*p) += 4;
+    } else {
+        // 无效字符
+        (*p)++;
+    }
+    
+    return codepoint;
+}
+
+// 30. 根据 Unicode code point 返回对应拼音首字母
+char get_chinese_initial_utf8(unsigned int codepoint) {
+    int map_size = sizeof(g_pinyin_map) / sizeof(g_pinyin_map[0]);
+    for (int i = 0; i < map_size; i++) {
+        if (g_pinyin_map[i].codepoint == codepoint) {
+            return g_pinyin_map[i].initial;
+        }
+    }
+    // 不在映射表中的字符，返回 0
+    return 0;
+}
+
+// 31. 把 UTF-8 字符串转换为拼音首字母字符串
+void get_pinyin_initials_utf8(const char* src, char* dest, int dest_size) {
+    if (src == NULL || dest == NULL || dest_size <= 0) {
+        return;
+    }
+    
+    int dest_index = 0;
+    const char* p = src;
+    
+    while (*p != '\0' && dest_index < dest_size - 1) {
+        if ((unsigned char)*p <= 127) {
+            // ASCII 字符，直接转大写
+            char c = *p;
+            if (c >= 'a' && c <= 'z') {
+                dest[dest_index++] = c - 32;
+            } else if (c >= 'A' && c <= 'Z') {
+                dest[dest_index++] = c;
+            } else if (c >= '0' && c <= '9') {
+                dest[dest_index++] = c;
+            } else {
+                // 其他字符，保留原样
+                dest[dest_index++] = c;
+            }
+            p++;
+        } else {
+            // 中文字符
+            unsigned int codepoint = utf8_next_codepoint(&p);
+            char initial = get_chinese_initial_utf8(codepoint);
+            if (initial != 0) {
+                dest[dest_index++] = initial;
+            }
+            // 不认识的中文字符跳过
+        }
+    }
+    
+    dest[dest_index] = '\0';
+}
+
+// 32. 字符串转大写
+void to_upper_string(const char* src, char* dest, int dest_size) {
+    if (src == NULL || dest == NULL || dest_size <= 0) {
+        return;
+    }
+    
+    int i = 0;
+    while (src[i] != '\0' && i < dest_size - 1) {
+        char c = src[i];
+        if (c >= 'a' && c <= 'z') {
+            dest[i] = c - 32;
+        } else {
+            dest[i] = c;
+        }
+        i++;
+    }
+    dest[i] = '\0';
+}
+
+// 33. 不区分大小写的子字符串包含检查
+int contains_ignore_case(const char* text, const char* keyword) {
+    if (text == NULL || keyword == NULL) {
+        return 0;
+    }
+    
+    int text_len = strlen(text);
+    int keyword_len = strlen(keyword);
+    
+    if (keyword_len == 0 || keyword_len > text_len) {
+        return 0;
+    }
+    
+    for (int i = 0; i <= text_len - keyword_len; i++) {
+        int match = 1;
+        for (int j = 0; j < keyword_len; j++) {
+            char c1 = text[i + j];
+            char c2 = keyword[j];
+            
+            // 转大写比较
+            if (c1 >= 'a' && c1 <= 'z') c1 -= 32;
+            if (c2 >= 'a' && c2 <= 'z') c2 -= 32;
+            
+            if (c1 != c2) {
+                match = 0;
+                break;
+            }
+        }
+        if (match) {
+            return 1;
+        }
+    }
+    
+    return 0;
 }

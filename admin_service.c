@@ -3658,7 +3658,7 @@ void handle_medicine_dispense(void)
     char patient_id[MAX_ID_LEN];
 
     printf("\n================ 发药处理 ================\n");
-    printf("提示：输入 '0' 可以回退上一步，输入 '00' 可以退出操作\n");
+    printf("提示：输入 B 返回上一步，输入 Q 退出当前操作\n");
     show_paid_patients_waiting_for_dispense();
     printf("------------------------------------------------------\n");
     
@@ -3687,151 +3687,11 @@ void handle_medicine_dispense(void)
         else
         {
             printf("⚠️ 患者编号格式不合法，正确格式为 P-1001，请重新输入！\n");
-            printf("提示：输入 '0' 可以回退上一步，输入 '00' 可以退出操作\n");
+            printf("提示：输入 B 返回上一步，输入 Q 退出当前操作\n");
         }
     }
     
     dispense_medicine_for_patient(patient_id);
-}
-
-void handle_remove_medicine_from_shelf(void)
-{
-    char med_id[MAX_ID_LEN];
-    char confirm_str[32];
-    int confirm = 0;
-    MedicineNode* medicine = NULL;
-
-    while (1)
-    {
-        system("cls");
-        printf("\n================ 下架药品 ===============-\n");
-        printf("提示：输入 B 返回上一步操作，输入 Q 取消该操作\n\n");
-
-        get_safe_string("请输入要下架的药品编号：", med_id, MAX_ID_LEN);
-
-        if (my_strcasecmp(med_id, "Q") == 0)
-        {
-            printf("已取消操作\n");
-            return;
-        }
-        if (my_strcasecmp(med_id, "B") == 0)
-        {
-            printf("已取消操作\n");
-            return;
-        }
-
-        if (is_blank_string(med_id))
-        {
-            printf("药品编号不能为空，请重新输入\n");
-            printf("\n按任意键继续...\n");
-            system("pause");
-            continue;
-        }
-
-        // 查找药品是否存在
-        medicine = find_medicine_by_id(g_medicine_list, med_id);
-        if (medicine == NULL)
-        {
-            printf("提示：未找到对应药品，下架失败。\n");
-            printf("\n按任意键继续...\n");
-            system("pause");
-            continue;
-        }
-
-        // 显示药品基本信息
-        printf("\n当前药品信息：\n");
-        printf("药品编号：%s\n", medicine->id);
-        printf("商品名：%s\n", medicine->name);
-        printf("通用名：%s\n", medicine->generic_name);
-        printf("别名：%s\n", medicine->alias[0] == '\0' ? "无" : medicine->alias);
-        printf("单价：%.2f\n", medicine->price);
-        printf("库存：%d\n", medicine->stock);
-        // 显示医保类型
-        switch (medicine->m_type)
-        {
-            case MEDICARE_NONE:
-                printf("医保类型：非医保\n");
-                break;
-            case MEDICARE_CLASS_A:
-                printf("医保类型：甲类医保\n");
-                break;
-            case MEDICARE_CLASS_B:
-                printf("医保类型：乙类医保\n");
-                break;
-            default:
-                printf("医保类型：未知\n");
-                break;
-        }
-        printf("效期：%s\n", medicine->expiry_date);
-        printf("----------------------------------------\n");
-
-        // 二次确认
-        printf("是否确定下架该药品？\n");
-        printf("[1] 确认下架\n");
-        printf("[0] 取消返回\n");
-
-        get_safe_string("请输入操作编号：", confirm_str, sizeof(confirm_str));
-
-        if (my_strcasecmp(confirm_str, "Q") == 0)
-        {
-            printf("已取消操作\n");
-            return;
-        }
-        if (my_strcasecmp(confirm_str, "B") == 0 || strcmp(confirm_str, "0") == 0)
-        {
-            printf("已取消操作\n");
-            return;
-        }
-        if (strcmp(confirm_str, "1") == 0)
-        {
-            // 执行下架操作
-            remove_medicine(med_id);
-            printf("按任意键返回...\n");
-            system("pause");
-            return;
-        }
-
-        printf("无效的输入，请重新选择\n");
-        printf("\n按任意键继续...\n");
-        system("pause");
-    }
-
-    // 显示药品基本信息
-    printf("\n当前药品信息：\n");
-    printf("药品编号：%s\n", medicine->id);
-    printf("商品名：%s\n", medicine->name);
-    printf("通用名：%s\n", medicine->generic_name);
-    printf("别名：%s\n", medicine->alias[0] == '\0' ? "无" : medicine->alias);
-    printf("单价：%.2f\n", medicine->price);
-    printf("库存：%d\n", medicine->stock);
-    // 显示医保类型
-    switch (medicine->m_type)
-    {
-        case MEDICARE_NONE:       printf("医保类型：非医保\n");       break;
-        case MEDICARE_CLASS_A:    printf("医保类型：甲类医保\n");     break;
-        case MEDICARE_CLASS_B:    printf("医保类型：乙类医保\n");     break;
-        case MEDICARE_BASIC:      printf("医保类型：基本医保\n");     break;
-        case MEDICARE_GOVERNMENT: printf("医保类型：公务员医保\n");   break;
-        case MEDICARE_COMMERCIAL: printf("医保类型：商业保险\n");     break;
-        default:                  printf("医保类型：未知\n");         break;
-    }
-    printf("效期：%s\n", medicine->expiry_date);
-    printf("----------------------------------------\n");
-
-    // 二次确认
-    printf("是否确定下架该药品？\n");
-    printf("[1] 确定下架\n");
-    printf("[0] 取消返回\n");
-    confirm = get_safe_int("请输入操作编号: ");
-
-    if (confirm != 1)
-    {
-        printf("提示：已取消下架操作。\n");
-        return;
-    }
-
-    // 执行下架操作
-    remove_medicine(med_id);
 }
 
 // 前向声明
@@ -3988,62 +3848,107 @@ void add_log(const char* operation, const char* target, const char* description)
 // 显示日志
 void show_logs(void)
 {
-    printf("\n==============================================================\n");
-    printf("                      系统日志\n");
-    printf("==============================================================\n");
-
+    // 第一步：遍历计算最大列宽
+    int time_width = get_display_width("时间");
+    int action_width = get_display_width("操作");
+    int target_width = get_display_width("目标");
+    int desc_width = get_display_width("描述");
+    
+    if (g_log_list != NULL && g_log_list->next != NULL)
+    {
+        LogNode* curr = g_log_list->next;
+        while (curr != NULL)
+        {
+            int curr_time_w = get_display_width(curr->timestamp);
+            int curr_action_w = get_display_width(curr->operation);
+            int curr_target_w = get_display_width(curr->target);
+            int curr_desc_w = get_display_width(curr->description);
+            
+            if (curr_time_w > time_width) time_width = curr_time_w;
+            if (curr_action_w > action_width) action_width = curr_action_w;
+            if (curr_target_w > target_width) target_width = curr_target_w;
+            if (curr_desc_w > desc_width) desc_width = curr_desc_w;
+            
+            curr = curr->next;
+        }
+    }
+    
+    // 计算总宽度（4列 + 3个4空格间距）
+    int total_width = time_width + action_width + target_width + desc_width + 12;
+    
+    // 打印顶部分隔线和标题
+    printf("\n");
+    for (int i = 0; i < total_width; i++) printf("=");
+    printf("\n");
+    
+    int title_width = get_display_width("系统日志");
+    int title_padding = (total_width - title_width) / 2;
+    for (int i = 0; i < title_padding; i++) printf(" ");
+    printf("系统日志");
+    for (int i = 0; i < total_width - title_width - title_padding; i++) printf(" ");
+    printf("\n");
+    
+    for (int i = 0; i < total_width; i++) printf("=");
+    printf("\n");
+    
+    // 空日志情况
     if (g_log_list == NULL || g_log_list->next == NULL)
     {
         printf("当前无日志记录\n");
-        printf("==============================================================\n");
+        for (int i = 0; i < total_width; i++) printf("=");
+        printf("\n");
         printf("\n请按任意键返回...\n");
         system("pause");
         return;
     }
-
-    // 使用固定列宽确保对齐（考虑中文字符占用2个字符宽度）
-    const int col1_width = 22;  // 时间列（"2026-04-30 17:58:04" = 19字符）
-    const int col2_width = 16;  // 操作列（中文操作名）
-    const int col3_width = 16;  // 目标列（日期或编号）
-    const int total_width = col1_width + col2_width + col3_width + 40;
-
-    // 打印分隔线
-    for (int i = 0; i < total_width; i++) {
-        printf("-");
-    }
+    
+    // 打印表头
+    print_padded_text("时间", time_width);
+    printf("    ");
+    print_padded_text("操作", action_width);
+    printf("    ");
+    print_padded_text("目标", target_width);
+    printf("    ");
+    print_padded_text("描述", desc_width);
     printf("\n");
-
-    // 打印表头（左对齐）
-    printf("%-*s%-*s%-*s%s\n", col1_width, "时间", col2_width, "操作", col3_width, "目标", "描述");
-
-    // 打印分隔线
-    for (int i = 0; i < total_width; i++) {
-        printf("-");
-    }
+    
+    // 打印表头下划线
+    for (int i = 0; i < total_width; i++) printf("-");
     printf("\n");
-
-    // 打印日志内容
+    
+    // 第三步：遍历打印日志数据
     LogNode* curr = g_log_list->next;
     int count = 0;
     while (curr != NULL)
     {
-        printf("%-*s%-*s%-*s%s\n", 
-               col1_width, curr->timestamp,
-               col2_width, curr->operation,
-               col3_width, curr->target,
-               curr->description);
+        print_padded_text(curr->timestamp, time_width);
+        printf("    ");
+        print_padded_text(curr->operation, action_width);
+        printf("    ");
+        print_padded_text(curr->target, target_width);
+        printf("    ");
+        print_padded_text(curr->description, desc_width);
+        printf("\n");
         count++;
         curr = curr->next;
     }
-
+    
     // 打印底部分隔线
-    for (int i = 0; i < total_width; i++) {
-        printf("-");
-    }
+    for (int i = 0; i < total_width; i++) printf("-");
     printf("\n");
     
-    printf("日志总数：%d\n", count);
-    printf("==============================================================\n");
+    // 打印统计信息
+    char count_str[50];
+    snprintf(count_str, sizeof(count_str), "日志总数：%d", count);
+    int count_width = get_display_width(count_str);
+    int count_padding = (total_width - count_width) / 2;
+    for (int i = 0; i < count_padding; i++) printf(" ");
+    printf("%s", count_str);
+    printf("\n");
+    
+    for (int i = 0; i < total_width; i++) printf("=");
+    printf("\n");
+    
     printf("\n请按任意键返回...\n");
     system("pause");
 }
@@ -4097,40 +4002,130 @@ void show_all_check_items(void)
         return;
     }
 
-    printf("\n========================================================================\n");
-    printf("                            检查项目字典\n");
-    printf("========================================================================\n");
-    printf("%-10s %-20s %12s %10s   %-10s\n",
-           "项目编号", "项目名称", "所属科室", "价格(元)", "医保类型");
-    printf("------------------------------------------------------------------------\n");
+    // 第一步：遍历计算最大列宽
+    int id_width = get_display_width("项目编号");
+    int name_width = get_display_width("项目名称");
+    int dept_width = get_display_width("所属科室");
+    int price_width = get_display_width("价格(元)");
+    int type_width = get_display_width("医保类型");
 
+    curr = g_check_item_list->next;
+    while (curr != NULL)
+    {
+        int curr_id_w = get_display_width(curr->item_id);
+        int curr_name_w = get_display_width(curr->item_name);
+        int curr_dept_w = get_display_width(curr->dept);
+
+        char price_buf[32];
+        sprintf(price_buf, "%.2f", curr->price);
+        int curr_price_w = get_display_width(price_buf);
+
+        const char* m_type_name = NULL;
+        switch (curr->m_type)
+        {
+            case MEDICARE_CLASS_A:
+                m_type_name = "甲类";
+                break;
+            case MEDICARE_CLASS_B:
+                m_type_name = "乙类";
+                break;
+            case MEDICARE_NONE:
+                m_type_name = "自费";
+                break;
+            default:
+                m_type_name = "未知";
+                break;
+        }
+        int curr_type_w = get_display_width(m_type_name);
+
+        if (curr_id_w > id_width) id_width = curr_id_w;
+        if (curr_name_w > name_width) name_width = curr_name_w;
+        if (curr_dept_w > dept_width) dept_width = curr_dept_w;
+        if (curr_price_w > price_width) price_width = curr_price_w;
+        if (curr_type_w > type_width) type_width = curr_type_w;
+
+        count++;
+        curr = curr->next;
+    }
+
+    // 计算总宽度（5列 + 4个4空格间距）
+    int total_width = id_width + name_width + dept_width + price_width + type_width + 16;
+
+    // 第二步：打印顶部分隔线和标题
+    printf("\n");
+    for (int i = 0; i < total_width; i++) printf("=");
+    printf("\n");
+
+    int title_width = get_display_width("检查项目字典");
+    int title_padding = (total_width - title_width) / 2;
+    for (int i = 0; i < title_padding; i++) printf(" ");
+    printf("检查项目字典");
+    for (int i = 0; i < total_width - title_width - title_padding; i++) printf(" ");
+    printf("\n");
+
+    for (int i = 0; i < total_width; i++) printf("=");
+    printf("\n");
+
+    // 打印表头
+    print_padded_text("项目编号", id_width);
+    printf("    ");
+    print_padded_text("项目名称", name_width);
+    printf("    ");
+    print_padded_text("所属科室", dept_width);
+    printf("    ");
+    print_padded_text("价格(元)", price_width);
+    printf("    ");
+    print_padded_text("医保类型", type_width);
+    printf("\n");
+
+    // 打印表头下划线
+    for (int i = 0; i < total_width; i++) printf("-");
+    printf("\n");
+
+    // 第三步：遍历打印数据
     curr = g_check_item_list->next;
     while (curr != NULL)
     {
         const char* m_type_name = NULL;
         switch (curr->m_type)
         {
-            case MEDICARE_CLASS_A:    m_type_name = "甲类";       break;
-            case MEDICARE_CLASS_B:    m_type_name = "乙类";       break;
-            case MEDICARE_NONE:       m_type_name = "自费";       break;
-            case MEDICARE_BASIC:      m_type_name = "基本医保";   break;
-            case MEDICARE_GOVERNMENT: m_type_name = "公务员医保"; break;
-            case MEDICARE_COMMERCIAL: m_type_name = "商业保险";   break;
-            default:                  m_type_name = "未知";       break;
+            case MEDICARE_CLASS_A: m_type_name = "甲类"; break;
+            case MEDICARE_CLASS_B: m_type_name = "乙类"; break;
+            case MEDICARE_NONE:    m_type_name = "自费"; break;
+            default:               m_type_name = "未知"; break;
         }
-        printf("%-10s %-20s %12s %10.2f   %-10s\n",
-               curr->item_id,
-               curr->item_name,
-               curr->dept,
-               curr->price,
-               m_type_name);
-        count++;
+
+        char price_buf[32];
+        sprintf(price_buf, "%.2f", curr->price);
+
+        print_padded_text(curr->item_id, id_width);
+        printf("    ");
+        print_padded_text(curr->item_name, name_width);
+        printf("    ");
+        print_padded_text(curr->dept, dept_width);
+        printf("    ");
+        print_padded_text(price_buf, price_width);
+        printf("    ");
+        print_padded_text(m_type_name, type_width);
+        printf("\n");
+
         curr = curr->next;
     }
 
-    printf("------------------------------------------------------------------------\n");
-    printf("检查项目总数：%d\n", count);
-    printf("========================================================================\n");
+    // 打印底部信息
+    for (int i = 0; i < total_width; i++) printf("-");
+    printf("\n");
+
+    char count_str[50];
+    snprintf(count_str, sizeof(count_str), "检查项目总数：%d", count);
+    int count_width = get_display_width(count_str);
+    int count_padding = (total_width - count_width) / 2;
+    for (int i = 0; i < count_padding; i++) printf(" ");
+    printf("%s", count_str);
+    printf("\n");
+
+    for (int i = 0; i < total_width; i++) printf("=");
+    printf("\n");
 }
 
 static void generate_check_item_id(char* new_id)
@@ -4189,13 +4184,13 @@ void search_check_item_by_keyword(const char* keyword)
         return;
     }
 
-    printf("\n========================================================================\n");
-    printf("                        检查项目查询结果\n");
-    printf("========================================================================\n");
-    printf("%-12s %-28s %-16s %-12s %-8s\n",
-           "项目编号", "项目名称", "所属科室", "价格(元)", "医保类型");
-    printf("------------------------------------------------------------------------\n");
-
+    // 第一步：遍历匹配的节点，计算最大列宽
+    int id_width = get_display_width("项目编号");
+    int name_width = get_display_width("项目名称");
+    int dept_width = get_display_width("所属科室");
+    int price_width = get_display_width("价格(元)");
+    int type_width = get_display_width("医保类型");
+    
     curr = g_check_item_list->next;
     while (curr != NULL)
     {
@@ -4203,6 +4198,14 @@ void search_check_item_by_keyword(const char* keyword)
             strstr(curr->item_name, keyword) != NULL ||
             strstr(curr->dept, keyword) != NULL)
         {
+            int curr_id_w = get_display_width(curr->item_id);
+            int curr_name_w = get_display_width(curr->item_name);
+            int curr_dept_w = get_display_width(curr->dept);
+            
+            char price_buf[32];
+            sprintf(price_buf, "%.2f", curr->price);
+            int curr_price_w = get_display_width(price_buf);
+            
             const char* m_type_name = NULL;
             switch (curr->m_type)
             {
@@ -4214,15 +4217,111 @@ void search_check_item_by_keyword(const char* keyword)
                 case MEDICARE_COMMERCIAL: m_type_name = "商业保险";   break;
                 default:                  m_type_name = "未知";       break;
             }
-            printf("%-12s %-28s %-16s %-12.2f %-8s\n",
-                   curr->item_id, curr->item_name, curr->dept,
-                   curr->price, m_type_name);
+            int curr_type_w = get_display_width(m_type_name);
+            
+            if (curr_id_w > id_width) id_width = curr_id_w;
+            if (curr_name_w > name_width) name_width = curr_name_w;
+            if (curr_dept_w > dept_width) dept_width = curr_dept_w;
+            if (curr_price_w > price_width) price_width = curr_price_w;
+            if (curr_type_w > type_width) type_width = curr_type_w;
+            
             found = 1;
         }
         curr = curr->next;
     }
+    
+    // 如果没有匹配，直接返回
+    if (!found)
+    {
+        printf("未找到匹配检查项目\n");
+        return;
+    }
+    
+    // 计算总宽度（5列 + 4个4空格间距）
+    int total_width = id_width + name_width + dept_width + price_width + type_width + 16;
+    
+    // 第二步：打印顶部分隔线和标题
+    printf("\n");
+    for (int i = 0; i < total_width; i++) printf("=");
+    printf("\n");
+    
+    int title_width = get_display_width("检查项目查询结果");
+    int title_padding = (total_width - title_width) / 2;
+    for (int i = 0; i < title_padding; i++) printf(" ");
+    printf("检查项目查询结果");
+    for (int i = 0; i < total_width - title_width - title_padding; i++) printf(" ");
+    printf("\n");
+    
+    for (int i = 0; i < total_width; i++) printf("=");
+    printf("\n");
+    
+    // 打印表头
+    print_padded_text("项目编号", id_width);
+    printf("    ");
+    print_padded_text("项目名称", name_width);
+    printf("    ");
+    print_padded_text("所属科室", dept_width);
+    printf("    ");
+    print_padded_text("价格(元)", price_width);
+    printf("    ");
+    print_padded_text("医保类型", type_width);
+    printf("\n");
+    
+    // 打印表头下划线
+    for (int i = 0; i < total_width; i++) printf("-");
+    printf("\n");
+    
+    // 第三步：遍历打印匹配的数据
+    curr = g_check_item_list->next;
+    int count = 0;
+    while (curr != NULL)
+    {
+        if (strstr(curr->item_id, keyword) != NULL ||
+            strstr(curr->item_name, keyword) != NULL ||
+            strstr(curr->dept, keyword) != NULL)
+        {
+            const char* m_type_name = NULL;
+            switch (curr->m_type)
+            {
+                case MEDICARE_CLASS_A: m_type_name = "甲类"; break;
+                case MEDICARE_CLASS_B: m_type_name = "乙类"; break;
+                case MEDICARE_NONE:    m_type_name = "自费"; break;
+                default:               m_type_name = "未知"; break;
+            }
+            
+            char price_buf[32];
+            sprintf(price_buf, "%.2f", curr->price);
+            
+            print_padded_text(curr->item_id, id_width);
+            printf("    ");
+            print_padded_text(curr->item_name, name_width);
+            printf("    ");
+            print_padded_text(curr->dept, dept_width);
+            printf("    ");
+            print_padded_text(price_buf, price_width);
+            printf("    ");
+            print_padded_text(m_type_name, type_width);
+            printf("\n");
+            
+            count++;
+        }
+        curr = curr->next;
+    }
 
-    if (!found) printf("未找到匹配检查项目\n");
+    // 打印底部信息
+    for (int i = 0; i < total_width; i++) printf("-");
+    printf("\n");
+    
+    char count_str[50];
+    snprintf(count_str, sizeof(count_str), "共找到 %d 条匹配记录", count);
+    int count_width = get_display_width(count_str);
+    int count_padding = (total_width - count_width) / 2;
+    for (int i = 0; i < count_padding; i++) printf(" ");
+    printf("%s", count_str);
+    printf("\n");
+    
+    for (int i = 0; i < total_width; i++) printf("=");
+    printf("\n");
 }
 
 void handle_check_item_register(void)
