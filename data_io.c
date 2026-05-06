@@ -4,6 +4,9 @@
 #include <string.h>
 #include <direct.h>
 #include <time.h>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 #include "global.h"
 #include "list_ops.h"
 
@@ -98,14 +101,9 @@ int load_patient_list(PatientNode** head) {
     ensure_data_dir();
     char file_path[256];
     snprintf(file_path, sizeof(file_path), "%spatients.txt", DATA_DIR);
-    #if DATA_IO_DEBUG
-    printf("DEBUG: 正在读取患者文�? %s\n", file_path);
-    #endif
     FILE* fp = fopen(file_path, "r");
     if (fp == NULL) {
-        #if DATA_IO_DEBUG
-        printf("DEBUG: 无法打开患者文�? %s\n", file_path);
-        #endif
+        printf("[ERROR] 无法打开患者数据文件: %s\n", file_path);
         return 0;
     }
 
@@ -113,11 +111,16 @@ int load_patient_list(PatientNode** head) {
     char header_buffer[512];
     if (fgets(header_buffer, sizeof(header_buffer), fp) == NULL) {
         fclose(fp);
+        printf("[ERROR] 患者数据文件为空或表头读取失败\n");
         return 0;
     }
 
     char line[4096];
+    int line_number = 1;
+    int success_count = 0;
+    int error_count = 0;
     while (fgets(line, sizeof(line), fp) != NULL) {
+        line_number++;
         trim_newline(line);
         if (strlen(line) == 0) continue;
 
@@ -135,9 +138,8 @@ int load_patient_list(PatientNode** head) {
         int field_count = split_line_by_delimiter(line, '|', fields, 30);
         
         if (field_count < 27) {
-            #if DATA_IO_DEBUG
-            printf("DEBUG: 字段数不足，跳过此行: %s (字段�? %d)\n", line, field_count);
-            #endif
+            printf("[WARN] 第 %d 行字段数不足，已跳过\n", line_number);
+            error_count++;
             continue;
         }
 
@@ -206,9 +208,16 @@ int load_patient_list(PatientNode** head) {
         }
 
         insert_patient_tail(*head, new_node);
+        success_count++;
     }
     fclose(fp);
-    return 1;
+    
+    if (success_count == 0) {
+        printf("[ERROR] 患者数据加载失败！没有成功加载任何患者记录。\n");
+        printf("[ERROR] 请检查 data/patients.txt 路径、编码和字段格式。\n");
+    }
+    
+    return success_count > 0 ? 1 : 0;
 }
 
 int save_appointment_list(AppointmentNode* head) {
@@ -365,6 +374,10 @@ int load_doctor_list(DoctorNode** head) {
     return 1;
 }
 
+/* 
+ * 【功能作者】陈苗苗 55251313 
+ * 【功能说明】药品数据读写 - 药品列表保存。
+ */
 int save_medicine_list(MedicineNode* head) {
     if (head == NULL) return 0;
     ensure_data_dir();
@@ -431,6 +444,10 @@ int load_medicine_list(MedicineNode** head) {
     return 1;
 }
 
+/* 
+ * 【功能作者】陈苗苗 55251313 
+ * 【功能说明】床位数据读写 - 床位列表保存。
+ */
 int save_ward_list(WardNode* head) {
     if (head == NULL) return 0;
     ensure_data_dir();
@@ -494,6 +511,10 @@ int load_ward_list(WardNode** head) {
     return 1;
 }
 
+/* 
+ * 【功能作者】陈苗苗 55251313 
+ * 【功能说明】账号数据读写 - 账号列表保存。
+ */
 int save_account_list(AccountNode* head) {
     if (head == NULL) return 0;
     ensure_data_dir();
@@ -869,6 +890,10 @@ int load_alert_list(AlertNode** head) {
     return 1;
 }
 
+/* 
+ * 【功能作者】陈苗苗 55251313 
+ * 【功能说明】投诉数据读写 - 投诉列表保存。
+ */
 int save_complaint_list(ComplaintNode* head) {
     if (head == NULL) return 0;
     ensure_data_dir();
@@ -988,6 +1013,10 @@ int load_log_list(LogNode** head) {
     return 1;
 }
 
+/* 
+ * 【功能作者】陈苗苗 55251313 
+ * 【功能说明】住院记录数据读写 - 住院记录列表保存。
+ */
 int save_inpatient_list(InpatientRecord* head) {
     if (head == NULL) return 0;
     ensure_data_dir();
@@ -1128,6 +1157,10 @@ int load_all_data() {
     return result;
 }
 
+/* 
+ * 【功能作者】陈苗苗 55251313 
+ * 【功能说明】回收站数据读写 - 回收站列表保存。
+ */
 // -----------------------------------------------------------------------------
 // 保存回收站列�?
 // -----------------------------------------------------------------------------

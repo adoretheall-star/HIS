@@ -1,3 +1,15 @@
+/*
+ * 【代码分工说明】
+ * 模块名称：药师发药模块 pharmacy_service.c / pharmacy_service.h
+ * 主要负责人：陈苗苗 55251313
+ * 主要内容：
+ * 1. 实现药师端待发药患者查询、处方核对和发药确认；
+ * 2. 实现库存扣减、患者状态更新和发药记录；
+ * 3. 实现患者处方查询和用药指导提示；
+ * 4. 参与药房业务流程联调和处方数据管理。
+ * 参与说明：
+ * 周宇轩 55251328 参与发药流程与患者状态联动逻辑。
+ */
 #define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
 #include <stdlib.h>
@@ -69,6 +81,10 @@ static void print_waiting_patient_info(const PatientNode* patient)
     printf("------------------------------------------------------\n");
 }
 
+/* 
+ * 【功能作者】陈苗苗 55251313 
+ * 【功能说明】药师端 - 待发药患者查询，显示所有已缴费等待取药的患者。
+ */
 void show_paid_patients_waiting_for_dispense()
 {
     int found = 0;
@@ -101,6 +117,10 @@ void show_paid_patients_waiting_for_dispense()
     }
 }
 
+/* 
+ * 【功能作者】陈苗苗 55251313 
+ * 【功能说明】药师端 - 发药确认，包括处方核对、库存扣减和患者状态更新。
+ */
 int dispense_medicine_for_patient(const char* patient_id)
 {
     PatientNode* patient = NULL;

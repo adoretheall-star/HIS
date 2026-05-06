@@ -1,5 +1,6 @@
 @echo off
 chcp 65001 > nul
+cd /d "%~dp0"
 
 :: 2. 核心修改：加上 -static 让程序自带底层运行库，彻底解决 0xc000007b 报错！
 gcc main.c utils.c list_ops.c appointment.c patient_service.c doctor_service.c medicine_service.c pharmacy_service.c admin_service.c inpatient_service.c data_io.c -o his_system.exe -fexec-charset=UTF-8 -static

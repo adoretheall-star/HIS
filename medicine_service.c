@@ -1,3 +1,16 @@
+/*
+ * 【代码分工说明】
+ * 模块名称：药品管理模块 medicine_service.c / medicine_service.h
+ * 主要负责人：陈苗苗 55251313
+ * 主要内容：
+ * 1. 实现药品信息新增、修改、查询和删除；
+ * 2. 实现药品库存维护、低库存预警和近效期巡检；
+ * 3. 实现药品分类管理、药品入库和库存盘点；
+ * 4. 为药师端提供药品基础数据支持。
+ * 参与说明：
+ * 申贞隆 55251318 参与药品输入校验和异常拦截；
+ * 胡博畅 55251329 参与药品界面排版和库存预警显示优化。
+ */
 #define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
 #include <stdlib.h>
@@ -845,6 +858,10 @@ void show_comprehensive_stock_alert(int low_stock_threshold, const char* today, 
     }
 }
 
+/* 
+ * 【功能作者】陈苗苗 55251313 
+ * 【功能说明】药品资源维护 - 药品新增，支持商品名、通用名、价格、库存、医保类型和效期管理。
+ */
 MedicineNode* register_medicine(
     const char* name,
     const char* alias,
@@ -944,6 +961,10 @@ MedicineNode* register_medicine(
     return new_node;
 }
 
+/* 
+ * 【功能作者】陈苗苗 55251313 
+ * 【功能说明】药品资源维护 - 库存维护，支持药品库存数量的更新。
+ */
 int update_medicine_stock(const char* med_id, int new_stock)
 {
     MedicineNode* target = NULL;
@@ -995,6 +1016,10 @@ int update_medicine_stock(const char* med_id, int new_stock)
     return 1;
 }
 
+/* 
+ * 【功能作者】陈苗苗 55251313 
+ * 【功能说明】药品资源维护 - 药品信息修改，支持商品名、别名、通用名、价格、效期的部分或全部修改。
+ */
 /* 
   * 本函数用于部分修改药品基础信息。 
   * 各字段修改规则如下： 

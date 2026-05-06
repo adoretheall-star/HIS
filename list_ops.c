@@ -270,6 +270,10 @@ DoctorNode* find_doctor_by_id(DoctorNode* head, const char* target_id)
     }
     return NULL;
 }
+/* 
+ * 【功能作者】陈苗苗 55251313 
+ * 【功能说明】药品链表操作 - 药品链表初始化。
+ */
 //四、药品链表操作
 MedicineNode* init_medicine_list() 
 {
@@ -465,6 +469,10 @@ void insert_account_sorted(AccountNode* head, AccountNode* new_node)
     new_node->next = NULL;
 }
 
+/* 
+ * 【功能作者】陈苗苗 55251313 
+ * 【功能说明】病房床位链表操作 - 床位链表初始化。
+ */
 //五、病房床位链表操作
 WardNode* init_ward_list() 
 {
@@ -668,6 +676,10 @@ void add_prescription_to_patient(PatientNode* patient, const char* med_id, int q
     patient->script_count++;
 }
 
+/* 
+ * 【功能作者】陈苗苗 55251313 
+ * 【功能说明】住院记录链表操作 - 住院记录链表初始化和节点操作。
+ */
 // ==========================================
 // 八、住院记录链表操作
 // ==========================================
@@ -1274,6 +1286,10 @@ void push_system_alert(const char* msg)
     new_node->prev = curr;
 }
 
+/* 
+ * 【功能作者】陈苗苗 55251313 
+ * 【功能说明】投诉工单链表操作 - 投诉链表初始化和节点操作。
+ */
 // ==========================================
 // 十、投诉工单链表操作
 // ==========================================
@@ -1644,6 +1660,10 @@ void insert_log_tail(LogNode* head, LogNode* new_node) {
     curr->next = new_node;
 }
 
+/* 
+ * 【功能作者】陈苗苗 55251313 
+ * 【功能说明】回收站链表操作 - 回收站链表初始化和节点操作。
+ */
 // ==========================================
 // 十二、回收站链表操作
 // ==========================================

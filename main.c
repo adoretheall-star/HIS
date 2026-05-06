@@ -1,4 +1,18 @@
-﻿// ==========================================
+/*
+ * 【代码分工说明】
+ * 模块名称：系统主控模块 main.c
+ * 主要负责人：周宇轩 55251328
+ * 主要内容：
+ * 1. 构建系统整体运行框架；
+ * 2. 实现主菜单、内部员工登录入口和患者自助服务入口；
+ * 3. 组织管理员端、护士端、医生端、药师端、患者端等角色菜单跳转；
+ * 4. 负责系统启动、数据加载、数据保存和整体流程联调。
+ * 参与说明：
+ * 胡博畅 55251329 参与部分菜单界面排版和个人中心入口整合；
+ * 申贞隆 55251318 参与 B/Q 返回逻辑和输入防呆逻辑整合。
+ */
+
+// ==========================================
 // 文件名: main.c
 // 描述: 智慧医疗信息管理系统 - 主入口
 // 作者:周宇轩
@@ -2633,6 +2647,10 @@ static void handle_query_check_records()
     system("pause");
 }
 
+/* 
+ * 【功能作者】周宇轩 55251328 
+ * 【功能说明】医生端菜单，包含待诊查看、接诊诊疗、患者状态流转等功能。
+ */
 static void doctor_menu()
 {
     int running = 1;
@@ -2860,6 +2878,10 @@ static void check_dept_doctor_menu()
     }
 }
 
+/* 
+ * 【功能作者】周宇轩 55251328 
+ * 【功能说明】护士端菜单，包含快捷挂号、档案管理、住院业务等功能。
+ */
 static void nurse_menu()
 {
     int running = 1;
@@ -3107,6 +3129,10 @@ static void pharmacist_menu()
     }
 }
 
+/* 
+ * 【功能作者】周宇轩 55251328 
+ * 【功能说明】内部员工登录入口，包含账号验证、密码验证和角色跳转。
+ */
 static void internal_login_menu()
 {
     char username[MAX_ID_LEN];
@@ -5716,7 +5742,17 @@ static void handle_patient_archive_update()
         goto input_name;
     if (strlen(temp_input) > 0)
     {
-        int new_age = atoi(temp_input);
+        int new_age;
+        if (!parse_int_strict(temp_input, &new_age))
+        {
+            printf("[WARN] 年龄只能输入纯数字，不能包含字母或特殊字符，请重新输入！\n");
+            goto input_age;
+        }
+        if (new_age < 0 || new_age > 130)
+        {
+            printf("[WARN] 年龄输入无效，请输入 0-130 之间的数字！\n");
+            goto input_age;
+        }
         if (new_age != patient->age)
         {
             age = new_age;
@@ -5938,11 +5974,19 @@ static void patient_archive_menu()
                 break;
             case 5:
                 system("cls");
+                printf("\n============================================================\n");
+                printf("                  查看患者就诊流程时间轴\n");
+                printf("============================================================\n");
+                printf("提示：输入 B 返回上一步，输入 Q 返回菜单页\n\n");
                 {
                     char patient_id[MAX_ID_LEN];
-                    printf("\n请输入要查询的患者编号（或输入 B 返回）：\n");
-                    get_safe_string("患者编号：", patient_id, MAX_ID_LEN);
+                    printf("请输入要查询的患者编号：");
+                    get_safe_string("", patient_id, MAX_ID_LEN);
                     if (my_strcasecmp(patient_id, "B") == 0)
+                    {
+                        break;
+                    }
+                    if (my_strcasecmp(patient_id, "Q") == 0)
                     {
                         break;
                     }
@@ -6092,6 +6136,11 @@ static void quick_register_menu()
         }
     }
 }
+
+/* 
+ * 【功能作者】周宇轩 55251328 
+ * 【功能说明】患者自助服务菜单，包含建档、预约、挂号、查询等功能。
+ */
 static void patient_self_service_menu()
 {
     int running = 1;
@@ -6939,6 +6988,10 @@ static int utf8_char_count(const char* str)
     return count;
 }
 
+/* 
+ * 【功能作者】周宇轩 55251328 
+ * 【功能说明】系统主流程、主菜单、入口跳转和整体流程协调。
+ */
 int main() 
 {
     
@@ -6991,25 +7044,7 @@ int main()
     g_recycle_list = init_recycle_list();
 
     // 加载存档数据
-    #if STARTUP_DEBUG
-    int load_result = load_all_data();
-    printf("DEBUG: 数据加载完成，结果: %d\n", load_result);
-    #else
     load_all_data();
-    #endif
-    #if STARTUP_DEBUG
-    if (g_patient_list->next == NULL) {
-        printf("DEBUG: 患者链表为空\n");
-    } else {
-        printf("DEBUG: 患者链表不为空\n");
-        // 打印第一个患者信息
-        PatientNode* first_patient = g_patient_list->next;
-        if (first_patient != NULL) {
-            printf("DEBUG: 第一个患者: ID=%s, 姓名=%s, 身份证=%s\n", 
-                   first_patient->id, first_patient->name, first_patient->id_card);
-        }
-    }
-    #endif
     
     #if STARTUP_DEBUG
     // 检查账号链表状态
@@ -7531,18 +7566,10 @@ int main()
         
         printf("[OK] 安全预警数据生成完毕！\n");
     }
-    else
-    {
-        printf("[FOLDERS] 成功从本地加载了存档数据！\n");
-    }
 #endif
     if (g_account_list->next == NULL)
     {
         printf("[WARN] 当前未检测到测试数据，请确认 data 文件夹是否存在。\n");
-    }
-    else
-    {
-        printf("[FOLDERS] 成功从本地加载了存档数据！\n");
     }
     
     // 🚀 时停魔法：按任意键后才清屏进入菜单！

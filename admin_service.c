@@ -1,3 +1,16 @@
+﻿/*
+ * 【代码分工说明】
+ * 模块名称：管理员端模块 admin_service.c / admin_service.h
+ * 主要负责人：陈苗苗 55251313
+ * 主要内容：
+ * 1. 实现管理员端账号管理、资源维护和系统配置；
+ * 2. 实现黑名单管理、投诉处理和回收站恢复；
+ * 3. 实现数据报表生成、安全预警和大屏统计入口；
+ * 4. 整合管理员端整体菜单框架和权限控制。
+ * 参与说明：
+ * 申贞隆 55251318 参与管理员登录密码掩码和敏感操作确认；
+ * 胡博畅 55251329 参与管理员界面排版、报表格式和大屏显示优化。
+ */
 #define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
 #include <string.h>
@@ -251,6 +264,10 @@ void show_all_accounts(void)
     printf("\n");
 }
 
+/* 
+ * 【功能作者】陈苗苗 55251313 
+ * 【功能说明】账号管理 - 新员工账号注册，支持医生、护士、药师等角色。
+ */
 // 注册新员工账号
 int register_account(const char* username, const char* password, const char* real_name, const char* gender, RoleType role)
 {
@@ -825,6 +842,10 @@ int update_pharmacist_duty_status(const char* username, int is_on_duty)
     return 1;
 }
 
+/* 
+ * 【功能作者】胡博畅 55251329 
+ * 【功能说明】医疗数据大屏与统计视图展示，包括患者数量、预约数量、医生队列、药品库存、床位占用和黑名单预警等统计信息。
+ */
 // 显示管理员操作面板
 void show_admin_dashboard(void)
 {
@@ -1847,6 +1868,10 @@ void show_system_alerts(void)
     printf("======================================================\n");
 }
 
+/* 
+ * 【功能作者】陈苗苗 55251313 
+ * 【功能说明】软删除回收站管理菜单，提供查看和恢复功能。
+ */
 // 回收站管理菜单
 void admin_recycle_bin_menu(void)
 {
@@ -1884,6 +1909,10 @@ void admin_recycle_bin_menu(void)
     }
 }
 
+/* 
+ * 【功能作者】陈苗苗 55251313 
+ * 【功能说明】软删除回收站内容查看，显示药品、检查项目、床位等软删除记录。
+ */
 // 显示回收站内容
 void show_recycle_bin(void)
 {
@@ -1930,6 +1959,10 @@ void show_recycle_bin(void)
     printf("============================================\n");
 }
 
+/* 
+ * 【功能作者】陈苗苗 55251313 
+ * 【功能说明】软删除回收站数据恢复，支持药品、检查项目、床位等数据的恢复操作。
+ */
 // 统一恢复回收站数据
 void handle_restore_from_recycle(void)
 {
@@ -2616,6 +2649,10 @@ void show_all_evaluations()
     printf("======================================================\n");
 }
 
+/* 
+ * 【功能作者】胡博畅 55251329 
+ * 【功能说明】医疗数据大屏与统计视图展示，包括患者数量、预约数量、医生队列、药品库存、床位占用和黑名单预警等统计信息。
+ */
 // 显示评价统计
 void show_evaluation_statistics()
 {
@@ -2696,6 +2733,10 @@ void show_evaluation_statistics()
     get_single_char("");
 }
 
+/* 
+ * 【功能作者】胡博畅 55251329 
+ * 【功能说明】医疗数据大屏与统计视图展示，包括患者数量、预约数量、医生队列、药品库存、床位占用和黑名单预警等统计信息。
+ */
 void show_load_monitoring(void)
 {
     system("cls");
@@ -3360,6 +3401,10 @@ static void show_arrears_warning(void)
 // 显示负载监控
 
 
+/* 
+ * 【功能作者】胡博畅 55251329 
+ * 【功能说明】医疗数据大屏与统计视图展示，包括患者数量、预约数量、医生队列、药品库存、床位占用和黑名单预警等统计信息。
+ */
 // 显示公共状态统计摘要
 void show_public_status_statistics(void)
 {
@@ -5299,6 +5344,10 @@ static void print_progress_bar_cyan(const char* label, int value, int total, int
         printf("] 0/0\n");
 }
 
+/* 
+ * 【功能作者】胡博畅 55251329 
+ * 【功能说明】医疗数据大屏与统计视图展示，包括患者数量、预约数量、医生队列、药品库存、床位占用和黑名单预警等统计信息。
+ */
  void show_public_medical_big_screen(void)
  {
      int running = 1;
@@ -5584,6 +5633,10 @@ static void print_progress_bar_cyan(const char* label, int value, int total, int
      }
  }
 
+/* 
+ * 【功能作者】胡博畅 55251329 
+ * 【功能说明】医疗数据大屏与统计视图展示，包括患者数量、预约数量、医生队列、药品库存、床位占用和黑名单预警等统计信息。
+ */
  void show_admin_medical_big_screen(void)
 {
     int running = 1;
@@ -7672,6 +7725,10 @@ static const char* get_role_text(RoleType role)
     }
 }
 
+/* 
+ * 【功能作者】胡博畅 55251329 
+ * 【功能说明】员工个人中心功能，包括账号信息查看、密码修改入口和值班状态展示。
+ */
 static void show_account_info(AccountNode* account)
 {
     if (account == NULL) return;
@@ -7695,6 +7752,10 @@ static void show_account_info(AccountNode* account)
     printf("==================================\n");
 }
 
+/* 
+ * 【功能作者】胡博畅 55251329 
+ * 【功能说明】员工个人中心功能，包括账号信息查看、密码修改入口和值班状态展示。
+ */
 static void change_password(AccountNode* account)
 {
     if (account == NULL) return;
@@ -7796,6 +7857,12 @@ static void change_password(AccountNode* account)
                 continue;
             }
 
+            if (strcmp(old_password, new_password) == 0)
+            {
+                strcpy(error_msg, "新密码不能与旧密码相同，请重新设置！");
+                continue;
+            }
+
             step = 2;
         }
         else if (step == 2)
@@ -7845,6 +7912,10 @@ static void change_password(AccountNode* account)
     system("pause");
 }
 
+/* 
+ * 【功能作者】胡博畅 55251329 
+ * 【功能说明】员工个人中心功能，包括账号信息查看、密码修改入口和值班状态展示。
+ */
 static void show_duty_status(AccountNode* account)
 {
     if (account == NULL) return;
@@ -7868,6 +7939,10 @@ static void show_duty_status(AccountNode* account)
     printf("==================================\n");
 }
 
+/* 
+ * 【功能作者】胡博畅 55251329 
+ * 【功能说明】员工个人中心功能，包括账号信息查看、密码修改入口和值班状态展示。
+ */
 void user_profile_menu(AccountNode* current_account)
 {
     if (current_account == NULL)

@@ -8,6 +8,19 @@
 
 // ==========================================
 
+/*
+ * 【代码分工说明】
+ * 模块名称：住院管理模块 inpatient_service.c / inpatient_service.h
+ * 主要负责人：陈苗苗 55251313
+ * 主要内容：
+ * 1. 实现住院登记、床位分配、床位查询和床位状态管理；
+ * 2. 实现住院患者管理、转床、出院和床位释放；
+ * 3. 实现押金管理、费用累计、日结计费和欠费预警；
+ * 4. 参与病房业务流程联调和住院数据持久化。
+ * 参与说明：
+ * 周宇轩 55251328 参与住院患者与门诊患者状态联动逻辑。
+ */
+
 #define _CRT_SECURE_NO_WARNINGS
 
 #include <stdio.h>
@@ -1321,6 +1334,10 @@ void show_discharged_patients(void)
 
 }
 
+/* 
+ * 【功能作者】陈苗苗 55251328 
+ * 【功能说明】住院管理 - 住院登记，根据病情推荐病房类型，完成住院记录。
+ */
 // ==========================================
 
 // 2. 住院流程函数
@@ -1505,6 +1522,10 @@ int register_inpatient(const char* patient_id, int estimated_days, double deposi
 
 }
 
+/* 
+ * 【功能作者】陈苗苗 55251313 
+ * 【功能说明】住院管理 - 床位分配，为住院患者分配可用床位。
+ */
 int assign_bed_to_patient(const char* patient_id, const char* bed_id)
 
 {
@@ -1927,6 +1948,10 @@ int transfer_bed(const char* patient_id, const char* old_bed_id, const char* new
 
 }
 
+/* 
+ * 【功能作者】陈苗苗 55251313 
+ * 【功能说明】住院管理 - 出院释放，释放床位并退还押金余额。
+ */
 int discharge_patient(const char* patient_id)
 
 {

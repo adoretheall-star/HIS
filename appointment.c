@@ -1,3 +1,16 @@
+/*
+ * 【代码分工说明】
+ * 模块名称：预约管理模块 appointment.c / appointment.h
+ * 主要负责人：周宇轩 55251328
+ * 主要内容：
+ * 1. 实现预约登记、预约查询、预约取消和预约状态流转；
+ * 2. 实现现场号发放、预约签到和过号处理；
+ * 3. 实现按科室/医生查询预约、患者预约历史查询；
+ * 4. 参与就诊流程联调和预约数据持久化。
+ * 参与说明：
+ * 申贞隆 55251318 参与预约输入异常拦截和 B/Q 逻辑；
+ * 胡博畅 55251329 参与预约界面排版和状态显示优化。
+ */
 // ==========================================
 // 文件名: appointment.c
 // 作用: 预约管理相关业务层实现
@@ -487,6 +500,10 @@ int can_patient_register_or_appoint(PatientNode* patient)
     return can_patient_make_appointment(patient, patient ? patient->symptom : NULL, NULL, NULL);
 }
 
+/* 
+ * 【功能作者】周宇轩 55251328 
+ * 【功能说明】预约登记，支持科室/医生选择、预约状态流转和黑名单拦截。
+ */
 // 预约登记
 AppointmentNode* register_appointment(
     const char* patient_id,
@@ -903,6 +920,11 @@ void query_appointments_by_id_card(const char* id_card)
     }
     query_appointments_by_patient_id(patient->id);
 }
+
+/* 
+ * 【功能作者】周宇轩 55251328 
+ * 【功能说明】预约取消，包含退费逻辑。
+ */
 // 预约取消
 int cancel_appointment(const char* appointment_id)
 {
@@ -1134,6 +1156,10 @@ static int place_appointment_into_queue(
     return 1;
 }
 
+/* 
+ * 【功能作者】周宇轩 55251328 
+ * 【功能说明】预约签到，将预约状态转换为排队状态，进入医生队列。
+ */
 // 预约签到转挂号
 int check_in_appointment(const char* appointment_id)
 {
@@ -1147,6 +1173,10 @@ int queue_walk_in_registration(const char* appointment_id)
     return place_appointment_into_queue(appointment, "现场挂号入队", 0, 0);
 }
 
+/* 
+ * 【功能作者】周宇轩 55251328 
+ * 【功能说明】过号/爽约处理，更新患者状态并记录爽约次数，3次爽约进入黑名单。
+ */
 // 登记预约爽约
 int mark_appointment_missed(const char* appointment_id)
 {
