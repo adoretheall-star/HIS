@@ -12,6 +12,7 @@
 #include <strings.h>
 #include "global.h"
 #include "list_ops.h"
+#include "data_io.h"
 #include "appointment.h"
 #include "utils.h"
 #include "patient_service.h"
@@ -1478,14 +1479,7 @@ int handle_emergency_escape(const char* patient_id_input) {
             if (strcasecmp(patient_id, "B") == 0) {
                 return 0;
             }
-            
-            // 检查0/00
-            if (strcmp(patient_id, "0") == 0 || strcmp(patient_id, "00") == 0) {
-                printf("⚠️ 当前已统一使用 B 返回上一步，Q 退出当前操作。\n");
-                system("pause");
-                continue;
-            }
-            
+
             // 检查患者编号格式
             if (!validate_patient_id(patient_id)) {
                 printf("⚠️ 患者编号格式不合法，正确格式为 P-1001，请检查后重试！\n");
@@ -1542,13 +1536,6 @@ int handle_emergency_escape(const char* patient_id_input) {
             // 检查返回上一步
             if (strcasecmp(input, "B") == 0) {
                 step = 0;
-                continue;
-            }
-            
-            // 检查0/00
-            if (strcmp(input, "0") == 0 || strcmp(input, "00") == 0) {
-                printf("⚠️ 当前已统一使用 B 返回上一步，Q 退出当前操作。\n");
-                system("pause");
                 continue;
             }
             
@@ -1632,14 +1619,6 @@ int settle_blacklisted_debt(const char* patient_id_input)
                 return 0;
             }
             
-            // 检查0/00
-            if (strcmp(patient_id, "0") == 0 || strcmp(patient_id, "00") == 0)
-            {
-                printf("⚠️ 当前已统一使用 B 返回上一步，Q 返回快捷挂号业务菜单。\n");
-                system("pause");
-                continue;
-            }
-            
             // 检查患者编号格式
             if (!validate_patient_id(patient_id))
             {
@@ -1694,14 +1673,6 @@ int settle_blacklisted_debt(const char* patient_id_input)
                 patient = NULL;
                 actual_payment = 0;
                 input[0] = '\0';
-                continue;
-            }
-            
-            // 检查0/00
-            if (strcmp(input, "0") == 0 || strcmp(input, "00") == 0)
-            {
-                printf("⚠️ 当前已统一使用 B 返回上一步，Q 返回快捷挂号业务菜单。\n");
-                system("pause");
                 continue;
             }
             
@@ -2181,16 +2152,26 @@ int submit_new_complaint(const char* patient_id)
         }
     }
 
-    // 自动生成工单编号
+    // 自动生成工单编号（遍历链表找最大编号+1）
     char complaint_id[MAX_ID_LEN];
-    int complaint_count = 0;
-    ComplaintNode* complaint_curr = g_complaint_list->next;
-    while (complaint_curr != NULL)
+    int max_id = 0;
+    if (g_complaint_list != NULL)
     {
-        complaint_count++;
-        complaint_curr = complaint_curr->next;
+        ComplaintNode* complaint_curr = g_complaint_list->next;
+        while (complaint_curr != NULL)
+        {
+            if (strncmp(complaint_curr->complaint_id, "CP-", 3) == 0)
+            {
+                int id_num = atoi(complaint_curr->complaint_id + 3);
+                if (id_num > max_id)
+                {
+                    max_id = id_num;
+                }
+            }
+            complaint_curr = complaint_curr->next;
+        }
     }
-    snprintf(complaint_id, sizeof(complaint_id), "CP-%03d", complaint_count + 1);
+    snprintf(complaint_id, sizeof(complaint_id), "CP-%03d", max_id + 1);
 
     // 生成当前系统时间
     char submit_time[MAX_NAME_LEN];
@@ -2198,7 +2179,7 @@ int submit_new_complaint(const char* patient_id)
     struct tm* t = localtime(&now);
     strftime(submit_time, MAX_NAME_LEN, "%Y-%m-%d %H:%M:%S", t);
 
-    // 创建投诉工单节点并插入链表
+    // 创建投诉工单节点
     ComplaintNode* new_complaint = create_complaint_node(
         complaint_id,
         patient_id,
@@ -2206,7 +2187,7 @@ int submit_new_complaint(const char* patient_id)
         target_id,
         target_name,
         content,
-        0, // 初始状态为待处理
+        0,
         NULL,
         submit_time
     );
@@ -2217,12 +2198,33 @@ int submit_new_complaint(const char* patient_id)
         return 0;
     }
 
+    // 确保投诉链表已初始化
+    if (g_complaint_list == NULL)
+    {
+        g_complaint_list = init_complaint_list();
+        if (g_complaint_list == NULL)
+        {
+            printf("⚠️ 投诉链表初始化失败！\n");
+            free(new_complaint);
+            return 0;
+        }
+    }
+
+    // 插入链表
+    insert_complaint_tail(g_complaint_list, new_complaint);
+
+    // 保存到文件
+    if (!save_complaint_list(g_complaint_list))
+    {
+        printf("\n⚠️ 投诉已加入内存链表，但保存到文件失败！\n");
+        printf("   请检查 data/complaints.txt 权限。\n");
+    }
 
     printf("\n✅ 投诉工单提交成功！\n");
     printf("工单编号：%s\n", complaint_id);
     printf("提交时间：%s\n", submit_time);
     printf("我们会尽快处理您的投诉，感谢您的反馈！\n");
-    
+
     return 1;
 }
 
