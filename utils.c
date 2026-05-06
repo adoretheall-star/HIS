@@ -1,4 +1,4 @@
-﻿// 文件名: utils.c
+// 文件名: utils.c
 // 作用: 工具函数的具体实现逻辑
 #define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
@@ -8,6 +8,7 @@
 #include <stdlib.h> // 用于 atoi 函数
 #include <limits.h> // 用于 INT_MIN, INT_MAX
 #include <errno.h> // 用于 errno
+#include "global.h" // 用于 g_demo_mode 等全局变量
 #include <math.h> // 用于 isnan, isinf, isfinite
 #include <conio.h> // 用于 _getch()
 #ifdef _WIN32
@@ -401,14 +402,20 @@ int is_night_shift()
     time_t current_time;
     struct tm* local_time;
     int hour;
-    
+
+    // 演示模式优先：管理员可强制切换夜间/白天模式
+    if (g_demo_mode == 1)
+        return 1; // 强制夜间
+    if (g_demo_mode == 2)
+        return 0; // 强制白天
+
     // 获取当前时间
     current_time = time(NULL);
     // 转换为本地时间
     local_time = localtime(&current_time);
     // 获取当前小时
     hour = local_time->tm_hour;
-    
+
     // 判断是否为夜间（17:00-8:00）
     if (hour >= 17 || hour < 8)
     {
@@ -1128,9 +1135,15 @@ int get_display_width(const char* str)
             width++;
             p++;
         }
+        else if (*p >= 0x81 && *p <= 0xFE)
+        {
+            // GB2312/GBK编码的中文字符，宽度为2
+            width += 2;
+            p += 2;
+        }
         else
         {
-            // 中文字符或其他多字节字符，宽度为2
+            // UTF-8编码的中文字符，宽度为2
             width += 2;
             // 跳过UTF-8编码的后续字节
             if (*p >= 0xE0) p += 3;

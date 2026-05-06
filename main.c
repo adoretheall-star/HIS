@@ -1,4 +1,4 @@
-// ==========================================
+﻿// ==========================================
 // 文件名: main.c
 // 描述: 智慧医疗信息管理系统 - 主入口
 // 作者:周宇轩
@@ -27,6 +27,9 @@
 
 // 登录调试开关，默认关闭
 #define LOGIN_DEBUG 0
+
+// 演示模式：0=真实系统时间 1=强制夜间 2=强制白天
+int g_demo_mode = 0;
 
 // 启动调试开关，默认关闭（设为1显示详细调试信息）
 #define STARTUP_DEBUG 0
@@ -148,6 +151,57 @@ static void handle_deposit_recharge();
 static void handle_daily_settlement();
 static void handle_transfer_bed();
 static void handle_discharge();
+static void handle_demo_mode();
+
+// 演示模式设置 — 管理员测试辅助功能
+static void handle_demo_mode()
+{
+    int running = 1;
+    while (running)
+    {
+        system("cls");
+        printf("\n================ 演示模式设置 ================\n");
+        printf("当前演示模式：");
+        switch (g_demo_mode)
+        {
+            case 0: printf("使用真实系统时间\n"); break;
+            case 1: printf("强制模拟夜间模式\n"); break;
+            case 2: printf("强制模拟白天模式\n"); break;
+        }
+        printf("----------------------------------------------\n");
+        printf("  [1] 使用真实系统时间\n");
+        printf("  [2] 强制模拟夜间模式（17:00-8:00）\n");
+        printf("  [3] 强制模拟白天模式（8:00-17:00）\n");
+        printf("  [0] 返回管理员菜单\n");
+        printf("----------------------------------------------\n");
+
+        switch (get_safe_int("👉 请输入选项编号: "))
+        {
+            case 1:
+                g_demo_mode = 0;
+                printf("\n[OK] 已切换为使用真实系统时间。\n");
+                system("pause");
+                break;
+            case 2:
+                g_demo_mode = 1;
+                printf("\n[OK] 已强制切换为夜间模式（适用于白天演示夜间就诊逻辑）。\n");
+                system("pause");
+                break;
+            case 3:
+                g_demo_mode = 2;
+                printf("\n[OK] 已强制切换为白天模式。\n");
+                system("pause");
+                break;
+            case 0:
+                running = 0;
+                break;
+            default:
+                printf("\n[WARN] 无效选项，请重新输入！\n");
+                system("pause");
+                break;
+        }
+    }
+}
 
 static void admin_menu()
 {
@@ -187,6 +241,7 @@ printf("  [8] 查看药师值班状态\n");
         printf("  [25] 报表导出中心\n");
         printf("  [26] 个人中心\n");
         printf("  [27] 系统数据完整性检查\n");
+        printf("  [28] 演示模式设置\n");
         printf("  [0] 退出登录\n");
         printf("------------------------------------------------------\n");
 
@@ -320,6 +375,11 @@ printf("  [8] 查看药师值班状态\n");
                 break;
             case 27:
                 check_system_data_integrity();
+                system("pause");
+                break;
+            case 28:
+                system("cls");
+                handle_demo_mode();
                 system("pause");
                 break;
             case 0:
@@ -556,14 +616,14 @@ static void handle_admin_register_account()
                     continue;
                 }
                 
-                role = atoi(input_buffer);
-                if (role >= 1 && role <= 4)
+                role = atoi(input_buffer) - 1;  // 用户输入1-4，转换为0-3的枚举值
+                if (role >= 0 && role <= 3)
                 {
                     switch (role)
                     {
                         case ROLE_ADMIN:    strcpy(role_str, "管理员"); break;
-                        case ROLE_NURSE:    strcpy(role_str, "护士"); break;
                         case ROLE_DOCTOR:   strcpy(role_str, "医生"); break;
+                        case ROLE_NURSE:    strcpy(role_str, "护士"); break;
                         case ROLE_PHARMACIST: strcpy(role_str, "药师"); break;
                         case ROLE_PATIENT:  strcpy(role_str, "患者"); break;
                     }
@@ -1074,6 +1134,7 @@ static void handle_admin_update_doctor_duty()
     int new_status = 0;
     char input_buffer[100] = "";
     DoctorNode* doctor = NULL;
+    AccountNode* account = NULL;
     int step = 0;
 
     printf("\n================ 修改医生值班状态 ================\n");
@@ -1124,6 +1185,9 @@ static void handle_admin_update_doctor_duty()
                     continue;
                 }
                 
+                // 同时查找账号
+                account = find_account_by_username(g_account_list, doctor_id);
+                
                 step = 1;
                 break;
                 
@@ -1132,7 +1196,7 @@ static void handle_admin_update_doctor_duty()
                 printf("医生工号：%s\n", doctor->id);
                 printf("医生姓名：%s\n", doctor->name);
                 printf("所属科室：%s\n", doctor->department);
-                printf("当前值班状态：%s\n", doctor->is_on_duty ? "值班中" : "未值班");
+                printf("当前值班状态：%s\n", account != NULL && account->is_on_duty ? "值班中" : "未值班");
                 step = 2;
                 break;
                 
@@ -1159,7 +1223,8 @@ static void handle_admin_update_doctor_duty()
                 }
                 
                 // 检查新状态是否与当前状态相同
-                if (new_status == doctor->is_on_duty)
+                int current_status = (account != NULL) ? account->is_on_duty : 0;
+                if (new_status == current_status)
                 {
                     printf("新状态与当前状态相同，无需修改！\n");
                     return;
@@ -1172,7 +1237,8 @@ static void handle_admin_update_doctor_duty()
                 printf("\n=============== 修改医生值班状态确认 ================\n");
                 printf("医生工号：%s\n", doctor->id);
                 printf("医生姓名：%s\n", doctor->name);
-                printf("当前状态：%s\n", doctor->is_on_duty ? "值班中" : "未值班");
+                int curr_status = (account != NULL) ? account->is_on_duty : 0;
+                printf("当前状态：%s\n", curr_status ? "值班中" : "未值班");
                 printf("即将修改为：%s\n", new_status == 1 ? "值班中" : "未值班");
                 printf("=================================================\n");
                 
@@ -1716,7 +1782,7 @@ static void handle_doctor_consultation()
         CheckRecordNode* cr_curr = NULL;
 
         printf("\n\033[1;33m========================================\n");
-        printf("【复诊患者接诊中】\n");
+        printf("[复诊患者接诊中]\n");
         printf("========================================\033[0m\n");
 
         if (strlen(patient->diagnosis_text) > 0)
@@ -2564,6 +2630,7 @@ static void handle_query_check_records()
         }
         break;
     }
+    system("pause");
 }
 
 static void doctor_menu()
@@ -2641,7 +2708,7 @@ static void check_dept_doctor_menu()
         printf("  [1] 查看待检查列表\n");
         printf("  [2] 录入检查结果\n");
         printf("  [3] 查看检查记录详情\n");
-        printf("  [4] 按患者查询检查记录\n");
+        printf("  [4] 查询检查记录\n");
         printf("  [0] 退出登录\n");
         printf("------------------------------------------------------\n");
 
@@ -2845,7 +2912,7 @@ static void display_recent_alerts()
 {
     int has_content = 0;
 
-    printf("\n[ALERT] 【安全预警中心】最近预警：\n");
+    printf("\n[ALERT] [安全预警中心] 最近预警：\n");
     printf("------------------------------------------------------\n");
 
     // === 实时扫描：住院欠费预警 ===
@@ -3482,7 +3549,7 @@ static void handle_internal_appointment_register()
         // 第二步：检查是否有值班医生
         if (!has_on_duty_doctor_in_department(appoint_dept))
         {
-            printf("\n[WARN] 【%s】当前暂无医生值班，请重新选择其他科室。\n", appoint_dept);
+            printf("\n[WARN] [%s] 当前暂无医生值班，请重新选择其他科室。\n", appoint_dept);
             goto input_dept;
         }
         // 第三步：显示医生列表
@@ -4454,43 +4521,39 @@ static void handle_patient_self_appointment_register()
     
     // 预约时段输入环节
     input_slot:
-    // 夜间模式下自动设置为晚上
+    // 夜间模式下仍可选择上午/下午
     if (is_night_shift()) {
-        strcpy(appointment_slot, "晚上");
-        printf("当前为夜间模式，自动设置预约时段为: %s\n", appointment_slot);
-    } else {
-        printf("\n请选择预约时段：\n");
-        printf("  [1] 上午\n");
-        printf("  [2] 下午\n");
-        printf("  [3] 晚上\n");
-        printf("请输入选项编号：");
-        
-        char slot_choice[MAX_NAME_LEN];
-        get_safe_string("", slot_choice, MAX_NAME_LEN);
-        
-        if (strcmp(slot_choice, "Q") == 0 || strcmp(slot_choice, "q") == 0)
-        {
-            printf("[WARN] 已取消本次预约登记。\n");
-            return;
-        }
-        if (strcmp(slot_choice, "B") == 0 || strcmp(slot_choice, "b") == 0)
-            goto input_date;
-        
-        // 选项校验
-        if (strlen(slot_choice) != 1 || slot_choice[0] < '1' || slot_choice[0] > '3')
-        {
-            printf("\n[WARN] 预约时段输入无效，请输入 1、2 或 3。\n\n");
-            goto input_slot;
-        }
-        
-        // 映射选项到时段
-        switch (slot_choice[0]) {
-            case '1': strcpy(appointment_slot, "上午"); break;
-            case '2': strcpy(appointment_slot, "下午"); break;
-            case '3': strcpy(appointment_slot, "晚上"); break;
-        }
-        printf("您选择的是：%s\n", appointment_slot);
+        printf("当前为夜间模式，请注意夜间就诊安排。\n");
     }
+    printf("\n请选择预约时段：\n");
+    printf("  [1] 上午\n");
+    printf("  [2] 下午\n");
+    printf("请输入选项编号：");
+
+    char slot_choice[MAX_NAME_LEN];
+    get_safe_string("", slot_choice, MAX_NAME_LEN);
+
+    if (strcmp(slot_choice, "Q") == 0 || strcmp(slot_choice, "q") == 0)
+    {
+        printf("[WARN] 已取消本次预约登记。\n");
+        return;
+    }
+    if (strcmp(slot_choice, "B") == 0 || strcmp(slot_choice, "b") == 0)
+        goto input_date;
+
+    // 选项校验
+    if (strlen(slot_choice) != 1 || slot_choice[0] < '1' || slot_choice[0] > '2')
+    {
+        printf("\n[WARN] 预约时段输入无效，请输入 1 或 2。\n\n");
+        goto input_slot;
+    }
+
+    // 映射选项到时段
+    switch (slot_choice[0]) {
+        case '1': strcpy(appointment_slot, "上午"); break;
+        case '2': strcpy(appointment_slot, "下午"); break;
+    }
+    printf("您选择的是：%s\n", appointment_slot);
 
     // ====== 预约日期+时段联合校验 ======
     {
@@ -4548,7 +4611,7 @@ static void handle_patient_self_appointment_register()
         // 第二步：检查是否有值班医生
         if (!has_on_duty_doctor_in_department(appoint_dept))
         {
-            printf("\n[WARN] 【%s】当前暂无医生值班，请重新选择其他科室。\n", appoint_dept);
+            printf("\n[WARN] [%s] 当前暂无医生值班，请重新选择其他科室。\n", appoint_dept);
             goto input_dept;
         }
         // 第三步：显示医生列表
@@ -4635,7 +4698,7 @@ static void handle_patient_self_appointment_register()
     {
         if (is_current_emergency == 1)
         {
-            printf("\n[ALERT] 【绿色通道启动】生命至上！已为您开启\"先诊疗后付费\"特权！\n");
+            printf("\n[ALERT] [绿色通道启动] 生命至上！已为您开启\"先诊疗后付费\"特权！\n");
             patient->balance -= reg_fee;
             if (patient->balance < 0)
             {
@@ -5034,8 +5097,7 @@ static void handle_patient_self_first_visit()
     while (1)
     {
         char symptom_temp[MAX_SYMPTOM_LEN];
-        printf("请输入您的症状描述（可选）: ");
-        get_safe_string(symptom_temp, symptom_temp, MAX_SYMPTOM_LEN);
+        get_safe_string("请输入您的症状描述（可选）: ", symptom_temp, MAX_SYMPTOM_LEN);
         
         // 检查是否退出
         if (strcmp(symptom_temp, "00") == 0)
@@ -5296,7 +5358,7 @@ static void handle_patient_self_registration()
     }
     
     // 医生输入环节（急诊也保留选择权）
-    printf("\n【当前步骤：填写意向医生编号】\n");
+    printf("\n[当前步骤：填写意向医生编号]\n");
     get_safe_string("请输入意向医生编号（可留空，直接回车表示由值班医生接诊）：", appoint_doctor, MAX_NAME_LEN);
     if (strcmp(appoint_doctor, "Q") == 0 || strcmp(appoint_doctor, "q") == 0)
     {
@@ -5367,7 +5429,7 @@ static void handle_patient_self_registration()
     {
         if (patient->is_emergency == 1)
         {
-            printf("\n[ALERT] 【绿色通道启动】生命至上！已为您开启\"先诊疗后付费\"特权！\n");
+            printf("\n[ALERT] [绿色通道启动] 生命至上！已为您开启\"先诊疗后付费\"特权！\n");
             patient->balance -= reg_fee;
             if (patient->balance < 0)
             {
@@ -6301,7 +6363,7 @@ static void quick_register_menu()
                         if (curr->is_blacklisted == 1 || curr->is_blacklisted == 2)
                         {
                             count++;
-                            printf("【黑名单患者 %d】\n", count);
+                            printf("[黑名单患者 %d]\n", count);
                             printf("--------------------------------------------------\n");
                             printf("患者编号: %s\n", curr->id);
                             printf("患者姓名: %s\n", curr->name);
@@ -6477,8 +6539,8 @@ static void patient_self_service_menu()
                 PatientNode* patient = find_patient_by_id_card(id_card);
                 if (patient == NULL || strcmp(patient->id, patient_id) != 0)
                 {
-                    printf("\n================ 查询自己的预约 ================\n");
-                    printf("提示：输入 B 返回上一步，输入 Q 取消本次操作\n\n");
+                    printf("\n[ERROR] 身份核验失败！患者编号与身份证号不匹配\n");
+                    printf("请重新输入。\n\n");
                     
                     char local_patient_id[MAX_ID_LEN];
                     char local_id_card[MAX_ID_LEN];
@@ -6577,6 +6639,14 @@ static void patient_self_service_menu()
                     
                     printf("\n身份核验成功！欢迎，%s\n", patient->name);
                     query_appointments_by_patient_id(local_patient_id);
+                    printf("按任意键继续...");
+                    get_single_char("");
+                }
+                else
+                {
+                    // 首次验证成功，直接查询预约
+                    printf("\n身份核验成功！欢迎，%s\n", patient->name);
+                    query_appointments_by_patient_id(patient_id);
                     printf("按任意键继续...");
                     get_single_char("");
                 }
@@ -6771,124 +6841,30 @@ static void patient_self_service_menu()
                 printf("\n身份核验成功！欢迎，%s\n", check_patient->name);
                 printf("\n================ 检查报告列表 ================\n");
                 
+                // 统计并显示患者的检查记录
+                int check_count = 0;
                 CheckRecordNode* curr = g_check_record_list->next;
                 while (curr != NULL)
                 {
                     if (strcmp(curr->patient_id, patient_id) == 0)
                     {
-                        printf("[WARN] 操作取消！\n");
-                        break;
+                        check_count++;
+                        printf("\n[检查报告 %d]\n", check_count);
+                        printf("检查项目：%s\n", curr->item_name);
+                        printf("检查科室：%s\n", curr->dept);
+                        printf("检查时间：%s\n", curr->check_time[0] != '\0' ? curr->check_time : "待安排");
+                        printf("检查状态：%s\n", curr->is_completed ? "已完成" : "待检查");
+                        printf("检查结果：%s\n", curr->result);
+                        printf("----------------------------------------\n");
                     }
-                    if (strcmp(local_patient_id, "B") == 0 || strcmp(local_patient_id, "b") == 0)
-                    {
-                        printf("已返回上一步。\n");
-                        break;
-                    }
-                    // 患者编号校验
-                    while (1)
-                    {
-                        if (strcmp(local_patient_id, "Q") == 0 || strcmp(local_patient_id, "q") == 0)
-                        {
-                            printf("[WARN] 操作取消！\n");
-                            break;
-                        }
-                        if (strcmp(local_patient_id, "B") == 0 || strcmp(local_patient_id, "b") == 0)
-                        {
-                            printf("已返回上一步。\n");
-                            break;
-                        }
-                        if (strlen(local_patient_id) == 0)
-                        {
-                            printf("[WARN] 患者编号不能为空，请重新输入。\n");
-                            get_safe_string("", local_patient_id, MAX_ID_LEN);
-                            continue;
-                        }
-                        if (find_patient_by_id(g_patient_list, local_patient_id) == NULL)
-                        {
-                            printf("[WARN] 未找到该患者，请重新输入。\n");
-                            get_safe_string("", local_patient_id, MAX_ID_LEN);
-                            continue;
-                        }
-                        break;
-                    }
-                    if (strcmp(local_patient_id, "Q") == 0 || strcmp(local_patient_id, "q") == 0 ||
-                        strcmp(local_patient_id, "B") == 0 || strcmp(local_patient_id, "b") == 0)
-                        break;
-                    
-                    // 身份证号输入环节
-                    get_safe_string("请输入身份证号：", local_id_card, MAX_ID_LEN);
-                    if (strcmp(local_id_card, "Q") == 0 || strcmp(local_id_card, "q") == 0)
-                    {
-                        printf("[WARN] 操作取消！\n");
-                        break;
-                    }
-                    if (strcmp(local_id_card, "B") == 0 || strcmp(local_id_card, "b") == 0)
-                        goto input_check_patient_id;
-                    // 身份证号校验
-                    while (1)
-                    {
-                        if (strcmp(local_id_card, "Q") == 0 || strcmp(local_id_card, "q") == 0)
-                        {
-                            printf("[WARN] 操作取消！\n");
-                            break;
-                        }
-                        if (strcmp(local_id_card, "B") == 0 || strcmp(local_id_card, "b") == 0)
-                            goto input_check_patient_id;
-                        if (strlen(local_id_card) == 0)
-                        {
-                            printf("[WARN] 身份证号不能为空，请重新输入。\n");
-                            get_safe_string("", local_id_card, MAX_ID_LEN);
-                            continue;
-                        }
-                        if (!validate_id_card(local_id_card))
-                        {
-                            printf("[WARN] 身份证号格式不合法，请重新输入。\n");
-                            get_safe_string("", local_id_card, MAX_ID_LEN);
-                            continue;
-                        }
-                        break;
-                    }
-                    if (strcmp(local_id_card, "Q") == 0 || strcmp(local_id_card, "q") == 0 ||
-                        strcmp(local_id_card, "B") == 0 || strcmp(local_id_card, "b") == 0)
-                        break;
-                    
-                    // 身份核验
-                    PatientNode* check_patient = find_patient_by_id_card(local_id_card);
-                    if (check_patient == NULL || strcmp(check_patient->id, local_patient_id) != 0)
-                    {
-                        printf("\n[ERROR] 身份核验失败！患者编号与身份证号不匹配\n");
-                        printf("请重新输入。\n");
-                        goto input_check_patient_id;
-                    }
-                    
-                    printf("\n身份核验成功！欢迎，%s\n", check_patient->name);
-                    printf("\n================ 检查报告列表 ================\n");
-                    
-                    // 统计并显示患者的检查记录
-                    int check_count = 0;
-                    CheckRecordNode* curr = g_check_record_list->next;
-                    while (curr != NULL)
-                    {
-                        if (strcmp(curr->patient_id, local_patient_id) == 0)
-                        {
-                            check_count++;
-                            printf("\n【检查报告 %d】\n", check_count);
-                            printf("检查项目：%s\n", curr->item_name);
-                            printf("检查科室：%s\n", curr->dept);
-                            printf("检查时间：%s\n", curr->check_time[0] != '\0' ? curr->check_time : "待安排");
-                            printf("检查状态：%s\n", curr->is_completed ? "已完成" : "待检查");
-                            printf("检查结果：%s\n", curr->result);
-                            printf("----------------------------------------\n");
-                        }
-                        curr = curr->next;
-                    }
-                    
-                    if (check_count == 0)
-                    {
-                        printf("暂无检查记录\n");
-                    }
-                    system("pause");
+                    curr = curr->next;
                 }
+                
+                if (check_count == 0)
+                {
+                    printf("暂无检查记录\n");
+                }
+                system("pause");
                 break;
             case 9:
                 printf("\n提示：输入 '0' 可以回退上一步，输入 '00' 可以退出操作\n");

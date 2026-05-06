@@ -163,7 +163,7 @@ int show_cancelable_appointments_for_patient(const char* patient_id)
         if (strcmp(curr->patient_id, patient_id) == 0 && is_appointment_cancelable(curr))
         {
             count++;
-            printf("\n【预约记录 %d】\n", count);
+            printf("\n[预约记录 %d]\n", count);
             
             const char* doctor_name = "";
             const char* doctor_dept = "";
@@ -365,7 +365,7 @@ int display_doctors_by_dept(const char* dept_name)
     // 第二步：计算总宽度并打印表格
     int total_width = id_width + name_width + gender_width + queue_width + duty_width;
     
-    printf("\n[HIS] 【%s】科室医生列表\n", dept_name);
+    printf("\n[HIS] [%s] 科室医生列表\n", dept_name);
     for (int i = 0; i < total_width; i++) printf("-");
     printf("\n");
     
@@ -617,12 +617,9 @@ AppointmentNode* register_appointment(
     }
     
     if (strcmp(appointment_slot, "上午") != 0 && strcmp(appointment_slot, "下午") != 0 &&
-        strcmp(appointment_slot, "晚上") != 0 && strcmp(appointment_slot, "上午时段") != 0 &&
-        strcmp(appointment_slot, "下午时段") != 0 && strcmp(appointment_slot, "晚上时段") != 0 &&
-        strcmp(appointment_slot, "上午 8:00-12:00") != 0 && strcmp(appointment_slot, "下午 14:00-18:00") != 0 &&
-        strcmp(appointment_slot, "晚上 18:00-22:00") != 0)
+        strcmp(appointment_slot, "上午 8:00-12:00") != 0 && strcmp(appointment_slot, "下午 14:00-18:00") != 0)
     {
-        printf("[WARN] 预约时段非法，系统只支持：上午/下午/晚上 或带具体时间的时段格式！\n");
+        printf("[WARN] 预约时段非法，系统只支持：上午/下午！\n");
         return NULL;
     }
     
@@ -768,12 +765,9 @@ AppointmentNode* create_walk_in_appointment_record(
         return NULL;
     }
     if (strcmp(appointment_slot, "上午") != 0 && strcmp(appointment_slot, "下午") != 0 &&
-        strcmp(appointment_slot, "晚上") != 0 && strcmp(appointment_slot, "上午时段") != 0 &&
-        strcmp(appointment_slot, "下午时段") != 0 && strcmp(appointment_slot, "晚上时段") != 0 &&
-        strcmp(appointment_slot, "上午 8:00-12:00") != 0 && strcmp(appointment_slot, "下午 14:00-18:00") != 0 &&
-        strcmp(appointment_slot, "晚上 18:00-22:00") != 0)
+        strcmp(appointment_slot, "上午 8:00-12:00") != 0 && strcmp(appointment_slot, "下午 14:00-18:00") != 0)
     {
-        printf("[WARN] 预约时段非法，系统只支持：上午/下午/晚上 或带具体时间的时段格式！\n");
+        printf("[WARN] 预约时段非法，系统只支持：上午/下午！\n");
         return NULL;
     }
     AppointmentNode* curr_check = g_appointment_list->next;

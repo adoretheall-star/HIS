@@ -1975,12 +1975,12 @@ renderers.patient_dashboard=function(main){
 renderers.my_appointments=function(main){
   if(!g_user||g_user.role!==ROLES.PATIENT){showPage('login');return;}
   var apts=AA().filter(function(a){return a.patientId===g_user.username;});
-  main.innerHTML='<h2 class="page-title">我的预约</h2>'+makeTable(coldef(['预约编号','科室','医生','日期','时段','状态'],['appointment_id','department','doctor_name','appointment_date','appointment_slot','appointment_status']),apts);
+  main.innerHTML='<h2 class="page-title">我的预约</h2>'+makeTable(coldef(['预约编号','科室','医生','日期','时段','状态'],['id','dept','doctorName','apptDate','apptSlot','status']),apts);
 };
 renderers.my_records=function(main){
   if(!g_user||g_user.role!==ROLES.PATIENT){showPage('login');return;}
-  var records=AC().filter(function(r){return r.patient_id===g_user.username;});
-  main.innerHTML='<h2 class="page-title">就诊记录</h2>'+makeTable(coldef(['记录编号','接诊时间','诊断','医嘱'],['record_id','consult_time','diagnosis_text','treatment_advice']),records);
+  var records=AC().filter(function(r){return r.patientId===g_user.username;});
+  main.innerHTML='<h2 class="page-title">就诊记录</h2>'+makeTable(coldef(['记录编号','接诊时间','诊断','医嘱'],['recordId','time','diagnosis','advice']),records);
 };
 renderers.my_check_reports=function(main){
   if(!g_user||g_user.role!==ROLES.PATIENT){showPage('login');return;}

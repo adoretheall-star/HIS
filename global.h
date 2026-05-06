@@ -351,6 +351,7 @@ extern ComplaintNode* g_complaint_list;      // 投诉工单链表
 extern LogNode* g_log_list;
 extern InpatientRecord* g_inpatient_list;
 extern RecycleNode* g_recycle_list;           // 回收站链表
+extern int g_demo_mode;                      // 演示模式：0=真实时间 1=强制夜间 2=强制白天
 
 // ==========================================
 // 7. 功能：实现删除节点(Delete)
