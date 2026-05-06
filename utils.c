@@ -155,13 +155,11 @@ void get_safe_string(const char* prompt, char* buffer, int max_len)
     }
 }
 
-// 4. 获取密码输入（支持Tab切换显示/隐藏，星号掩码）
 void get_password_with_toggle(const char* prompt, char* buffer, int max_len)
 {
     int index = 0;
-    int show_password = 0;  // 0=隐藏，1=显示
+    int show_password = 0;
     int ch;
-    int i;
 
     if (buffer == NULL || max_len <= 0)
     {
@@ -173,21 +171,34 @@ void get_password_with_toggle(const char* prompt, char* buffer, int max_len)
     if (prompt != NULL)
     {
         printf("%s", prompt);
+        fflush(stdout);
     }
+
+#ifdef _WIN32
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    COORD input_pos = {0, 0};
+    int can_use_console_api = 0;
+
+    if (hOut != INVALID_HANDLE_VALUE && GetConsoleScreenBufferInfo(hOut, &csbi))
+    {
+        input_pos = csbi.dwCursorPosition;
+        can_use_console_api = 1;
+    }
+#endif
 
     while (1)
     {
         ch = _getch();
 
-        // Enter 键：结束输入
         if (ch == '\r' || ch == '\n')
         {
             buffer[index] = '\0';
             printf("\n");
+            fflush(stdout);
             return;
         }
 
-        // Backspace 键：删除一个字符
         if (ch == 8 || ch == 127)
         {
             if (index > 0)
@@ -196,12 +207,10 @@ void get_password_with_toggle(const char* prompt, char* buffer, int max_len)
                 buffer[index] = '\0';
             }
         }
-        // Tab 键：切换显示/隐藏
         else if (ch == 9)
         {
             show_password = !show_password;
         }
-        // 普通可打印字符
         else if (ch >= 32 && ch <= 126)
         {
             if (index < max_len - 1)
@@ -212,51 +221,60 @@ void get_password_with_toggle(const char* prompt, char* buffer, int max_len)
         }
         else
         {
-            // 其他控制键直接忽略
             continue;
         }
 
-        // 重绘当前输入行
-        printf("\r");
-
-        if (prompt != NULL)
+#ifdef _WIN32
+        if (can_use_console_api)
         {
-            printf("%s", prompt);
-        }
+            DWORD written = 0;
 
-        if (show_password)
-        {
-            printf("%s", buffer);
+            GetConsoleScreenBufferInfo(hOut, &csbi);
+
+            SetConsoleCursorPosition(hOut, input_pos);
+
+            FillConsoleOutputCharacterA(
+                hOut,
+                ' ',
+                csbi.dwSize.X - input_pos.X - 1,
+                input_pos,
+                &written
+            );
+
+            SetConsoleCursorPosition(hOut, input_pos);
+
+            if (show_password)
+            {
+                printf("%s", buffer);
+            }
+            else
+            {
+                for (int i = 0; i < index; i++)
+                {
+                    putchar('*');
+                }
+            }
+
+            fflush(stdout);
         }
         else
+#endif
         {
-            for (i = 0; i < index; i++)
+            printf("\n%s", prompt ? prompt : "");
+
+            if (show_password)
             {
-                putchar('*');
+                printf("%s", buffer);
             }
-        }
-
-        // 清理行尾残留字符
-        printf("                    ");
-
-        // 再回到正确位置重新绘制一次，避免残留
-        printf("\r");
-
-        if (prompt != NULL)
-        {
-            printf("%s", prompt);
-        }
-
-        if (show_password)
-        {
-            printf("%s", buffer);
-        }
-        else
-        {
-            for (i = 0; i < index; i++)
+            else
             {
-                putchar('*');
+                for (int i = 0; i < index; i++)
+                {
+                    putchar('*');
+                }
             }
+
+            fflush(stdout);
         }
     }
 }
