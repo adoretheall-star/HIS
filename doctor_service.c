@@ -1,4 +1,4 @@
-// ==========================================
+﻿// ==========================================
 // 文件名: doctor_service.c
 // 作用: 医生接诊相关业务层实现
 // ==========================================
@@ -1008,7 +1008,7 @@ void doctor_view_processed_patient_detail(const char* doctor_id, const char* pat
         printf("最近处理意见：暂无\n");
     
     // 最近一次预约信息
-    printf("\n【最近一次预约信息】\n");
+    printf("\n[最近一次预约信息]\n");
     if (latest_appointment != NULL)
     {
         printf("预约编号：%s\n", latest_appointment->appointment_id);
@@ -1341,7 +1341,7 @@ void doctor_view_patient_overview(const char* doctor_id, const char* patient_id)
     }
     
     // 最近一次预约信息
-    printf("\n【最近一次预约信息】\n");
+    printf("\n[最近一次预约信息]\n");
     if (latest_appointment != NULL)
     {
         printf("预约编号：%s\n", latest_appointment->appointment_id);

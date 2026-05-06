@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // 文件名: patient_service.c
 // 作用: 患者相关业务服务层 / 患者数据服务层实现
 // 描述: 实现患者信息管理的核心业务逻辑，被护士端和患者端共同复用
@@ -248,8 +248,8 @@ static const char* get_display_text(const char* text)
         return "暂无";
     }
 
-    return text;
-}
+
+#include <stdlib.h>
 
 /**
  * @brief 获取汉字的拼音首字母
@@ -265,80 +265,9 @@ static int utf8_char_len(unsigned char first_byte)
     return 4;
 }
 
-static char get_chinese_pinyin_initial_utf8(const char* ch, int len)
-{
-    if (len < 3) return 0;
 
-    if (memcmp(ch, "\xE5\xBC\xA0", 3) == 0) return 'Z';
-    if (memcmp(ch, "\xE7\x8E\x8B", 3) == 0) return 'W';
-    if (memcmp(ch, "\xE6\x9D\x8E", 3) == 0) return 'L';
-    if (memcmp(ch, "\xE5\x88\x98", 3) == 0) return 'L';
-    if (memcmp(ch, "\xE9\x99\x88", 3) == 0) return 'C';
-    if (memcmp(ch, "\xE6\x9D\xA8", 3) == 0) return 'Y';
-    if (memcmp(ch, "\xE9\xBB\x84", 3) == 0) return 'H';
-    if (memcmp(ch, "\xE8\xB5\xB5", 3) == 0) return 'Z';
-    if (memcmp(ch, "\xE5\x91\xA8", 3) == 0) return 'Z';
-    if (memcmp(ch, "\xE5\x90\xB4", 3) == 0) return 'W';
-    if (memcmp(ch, "\xE9\x83\x91", 3) == 0) return 'Z';
-    if (memcmp(ch, "\xE5\x86\xAF", 3) == 0) return 'F';
-    if (memcmp(ch, "\xE8\x92\x8B", 3) == 0) return 'J';
-    if (memcmp(ch, "\xE6\xB2\x88", 3) == 0) return 'S';
-    if (memcmp(ch, "\xE9\x9F\xA9", 3) == 0) return 'H';
-    if (memcmp(ch, "\xE6\x9C\xB1", 3) == 0) return 'Z';
-    if (memcmp(ch, "\xE7\xA7\xA6", 3) == 0) return 'Q';
-    if (memcmp(ch, "\xE8\xAE\xB8", 3) == 0) return 'X';
-    if (memcmp(ch, "\xE4\xBD\x95", 3) == 0) return 'H';
-    if (memcmp(ch, "\xE5\x90\x95", 3) == 0) return 'L';
-    if (memcmp(ch, "\xE6\x96\xBD", 3) == 0) return 'S';
-    if (memcmp(ch, "\xE6\x96\x87", 3) == 0) return 'W';
-    if (memcmp(ch, "\xE5\xAE\x8B", 3) == 0) return 'S';
-    if (memcmp(ch, "\xE5\x94\x90", 3) == 0) return 'T';
-    if (memcmp(ch, "\xE4\xBC\x9F", 3) == 0) return 'W';
-    if (memcmp(ch, "\xE5\xA8\x9C", 3) == 0) return 'N';
-    if (memcmp(ch, "\xE5\xBC\xBA", 3) == 0) return 'Q';
-    if (memcmp(ch, "\xE6\x95\x8F", 3) == 0) return 'M';
-    if (memcmp(ch, "\xE9\x9D\x99", 3) == 0) return 'J';
-    if (memcmp(ch, "\xE7\xA3\x8A", 3) == 0) return 'L';
-    if (memcmp(ch, "\xE5\x86\x9B", 3) == 0) return 'J';
-    if (memcmp(ch, "\xE6\xB4\x8B", 3) == 0) return 'Y';
-    if (memcmp(ch, "\xE5\x8B\x87", 3) == 0) return 'Y';
-    if (memcmp(ch, "\xE5\xBB\xBA", 3) == 0) return 'J';
-    if (memcmp(ch, "\xE5\x9B\xBD", 3) == 0) return 'G';
-    if (memcmp(ch, "\xE6\xAC\xA3", 3) == 0) return 'X';
-    if (memcmp(ch, "\xE6\x80\xA1", 3) == 0) return 'Y';
-    if (memcmp(ch, "\xE6\xB5\xA9", 3) == 0) return 'H';
-    if (memcmp(ch, "\xE7\x84\xB6", 3) == 0) return 'R';
-    if (memcmp(ch, "\xE9\x9B\xA8", 3) == 0) return 'Y';
-    if (memcmp(ch, "\xE6\xA1\x90", 3) == 0) return 'T';
-    if (memcmp(ch, "\xE5\xAD\x90", 3) == 0) return 'Z';
-    if (memcmp(ch, "\xE8\xBD\xA9", 3) == 0) return 'X';
-    if (memcmp(ch, "\xE6\xA2\x93", 3) == 0) return 'Z';
-    if (memcmp(ch, "\xE6\xB6\xB5", 3) == 0) return 'H';
-    if (memcmp(ch, "\xE8\xAF\x97", 3) == 0) return 'S';
-    if (memcmp(ch, "\xE6\xB3\xBD", 3) == 0) return 'Z';
-    if (memcmp(ch, "\xE5\xAE\x87", 3) == 0) return 'Y';
-    if (memcmp(ch, "\xE4\xBD\xB3", 3) == 0) return 'J';
-    if (memcmp(ch, "\xE7\x90\xAA", 3) == 0) return 'Q';
-    if (memcmp(ch, "\xE8\xB1\xAA", 3) == 0) return 'H';
-    if (memcmp(ch, "\xE4\xB8\x80", 3) == 0) return 'Y';
-    if (memcmp(ch, "\xE8\xAF\xBA", 3) == 0) return 'N';
-    if (memcmp(ch, "\xE8\x89\xBA", 3) == 0) return 'Y';
-    if (memcmp(ch, "\xE9\xA6\xA8", 3) == 0) return 'X';
-    if (memcmp(ch, "\xE6\x80\x9D", 3) == 0) return 'S';
-    if (memcmp(ch, "\xE8\xBF\x9C", 3) == 0) return 'Y';
-    if (memcmp(ch, "\xE8\xAF\xAD", 3) == 0) return 'Y';
-    if (memcmp(ch, "\xE8\x90\x8C", 3) == 0) return 'M';
-    if (memcmp(ch, "\xE8\x8A\xB3", 3) == 0) return 'F';
-    if (memcmp(ch, "\xE9\x80\x83", 3) == 0) return 'T';
-    if (memcmp(ch, "\xE5\x8D\x95", 3) == 0) return 'D';
-    if (memcmp(ch, "\xE7\x88\xBD", 3) == 0) return 'S';
-    if (memcmp(ch, "\xE7\xBA\xA6", 3) == 0) return 'Y';
-    if (memcmp(ch, "\xE5\x8D\xB3", 3) == 0) return 'J';
-    if (memcmp(ch, "\xE5\xB0\x86", 3) == 0) return 'J';
-    if (memcmp(ch, "\xE8\xA7\xA3", 3) == 0) return 'J';
-    if (memcmp(ch, "\xE7\xA6\x81", 3) == 0) return 'J';
-    return 0;
-}
+#include <string.h>
+
 
 static void name_to_pinyin(const char* name, char* pinyin, int max_len)
 {
@@ -374,6 +303,8 @@ static void name_to_pinyin(const char* name, char* pinyin, int max_len)
 }
 
 
+typedef struct {
+
 
 /**
  * @brief 根据患者编号获取患者节点（带错误检查）
@@ -407,8 +338,8 @@ static PatientNode* get_patient_by_id_checked(const char* patient_id, const char
         return NULL;
     }
 
-    return patient;
-}
+
+    const char* dept;    // �Ƽ�����
 
 /**
  * @brief 根据症状描述推荐科室（基于权重积分与一票否决算法）
@@ -1006,8 +937,6 @@ int query_basic_patient_record(const char* patient_id, const char* id_card)
         strlen(patient->treatment_advice) > 0 ? patient->treatment_advice : "暂无处理意见");
     printf("身份证号: %s\n", masked_id);
 
-    return 1;
-}
 
 /**
  * @brief 更新患者档案信息
@@ -1824,10 +1753,8 @@ int process_patient_payment(const char* patient_id)
         return 0;
     }
 
-    double total_amount = 0.0;
-    double actual_pay = 0.0;
-    double medicare_cover = 0.0;
-    int index = 1;
+
+    int max_no = 0;
 
     printf("\n================ 🏥 账单明细 ================\n");
 
@@ -1855,8 +1782,8 @@ int process_patient_payment(const char* patient_id)
                 }
             }
 
-            total_amount += item_total;
-            actual_pay += item_actual;
+
+
 
             printf("[%d] 药品: %s | 单价: %.2f | 数量: %d | 小计: %.2f | 医保后: %.2f\n",
                    index++, med->name, med->price, p_curr->quantity, item_total, item_actual);
@@ -1890,8 +1817,8 @@ int process_patient_payment(const char* patient_id)
                     }
                 }
 
-                total_amount += item_total;
-                actual_pay += item_actual;
+
+    if (new_id == NULL)
 
                 printf("[%d] 检查: %s | 单价: %.2f | 小计: %.2f | 医保后: %.2f\n",
                        index++, check_item->item_name, check_item->price, item_total, item_actual);
@@ -1900,7 +1827,8 @@ int process_patient_payment(const char* patient_id)
         cr_curr = cr_curr->next;
     }
 
-    medicare_cover = total_amount - actual_pay;
+
+    {
 
     printf("------------------------------------------\n");
     printf("总计金额: %.2f 元\n", total_amount);
@@ -1951,8 +1879,8 @@ int process_patient_payment(const char* patient_id)
         printf("📢 请移步至【药房】排队取药。\n");
     }
 
-    return 1;
-}
+
+
 
 // ==========================================
 // 患者满意度评价模块
@@ -2284,15 +2212,12 @@ int submit_new_complaint(const char* patient_id)
         return 0;
     }
 
-    insert_complaint_tail(g_complaint_list, new_complaint);
 
     printf("\n✅ 投诉工单提交成功！\n");
     printf("工单编号：%s\n", complaint_id);
     printf("提交时间：%s\n", submit_time);
     printf("我们会尽快处理您的投诉，感谢您的反馈！\n");
 
-    return 1;
-}
 
 // ==========================================
 // 患者就诊流程时间轴模块
@@ -2998,5 +2923,7 @@ int patient_recharge_balance(const char* patient_id, double amount)
     return 1;
 }
 
+
+/**
 
 
