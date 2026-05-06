@@ -7,31 +7,6 @@
 #include "global.h"
 #include "list_ops.h"
 
-// 生成下一个预约编�?
-static void generate_appointment_id(char* new_id)
-{
-    int max_no = 0;
-    AppointmentNode* curr = NULL;
-    if (new_id == NULL) return;
-    if (g_appointment_list != NULL)
-    {
-        curr = g_appointment_list->next;
-        while (curr != NULL)
-        {
-            if (strncmp(curr->appointment_id, "A-", 2) == 0)
-            {
-                int current_no = atoi(curr->appointment_id + 2);
-                if (current_no > max_no)
-                {
-                    max_no = current_no;
-                }
-            }
-            curr = curr->next;
-        }
-    }
-    snprintf(new_id, MAX_ID_LEN, "A-%03d", max_no + 1);
-}
-
 // 调试开关，默认关闭（设�?显示详细调试信息�?
 #define DATA_IO_DEBUG 0
 
@@ -149,7 +124,7 @@ int load_patient_list(PatientNode** head) {
         char id[MAX_ID_LEN], name[MAX_NAME_LEN], gender[8], id_card[MAX_ID_LEN];
         char symptom[MAX_SYMPTOM_LEN], target_dept[MAX_NAME_LEN], doctor_id[MAX_ID_LEN], card_id[MAX_NAME_LEN];
         char diagnosis_text[MAX_RECORD_LEN], treatment_advice[MAX_RECORD_LEN], prescription_str[2048];
-        int age, m_type, status, script_count;
+        int age, m_type, status;
         double balance;
         long missed_time_1, missed_time_2, missed_time_3, blacklist_expire, unpaid_time;
         int missed_count, is_blacklisted, is_emergency, call_count;
@@ -181,7 +156,7 @@ int load_patient_list(PatientNode** head) {
         strcpy(diagnosis_text, fields[12]);
         strcpy(treatment_advice, fields[13]);
         strcpy(prescription_str, fields[14]);
-        script_count = atoi(fields[15]);
+        (void)atoi(fields[15]);
         missed_time_1 = atol(fields[16]);
         missed_time_2 = atol(fields[17]);
         missed_time_3 = atol(fields[18]);
@@ -231,42 +206,6 @@ int load_patient_list(PatientNode** head) {
         }
 
         insert_patient_tail(*head, new_node);
-        
-        // 为导入的患者生成预约记�?
-        if (g_appointment_list != NULL && strlen(target_dept) > 0) {
-            char appointment_id[MAX_ID_LEN];
-            generate_appointment_id(appointment_id);
-            
-            // 随机分配现场号和预约号（50%概率�?
-            int is_walk_in = rand() % 2;
-            
-            // 获取当前日期
-            char current_date[MAX_NAME_LEN];
-            time_t now = time(NULL);
-            struct tm* tm_now = localtime(&now);
-            strftime(current_date, sizeof(current_date), "%Y-%m-%d", tm_now);
-            
-            // 随机分配上午或下�?
-            const char* slot = (rand() % 2 == 0) ? "上午" : "下午";
-            
-            // 创建预约记录
-            AppointmentNode* new_appointment = create_appointment_node(
-                appointment_id,
-                id,
-                current_date,
-                slot,
-                doctor_id,
-                target_dept,
-                CHECKED_IN
-            );
-            
-            if (new_appointment != NULL) {
-                new_appointment->is_walk_in = is_walk_in;
-                new_appointment->reg_fee = is_walk_in ? 10.0 : 30.0; // 现场�?0元，预约�?0�?
-                new_appointment->fee_paid = 1; // 假设已缴�?
-                insert_appointment_tail(g_appointment_list, new_appointment);
-            }
-        }
     }
     fclose(fp);
     return 1;
@@ -755,7 +694,7 @@ int load_check_item_list(CheckItemNode** head) {
         trim_newline(line);
         if (strlen(line) == 0) continue;
 
-        char item_id[MAX_ID_LEN], item_name[MAX_NAME_LEN], dept[MAX_NAME_LEN];
+        char item_id[MAX_ID_LEN], item_name[MAX_MED_NAME_LEN], dept[MAX_NAME_LEN];
         double price;
         int m_type;
 
@@ -1201,12 +1140,12 @@ int save_recycle_list(RecycleNode* head)
     }
 
     // 写入表头
-    fprintf(fp, "回收站编号|类型|原编号|名称|删除时间|操作人|原因|是否恢复|药品编号|商品名|别名|通用名|单价|库存|医保类型|有效期\n");
+    fprintf(fp, "回收站编号|类型|原编号|名称|删除时间|操作人|原因|是否恢复|备份数据\n");
 
     RecycleNode* curr = head->next;
     while (curr != NULL)
     {
-        fprintf(fp, "%s|%d|%s|%s|%s|%s|%s|%d|%s|%s|%s|%s|%.2f|%d|%d|%s\n",
+        fprintf(fp, "%s|%d|%s|%s|%s|%s|%s|%d|",
                 curr->recycle_id,
                 curr->type,
                 curr->source_id,
@@ -1214,15 +1153,56 @@ int save_recycle_list(RecycleNode* head)
                 curr->delete_time,
                 curr->deleted_by,
                 curr->reason,
-                curr->is_restored,
-                curr->medicine_backup.id,
-                curr->medicine_backup.name,
-                curr->medicine_backup.alias,
-                curr->medicine_backup.generic_name,
-                curr->medicine_backup.price,
-                curr->medicine_backup.stock,
-                curr->medicine_backup.m_type,
-                curr->medicine_backup.expiry_date);
+                curr->is_restored);
+
+        // 根据类型写入不同的备份数据
+        switch (curr->type)
+        {
+            case RECYCLE_MEDICINE:
+                fprintf(fp, "%s|%s|%s|%s|%.2f|%d|%d|%s\n",
+                        curr->medicine_backup.id,
+                        curr->medicine_backup.name,
+                        curr->medicine_backup.alias,
+                        curr->medicine_backup.generic_name,
+                        curr->medicine_backup.price,
+                        curr->medicine_backup.stock,
+                        curr->medicine_backup.m_type,
+                        curr->medicine_backup.expiry_date);
+                break;
+
+            case RECYCLE_CHECK_ITEM:
+                fprintf(fp, "%s|%s|%s|%.2f|%d\n",
+                        curr->check_item_backup.item_id,
+                        curr->check_item_backup.item_name,
+                        curr->check_item_backup.dept,
+                        curr->check_item_backup.price,
+                        curr->check_item_backup.m_type);
+                break;
+
+            case RECYCLE_WARD:
+                fprintf(fp, "%s|%s|%d|%s|%d|%s\n",
+                        curr->ward_backup.room_id,
+                        curr->ward_backup.bed_id,
+                        curr->ward_backup.ward_type,
+                        curr->ward_backup.dept,
+                        curr->ward_backup.is_occupied,
+                        curr->ward_backup.patient_id);
+                break;
+
+            case RECYCLE_ACCOUNT:
+                fprintf(fp, "%s|%s|%s|%s|%d|%d\n",
+                        curr->account_backup.username,
+                        curr->account_backup.password,
+                        curr->account_backup.real_name,
+                        curr->account_backup.gender,
+                        curr->account_backup.role,
+                        curr->account_backup.is_on_duty);
+                break;
+
+            default:
+                fprintf(fp, "\n");
+                break;
+        }
 
         curr = curr->next;
     }
@@ -1232,21 +1212,19 @@ int save_recycle_list(RecycleNode* head)
 }
 
 // -----------------------------------------------------------------------------
-// 加载回收站列�?
+// 加载回收站列表
 // -----------------------------------------------------------------------------
 int load_recycle_list(RecycleNode** head)
 {
     FILE* fp = fopen("data/recycle.txt", "r");
     if (fp == NULL)
     {
-        // 文件不存在，不报错，保持空链�?
         return 1;
     }
 
     char line[4096];
     int line_num = 0;
 
-    // 跳过表头
     if (fgets(line, sizeof(line), fp) == NULL)
     {
         fclose(fp);
@@ -1257,92 +1235,139 @@ int load_recycle_list(RecycleNode** head)
     {
         line_num++;
 
-        // 移除换行�?
         size_t len = strlen(line);
         if (len > 0 && line[len - 1] == '\n')
         {
             line[len - 1] = '\0';
         }
 
-        // �?| 分割字段
-        char* token;
-        char* rest = line;
-        int field_idx = 0;
-
-        char recycle_id[MAX_ID_LEN] = "";
-        int type = 0;
-        char source_id[MAX_ID_LEN] = "";
-        char source_name[MAX_NAME_LEN] = "";
-        char delete_time[20] = "";
-        char deleted_by[MAX_ID_LEN] = "";
-        char reason[MAX_RECORD_LEN] = "";
-        int is_restored = 0;
-        char med_id[MAX_ID_LEN] = "";
-        char med_name[MAX_NAME_LEN] = "";
-        char med_alias[MAX_NAME_LEN] = "";
-        char med_generic[MAX_NAME_LEN] = "";
-        double med_price = 0.0;
-        int med_stock = 0;
-        int med_type = 0;
-        char med_expiry[MAX_DATE_LEN] = "";
-
-        while ((token = strtok_s(rest, "|", &rest)) != NULL && field_idx < 16)
+        if (line[0] == '\0')
         {
-            switch (field_idx)
-            {
-                case 0: strncpy(recycle_id, token, MAX_ID_LEN - 1); break;
-                case 1: type = atoi(token); break;
-                case 2: strncpy(source_id, token, MAX_ID_LEN - 1); break;
-                case 3: strncpy(source_name, token, MAX_NAME_LEN - 1); break;
-                case 4: strncpy(delete_time, token, 19); break;
-                case 5: strncpy(deleted_by, token, MAX_ID_LEN - 1); break;
-                case 6: strncpy(reason, token, MAX_RECORD_LEN - 1); break;
-                case 7: is_restored = atoi(token); break;
-                case 8: strncpy(med_id, token, MAX_ID_LEN - 1); break;
-                case 9: strncpy(med_name, token, MAX_NAME_LEN - 1); break;
-                case 10: strncpy(med_alias, token, MAX_NAME_LEN - 1); break;
-                case 11: strncpy(med_generic, token, MAX_NAME_LEN - 1); break;
-                case 12: med_price = atof(token); break;
-                case 13: med_stock = atoi(token); break;
-                case 14: med_type = atoi(token); break;
-                case 15: strncpy(med_expiry, token, MAX_DATE_LEN - 1); break;
-            }
-            field_idx++;
+            continue;
         }
 
-        // 创建新节�?
+        char* fields[20] = { NULL };
+        int field_count = split_line_by_delimiter(line, '|', fields, 20);
+
+        if (field_count < 8)
+        {
+            continue;
+        }
+
+        int type = atoi(fields[1]);
+
+        if (strlen(fields[0]) == 0 || strlen(fields[2]) == 0)
+        {
+            continue;
+        }
+
         RecycleNode* new_node = (RecycleNode*)malloc(sizeof(RecycleNode));
         if (new_node == NULL)
         {
             continue;
         }
 
-        // 初始化节�?
-        strncpy(new_node->recycle_id, recycle_id, MAX_ID_LEN - 1);
-        new_node->type = type;
-        strncpy(new_node->source_id, source_id, MAX_ID_LEN - 1);
-        strncpy(new_node->source_name, source_name, MAX_NAME_LEN - 1);
-        strncpy(new_node->delete_time, delete_time, 19);
-        strncpy(new_node->deleted_by, deleted_by, MAX_ID_LEN - 1);
-        strncpy(new_node->reason, reason, MAX_RECORD_LEN - 1);
-        new_node->is_restored = is_restored;
+        memset(new_node, 0, sizeof(RecycleNode));
 
-        // 恢复药品备份信息
-        strncpy(new_node->medicine_backup.id, med_id, MAX_ID_LEN - 1);
-        strncpy(new_node->medicine_backup.name, med_name, MAX_NAME_LEN - 1);
-        strncpy(new_node->medicine_backup.alias, med_alias, MAX_NAME_LEN - 1);
-        strncpy(new_node->medicine_backup.generic_name, med_generic, MAX_NAME_LEN - 1);
-        new_node->medicine_backup.price = med_price;
-        new_node->medicine_backup.stock = med_stock;
-        new_node->medicine_backup.m_type = med_type;
-        strncpy(new_node->medicine_backup.expiry_date, med_expiry, MAX_DATE_LEN - 1);
-        new_node->medicine_backup.prev = NULL;
-        new_node->medicine_backup.next = NULL;
+        strncpy(new_node->recycle_id, fields[0], sizeof(new_node->recycle_id) - 1);
+        new_node->recycle_id[sizeof(new_node->recycle_id) - 1] = '\0';
+
+        new_node->type = type;
+
+        strncpy(new_node->source_id, fields[2], sizeof(new_node->source_id) - 1);
+        new_node->source_id[sizeof(new_node->source_id) - 1] = '\0';
+
+        strncpy(new_node->source_name, fields[3], sizeof(new_node->source_name) - 1);
+        new_node->source_name[sizeof(new_node->source_name) - 1] = '\0';
+
+        strncpy(new_node->delete_time, fields[4], sizeof(new_node->delete_time) - 1);
+        new_node->delete_time[sizeof(new_node->delete_time) - 1] = '\0';
+
+        strncpy(new_node->deleted_by, fields[5], sizeof(new_node->deleted_by) - 1);
+        new_node->deleted_by[sizeof(new_node->deleted_by) - 1] = '\0';
+
+        strncpy(new_node->reason, fields[6], sizeof(new_node->reason) - 1);
+        new_node->reason[sizeof(new_node->reason) - 1] = '\0';
+
+        new_node->is_restored = atoi(fields[7]);
+
+        switch (type)
+        {
+            case RECYCLE_MEDICINE:
+                if (field_count < 16) { free(new_node); continue; }
+                strncpy(new_node->medicine_backup.id, fields[8], sizeof(new_node->medicine_backup.id) - 1);
+                new_node->medicine_backup.id[sizeof(new_node->medicine_backup.id) - 1] = '\0';
+                strncpy(new_node->medicine_backup.name, fields[9], sizeof(new_node->medicine_backup.name) - 1);
+                new_node->medicine_backup.name[sizeof(new_node->medicine_backup.name) - 1] = '\0';
+                strncpy(new_node->medicine_backup.alias, fields[10], sizeof(new_node->medicine_backup.alias) - 1);
+                new_node->medicine_backup.alias[sizeof(new_node->medicine_backup.alias) - 1] = '\0';
+                strncpy(new_node->medicine_backup.generic_name, fields[11], sizeof(new_node->medicine_backup.generic_name) - 1);
+                new_node->medicine_backup.generic_name[sizeof(new_node->medicine_backup.generic_name) - 1] = '\0';
+                new_node->medicine_backup.price = atof(fields[12]);
+                new_node->medicine_backup.stock = atoi(fields[13]);
+                new_node->medicine_backup.m_type = atoi(fields[14]);
+                strncpy(new_node->medicine_backup.expiry_date, fields[15], sizeof(new_node->medicine_backup.expiry_date) - 1);
+                new_node->medicine_backup.expiry_date[sizeof(new_node->medicine_backup.expiry_date) - 1] = '\0';
+                new_node->medicine_backup.prev = NULL;
+                new_node->medicine_backup.next = NULL;
+                break;
+
+            case RECYCLE_CHECK_ITEM:
+                if (field_count < 13) { free(new_node); continue; }
+                strncpy(new_node->check_item_backup.item_id, fields[8], sizeof(new_node->check_item_backup.item_id) - 1);
+                new_node->check_item_backup.item_id[sizeof(new_node->check_item_backup.item_id) - 1] = '\0';
+                strncpy(new_node->check_item_backup.item_name, fields[9], sizeof(new_node->check_item_backup.item_name) - 1);
+                new_node->check_item_backup.item_name[sizeof(new_node->check_item_backup.item_name) - 1] = '\0';
+                strncpy(new_node->check_item_backup.dept, fields[10], sizeof(new_node->check_item_backup.dept) - 1);
+                new_node->check_item_backup.dept[sizeof(new_node->check_item_backup.dept) - 1] = '\0';
+                new_node->check_item_backup.price = atof(fields[11]);
+                new_node->check_item_backup.m_type = atoi(fields[12]);
+                new_node->check_item_backup.prev = NULL;
+                new_node->check_item_backup.next = NULL;
+                break;
+
+            case RECYCLE_WARD:
+                if (field_count < 14) { free(new_node); continue; }
+                strncpy(new_node->ward_backup.room_id, fields[8], sizeof(new_node->ward_backup.room_id) - 1);
+                new_node->ward_backup.room_id[sizeof(new_node->ward_backup.room_id) - 1] = '\0';
+                strncpy(new_node->ward_backup.bed_id, fields[9], sizeof(new_node->ward_backup.bed_id) - 1);
+                new_node->ward_backup.bed_id[sizeof(new_node->ward_backup.bed_id) - 1] = '\0';
+                new_node->ward_backup.ward_type = atoi(fields[10]);
+                strncpy(new_node->ward_backup.dept, fields[11], sizeof(new_node->ward_backup.dept) - 1);
+                new_node->ward_backup.dept[sizeof(new_node->ward_backup.dept) - 1] = '\0';
+                new_node->ward_backup.is_occupied = atoi(fields[12]);
+                strncpy(new_node->ward_backup.patient_id, fields[13], sizeof(new_node->ward_backup.patient_id) - 1);
+                new_node->ward_backup.patient_id[sizeof(new_node->ward_backup.patient_id) - 1] = '\0';
+                new_node->ward_backup.prev = NULL;
+                new_node->ward_backup.next = NULL;
+                break;
+
+            case RECYCLE_ACCOUNT:
+                if (field_count < 14) { free(new_node); continue; }
+                strncpy(new_node->account_backup.username, fields[8], sizeof(new_node->account_backup.username) - 1);
+                new_node->account_backup.username[sizeof(new_node->account_backup.username) - 1] = '\0';
+                strncpy(new_node->account_backup.password, fields[9], sizeof(new_node->account_backup.password) - 1);
+                new_node->account_backup.password[sizeof(new_node->account_backup.password) - 1] = '\0';
+                strncpy(new_node->account_backup.real_name, fields[10], sizeof(new_node->account_backup.real_name) - 1);
+                new_node->account_backup.real_name[sizeof(new_node->account_backup.real_name) - 1] = '\0';
+                strncpy(new_node->account_backup.gender, fields[11], sizeof(new_node->account_backup.gender) - 1);
+                new_node->account_backup.gender[sizeof(new_node->account_backup.gender) - 1] = '\0';
+                new_node->account_backup.role = atoi(fields[12]);
+                new_node->account_backup.is_on_duty = atoi(fields[13]);
+                new_node->account_backup.error_count = 0;
+                new_node->account_backup.lock_time = 0;
+                new_node->account_backup.prev = NULL;
+                new_node->account_backup.next = NULL;
+                break;
+
+            default:
+                free(new_node);
+                continue;
+        }
 
         new_node->prev = NULL;
         new_node->next = NULL;
 
-        // 插入链表尾部
         RecycleNode* tail = *head;
         while (tail->next != NULL)
         {

@@ -73,13 +73,13 @@ static int validate_appointment_target(const char* appoint_doctor, const char* a
 
     if (!has_doctor && !has_dept)
     {
-        printf("⚠️ 预约医生和预约科室至少要填写一个！\n");
+        printf("[WARN] 预约医生和预约科室至少要填写一个！\n");
         return 0;
     }
 
     if (g_doctor_list == NULL)
     {
-        printf("⚠️ 医生链表尚未初始化，无法校验预约目标！\n");
+        printf("[WARN] 医生链表尚未初始化，无法校验预约目标！\n");
         return 0;
     }
 
@@ -88,19 +88,19 @@ static int validate_appointment_target(const char* appoint_doctor, const char* a
         doctor = find_doctor_by_id(g_doctor_list, appoint_doctor);
         if (doctor == NULL)
         {
-            printf("⚠️ 指定医生不存在，预约登记失败！\n");
+            printf("[WARN] 指定医生不存在，预约登记失败！\n");
             return 0;
         }
 
         if (doctor->is_on_duty != 1)
         {
-            printf("⚠️ 指定医生当前未值班，预约登记失败！\n");
+            printf("[WARN] 指定医生当前未值班，预约登记失败！\n");
             return 0;
         }
 
         if (has_dept && strcmp(doctor->department, appoint_dept) != 0)
         {
-            printf("⚠️ 指定医生与预约科室不匹配，预约登记失败！\n");
+            printf("[WARN] 指定医生与预约科室不匹配，预约登记失败！\n");
             return 0;
         }
 
@@ -117,7 +117,7 @@ static int validate_appointment_target(const char* appoint_doctor, const char* a
         curr = curr->next;
     }
 
-    printf("⚠️ 当前预约科室暂无可用医生，预约登记失败！\n");
+    printf("[WARN] 当前预约科室暂无可用医生，预约登记失败！\n");
     return 0;
 }
 // ==========================================
@@ -311,13 +311,13 @@ int display_doctors_by_dept(const char* dept_name)
     
     if (g_doctor_list == NULL)
     {
-        printf("⚠️ 医生链表尚未初始化！\n");
+        printf("[WARN] 医生链表尚未初始化！\n");
         return 0;
     }
     
     if (dept_name == NULL || strlen(dept_name) == 0)
     {
-        printf("⚠️ 科室名称不能为空！\n");
+        printf("[WARN] 科室名称不能为空！\n");
         return 0;
     }
     
@@ -365,7 +365,7 @@ int display_doctors_by_dept(const char* dept_name)
     // 第二步：计算总宽度并打印表格
     int total_width = id_width + name_width + gender_width + queue_width + duty_width;
     
-    printf("\n🏥 【%s】科室医生列表\n", dept_name);
+    printf("\n[HIS] 【%s】科室医生列表\n", dept_name);
     for (int i = 0; i < total_width; i++) printf("-");
     printf("\n");
     
@@ -404,7 +404,7 @@ int display_doctors_by_dept(const char* dept_name)
     printf("\n");
     
     // 打印统计信息
-    printf("📝 该科室共有 %d 位医生，其中当前值班医生 %d 位\n", total_count, duty_count);
+    printf("[NOTE] 该科室共有 %d 位医生，其中当前值班医生 %d 位\n", total_count, duty_count);
     
     return duty_count;
 }
@@ -484,40 +484,7 @@ int check_duplicate_appointment_early(
 // ==========================================
 int can_patient_register_or_appoint(PatientNode* patient)
 {
-    if (patient == NULL)
-    {
-        return 0;
-    }
-    
-    // 检查1：黑名单状态
-    if (patient->is_blacklisted != 0)
-    {
-        printf("⚠️ 该患者当前处于黑名单状态，禁止预约/挂号，请先处理异常记录。\n");
-        return 0;
-    }
-    
-    // 检查2：急诊欠费
-    if (patient->emergency_debt > 0)
-    {
-        printf("⚠️ 该患者存在急诊欠费 %.2f 元，禁止预约/挂号，请先补缴欠费。\n", patient->emergency_debt);
-        return 0;
-    }
-    
-    // 检查3：未完成的就诊流程
-    if (patient->status == STATUS_PENDING ||
-        patient->status == STATUS_EXAMINING ||
-        patient->status == STATUS_RECHECK_PENDING ||
-        patient->status == STATUS_UNPAID ||
-        patient->status == STATUS_WAIT_MED ||
-        patient->status == STATUS_NEED_HOSPITALIZE ||
-        patient->status == STATUS_HOSPITALIZED)
-    {
-        printf("⚠️ 该患者当前仍有未完成就诊流程，不能重复预约/挂号。\n");
-        printf("当前状态：%s\n", get_patient_status_text(patient->status));
-        return 0;
-    }
-    
-    return 1;
+    return can_patient_make_appointment(patient, patient ? patient->symptom : NULL, NULL, NULL);
 }
 
 // 预约登记
@@ -535,18 +502,18 @@ AppointmentNode* register_appointment(
     int has_dept = 0;
     if (g_patient_list == NULL || g_appointment_list == NULL)
     {
-        printf("⚠️ 基础链表尚未初始化，无法登记预约！\n");
+        printf("[WARN] 基础链表尚未初始化，无法登记预约！\n");
         return NULL;
     }
     if (patient_id == NULL || strlen(patient_id) == 0)
     {
-        printf("⚠️ 患者编号不能为空！\n");
+        printf("[WARN] 患者编号不能为空！\n");
         return NULL;
     }
     patient = find_patient_by_id(g_patient_list, patient_id);
     if (patient == NULL)
     {
-        printf("⚠️ 未找到对应患者，预约登记失败！\n");
+        printf("[WARN] 未找到对应患者，预约登记失败！\n");
         return NULL;
     }
     
@@ -562,10 +529,10 @@ AppointmentNode* register_appointment(
         // 如果是急诊，跳过所有黑名单拦截
         if (patient->is_blacklisted != 0)
         {
-            printf("🚨 [生命通道] 发现黑名单人员突发危重急症，已强制放行并报备相关部门！\n");
+            printf("[ALERT] [生命通道] 发现黑名单人员突发危重急症，已强制放行并报备相关部门！\n");
             // 添加急诊特权穿透预警
             char alert_msg[256];
-            snprintf(alert_msg, sizeof(alert_msg), "🚨 急诊强制放行：患者 %s（黑名单人员）突发危重急症，已强制放行，请相关部门跟进！", patient->name);
+            snprintf(alert_msg, sizeof(alert_msg), "[ALERT] 急诊强制放行：患者 %s（黑名单人员）突发危重急症，已强制放行，请相关部门跟进！", patient->name);
             push_system_alert(alert_msg);
         }
     }
@@ -596,7 +563,7 @@ AppointmentNode* register_appointment(
                 patient->missed_time_3 = 0;
                 patient->missed_count = 0;
                 patient->blacklist_expire = 0;
-                printf("✅ 该患者的90天惩罚期已过，已自动解禁！\n");
+                printf("[OK] 该患者的90天惩罚期已过，已自动解禁！\n");
             }
             else
             {
@@ -610,7 +577,7 @@ AppointmentNode* register_appointment(
                 if (strcmp(appointment_date, today) != 0)
                 {
                     // 不是当天，即提前预约，拦截
-                    int days_remaining = (patient->blacklist_expire - current_time) / (24 * 3600) + 1;
+                    int days_remaining = (int)((patient->blacklist_expire - current_time) / (24 * 3600)) + 1;
                     printf("🔴 [爽约黑名单拦截] 该患者处于爽约惩罚期，限制提前预约！\n");
                     printf("🔴 请前往医院大厅现场挂号，距离解禁还有 %d 天！\n", days_remaining);
                     return NULL;
@@ -618,25 +585,25 @@ AppointmentNode* register_appointment(
                 else
                 {
                     // 是当天，即现场挂号，放行但打印信用警报
-                    printf("⚠️ [信用警报] 您处于爽约惩罚期，请珍惜本次现场就诊机会！\n");
+                    printf("[WARN] [信用警报] 您处于爽约惩罚期，请珍惜本次现场就诊机会！\n");
                 }
             }
         }
     }
     if (appointment_date == NULL || strlen(appointment_date) == 0)
     {
-        printf("⚠️ 预约日期不能为空！\n");
+        printf("[WARN] 预约日期不能为空！\n");
         return NULL;
     }
     if (appointment_slot == NULL || strlen(appointment_slot) == 0)
     {
-        printf("⚠️ 预约时段不能为空！\n");
+        printf("[WARN] 预约时段不能为空！\n");
         return NULL;
     }
     
     if (strlen(appointment_date) != 10 || appointment_date[4] != '-' || appointment_date[7] != '-')
     {
-        printf("⚠️ 预约日期格式非法，请使用 YYYY-MM-DD 格式！\n");
+        printf("[WARN] 预约日期格式非法，请使用 YYYY-MM-DD 格式！\n");
         return NULL;
     }
     
@@ -645,7 +612,7 @@ AppointmentNode* register_appointment(
     int date_day = atoi(appointment_date + 8);
     if (date_year < 2024 || date_year > 2100 || date_month < 1 || date_month > 12 || date_day < 1 || date_day > 31)
     {
-        printf("⚠️ 预约日期不合法，请检查年月日是否正确！\n");
+        printf("[WARN] 预约日期不合法，请检查年月日是否正确！\n");
         return NULL;
     }
     
@@ -655,7 +622,7 @@ AppointmentNode* register_appointment(
         strcmp(appointment_slot, "上午 8:00-12:00") != 0 && strcmp(appointment_slot, "下午 14:00-18:00") != 0 &&
         strcmp(appointment_slot, "晚上 18:00-22:00") != 0)
     {
-        printf("⚠️ 预约时段非法，系统只支持：上午/下午/晚上 或带具体时间的时段格式！\n");
+        printf("[WARN] 预约时段非法，系统只支持：上午/下午/晚上 或带具体时间的时段格式！\n");
         return NULL;
     }
     
@@ -667,7 +634,7 @@ AppointmentNode* register_appointment(
             strcmp(curr_check->appointment_slot, appointment_slot) == 0 &&
             (curr_check->appointment_status == RESERVED || curr_check->appointment_status == CHECKED_IN))
         {
-            printf("⚠️ 您已存在该时段的有效预约（预约号：%s），不能重复预约！\n", curr_check->appointment_id);
+            printf("[WARN] 您已存在该时段的有效预约（预约号：%s），不能重复预约！\n", curr_check->appointment_id);
             return NULL;
         }
         curr_check = curr_check->next;
@@ -693,7 +660,7 @@ AppointmentNode* register_appointment(
         DoctorNode* best_doctor = find_best_doctor_for_department(appoint_dept);
         if (best_doctor == NULL)
         {
-            printf("⚠️ 当前科室暂无可分配医生，请重新选择科室或手动指定医生。\n");
+            printf("[WARN] 当前科室暂无可分配医生，请重新选择科室或手动指定医生。\n");
             return NULL;
         }
         
@@ -702,7 +669,7 @@ AppointmentNode* register_appointment(
         strncpy(assigned_doctor_name, best_doctor->name, MAX_NAME_LEN - 1);
         strncpy(assigned_dept, best_doctor->department, MAX_NAME_LEN - 1);
         
-        printf("✅ 已为您自动分配医生：%s %s（%s）\n", best_doctor->id, best_doctor->name, best_doctor->department);
+        printf("[OK] 已为您自动分配医生：%s %s（%s）\n", best_doctor->id, best_doctor->name, best_doctor->department);
         
         // 更新变量，以便后续使用
         appoint_doctor = assigned_doctor_id;
@@ -721,7 +688,7 @@ AppointmentNode* register_appointment(
     );
     if (new_appointment == NULL)
     {
-        printf("⚠️ 预约节点创建失败！\n");
+        printf("[WARN] 预约节点创建失败！\n");
         return NULL;
     }
     
@@ -748,8 +715,144 @@ AppointmentNode* register_appointment(
     insert_appointment_tail(g_appointment_list, new_appointment);
     return new_appointment;
 }
+
+AppointmentNode* create_walk_in_appointment_record(
+    const char* patient_id,
+    const char* appointment_date,
+    const char* appointment_slot,
+    const char* appoint_doctor,
+    const char* appoint_dept
+) {
+    char new_id[MAX_ID_LEN];
+    AppointmentNode* new_appointment = NULL;
+    PatientNode* patient = NULL;
+    int has_doctor = 0;
+    int has_dept = 0;
+    if (g_patient_list == NULL || g_appointment_list == NULL)
+    {
+        printf("[WARN] 基础链表尚未初始化，无法创建现场号！\n");
+        return NULL;
+    }
+    if (patient_id == NULL || strlen(patient_id) == 0)
+    {
+        printf("[WARN] 患者编号不能为空！\n");
+        return NULL;
+    }
+    patient = find_patient_by_id(g_patient_list, patient_id);
+    if (patient == NULL)
+    {
+        printf("[WARN] 未找到对应患者，现场号创建失败！\n");
+        return NULL;
+    }
+    if (appointment_date == NULL || strlen(appointment_date) == 0)
+    {
+        printf("[WARN] 预约日期不能为空！\n");
+        return NULL;
+    }
+    if (appointment_slot == NULL || strlen(appointment_slot) == 0)
+    {
+        printf("[WARN] 预约时段不能为空！\n");
+        return NULL;
+    }
+    if (strlen(appointment_date) != 10 || appointment_date[4] != '-' || appointment_date[7] != '-')
+    {
+        printf("[WARN] 预约日期格式非法，请使用 YYYY-MM-DD 格式！\n");
+        return NULL;
+    }
+    int date_year = atoi(appointment_date);
+    int date_month = atoi(appointment_date + 5);
+    int date_day = atoi(appointment_date + 8);
+    if (date_year < 2024 || date_year > 2100 || date_month < 1 || date_month > 12 || date_day < 1 || date_day > 31)
+    {
+        printf("[WARN] 预约日期不合法，请检查年月日是否正确！\n");
+        return NULL;
+    }
+    if (strcmp(appointment_slot, "上午") != 0 && strcmp(appointment_slot, "下午") != 0 &&
+        strcmp(appointment_slot, "晚上") != 0 && strcmp(appointment_slot, "上午时段") != 0 &&
+        strcmp(appointment_slot, "下午时段") != 0 && strcmp(appointment_slot, "晚上时段") != 0 &&
+        strcmp(appointment_slot, "上午 8:00-12:00") != 0 && strcmp(appointment_slot, "下午 14:00-18:00") != 0 &&
+        strcmp(appointment_slot, "晚上 18:00-22:00") != 0)
+    {
+        printf("[WARN] 预约时段非法，系统只支持：上午/下午/晚上 或带具体时间的时段格式！\n");
+        return NULL;
+    }
+    AppointmentNode* curr_check = g_appointment_list->next;
+    while (curr_check != NULL)
+    {
+        if (strcmp(curr_check->patient_id, patient_id) == 0 &&
+            strcmp(curr_check->appointment_date, appointment_date) == 0 &&
+            strcmp(curr_check->appointment_slot, appointment_slot) == 0 &&
+            (curr_check->appointment_status == RESERVED || curr_check->appointment_status == CHECKED_IN))
+        {
+            printf("[WARN] 您已存在该时段的有效现场号/预约号（编号：%s），不能重复创建！\n", curr_check->appointment_id);
+            return NULL;
+        }
+        curr_check = curr_check->next;
+    }
+    has_doctor = (appoint_doctor != NULL && strlen(appoint_doctor) > 0);
+    has_dept = (appoint_dept != NULL && strlen(appoint_dept) > 0);
+    if (!validate_appointment_target(appoint_doctor, appoint_dept))
+    {
+        return NULL;
+    }
+    char assigned_doctor_id[MAX_ID_LEN] = "";
+    char assigned_doctor_name[MAX_NAME_LEN] = "";
+    char assigned_dept[MAX_NAME_LEN] = "";
+    if (has_dept && !has_doctor)
+    {
+        DoctorNode* best_doctor = find_best_doctor_for_department(appoint_dept);
+        if (best_doctor == NULL)
+        {
+            printf("[WARN] 当前科室暂无可分配医生，请重新选择科室或手动指定医生。\n");
+            return NULL;
+        }
+        strncpy(assigned_doctor_id, best_doctor->id, MAX_ID_LEN - 1);
+        strncpy(assigned_doctor_name, best_doctor->name, MAX_NAME_LEN - 1);
+        strncpy(assigned_dept, best_doctor->department, MAX_NAME_LEN - 1);
+        printf("[OK] 已为您自动分配医生：%s %s（%s）\n", best_doctor->id, best_doctor->name, best_doctor->department);
+        appoint_doctor = assigned_doctor_id;
+        has_doctor = 1;
+    }
+    generate_appointment_id(new_id);
+    new_appointment = create_appointment_node(
+        new_id,
+        patient_id,
+        appointment_date,
+        appointment_slot,
+        has_doctor ? appoint_doctor : "",
+        has_dept ? appoint_dept : "",
+        RESERVED
+    );
+    if (new_appointment == NULL)
+    {
+        printf("[WARN] 现场号节点创建失败！\n");
+        return NULL;
+    }
+    new_appointment->is_walk_in = 1;
+    if (has_doctor)
+    {
+        DoctorNode* doctor = find_doctor_by_id(g_doctor_list, appoint_doctor);
+        if (doctor != NULL)
+        {
+            strncpy(new_appointment->doctor_name, doctor->name, MAX_NAME_LEN - 1);
+            strncpy(new_appointment->department, doctor->department, MAX_NAME_LEN - 1);
+        }
+        else
+        {
+            strncpy(new_appointment->doctor_name, appoint_doctor, MAX_NAME_LEN - 1);
+            strncpy(new_appointment->department, appoint_dept, MAX_NAME_LEN - 1);
+        }
+    }
+    else if (has_dept)
+    {
+        strncpy(new_appointment->department, appoint_dept, MAX_NAME_LEN - 1);
+    }
+    insert_appointment_tail(g_appointment_list, new_appointment);
+    return new_appointment;
+}
+
 // 按患者编号查询预约
-void query_appointments_by_patient_id(const char* patient_id)
+int query_appointments_by_patient_id(const char* patient_id)
 {
     int found = 0;
     int record_count = 0;
@@ -757,12 +860,12 @@ void query_appointments_by_patient_id(const char* patient_id)
     if (g_appointment_list == NULL)
     {
         printf("⚠️ 预约链表尚未初始化！\n");
-        return;
+        return 0;
     }
     if (patient_id == NULL || strlen(patient_id) == 0)
     {
         printf("⚠️ 患者编号不能为空！\n");
-        return;
+        return 0;
     }
     curr = g_appointment_list->next;
     while (curr != NULL)
@@ -787,6 +890,7 @@ void query_appointments_by_patient_id(const char* patient_id)
     {
         printf("ℹ️ 未查询到该患者的预约记录。\n");
     }
+    return found;
 }
 // 按身份证号查询预约
 void query_appointments_by_id_card(const char* id_card)
@@ -794,7 +898,7 @@ void query_appointments_by_id_card(const char* id_card)
     PatientNode* patient = NULL;
     if (id_card == NULL || strlen(id_card) == 0)
     {
-        printf("⚠️ 身份证号不能为空！\n");
+        printf("[WARN] 身份证号不能为空！\n");
         return;
     }
     patient = find_patient_by_id_card(id_card);
@@ -811,18 +915,18 @@ int cancel_appointment(const char* appointment_id)
     AppointmentNode* appointment = NULL;
     if (g_appointment_list == NULL)
     {
-        printf("⚠️ 预约链表尚未初始化！\n");
+        printf("[WARN] 预约链表尚未初始化！\n");
         return 0;
     }
     appointment = find_appointment_by_id(g_appointment_list, appointment_id);
     if (appointment == NULL)
     {
-        printf("⚠️ 未找到对应预约记录！\n");
+        printf("[WARN] 未找到对应预约记录！\n");
         return 0;
     }
     if (appointment->appointment_status != RESERVED)
     {
-        printf("⚠️ 当前预约状态为[%s]，不允许取消！\n",
+        printf("[WARN] 当前预约状态为[%s]，不允许取消！\n",
             get_appointment_status_text(appointment->appointment_status));
         return 0;
     }
@@ -832,26 +936,26 @@ int cancel_appointment(const char* appointment_id)
     {
         if (g_patient_list == NULL)
         {
-            printf("⚠️ 患者链表尚未初始化，无法执行退款，预约取消失败！\n");
+            printf("[WARN] 患者链表尚未初始化，无法执行退款，预约取消失败！\n");
             return 0;
         }
 
         PatientNode* patient = find_patient_by_id(g_patient_list, appointment->patient_id);
         if (patient == NULL)
         {
-            printf("⚠️ 未找到对应患者，无法执行退款，预约取消失败！\n");
+            printf("[WARN] 未找到对应患者，无法执行退款，预约取消失败！\n");
             return 0;
         }
 
         patient->balance += appointment->reg_fee;
-        printf("💰 退费成功！已将挂号费 %.2f 元原路退回，当前账户余额：%.2f 元。\n",
+        printf("[FEE] 退费成功！已将挂号费 %.2f 元原路退回，当前账户余额：%.2f 元。\n",
                appointment->reg_fee,
                patient->balance);
         appointment->fee_paid = 0;
     }
     
     appointment->appointment_status = CANCELLED;
-    printf("✅ 预约取消成功！预约编号：%s\n", appointment->appointment_id);
+    printf("[OK] 预约取消成功！预约编号：%s\n", appointment->appointment_id);
     return 1;
 }
 
@@ -861,20 +965,20 @@ static AppointmentNode* get_reserved_appointment_checked(const char* appointment
 
     if (g_appointment_list == NULL || g_patient_list == NULL)
     {
-        printf("⚠️ 基础链表尚未初始化，无法%s！\n", action_name);
+        printf("[WARN] 基础链表尚未初始化，无法%s！\n", action_name);
         return NULL;
     }
 
     appointment = find_appointment_by_id(g_appointment_list, appointment_id);
     if (appointment == NULL)
     {
-        printf("⚠️ 未找到对应预约记录，无法%s！\n", action_name);
+        printf("[WARN] 未找到对应预约记录，无法%s！\n", action_name);
         return NULL;
     }
 
     if (appointment->appointment_status != RESERVED)
     {
-        printf("⚠️ 当前预约状态为[%s]，不能执行%s！\n",
+        printf("[WARN] 当前预约状态为[%s]，不能执行%s！\n",
             get_appointment_status_text(appointment->appointment_status), action_name);
         return NULL;
     }
@@ -955,7 +1059,7 @@ static int place_appointment_into_queue(
     patient = find_patient_by_id(g_patient_list, appointment->patient_id);
     if (patient == NULL)
     {
-        printf("⚠️ 对应患者不存在，%s失败！\n", action_name);
+        printf("[WARN] 对应患者不存在，%s失败！\n", action_name);
         return 0;
     }
 
@@ -964,19 +1068,19 @@ static int place_appointment_into_queue(
     {
         if (assigned_doctor == NULL)
         {
-            printf("⚠️ 指定医生不存在，%s失败！\n", action_name);
+            printf("[WARN] 指定医生不存在，%s失败！\n", action_name);
             return 0;
         }
     }
     else if (strlen(appointment->appoint_dept) == 0)
     {
-        printf("⚠️ 当前预约缺少有效的医生/科室信息，%s失败！\n", action_name);
+        printf("[WARN] 当前预约缺少有效的医生/科室信息，%s失败！\n", action_name);
         return 0;
     }
 
     if (assigned_doctor == NULL)
     {
-        printf("⚠️ 当前预约未能分配到可接诊医生，%s失败！\n", action_name);
+        printf("[WARN] 当前预约未能分配到可接诊医生，%s失败！\n", action_name);
         return 0;
     }
 
@@ -996,16 +1100,16 @@ static int place_appointment_into_queue(
     
     if (is_late)
     {
-        patient->queue_time = now;
-        printf("⚠️ 您已迟到，将按正常排队顺序就诊。\n");
+        patient->queue_time = (int)now;
+        printf("[WARN] 您已迟到，将按正常排队顺序就诊。\n");
     }
     else if (use_priority_window)
     {
-        patient->queue_time = now - 1800;
+        patient->queue_time = (int)(now - 1800);
     }
     else
     {
-        patient->queue_time = now;
+        patient->queue_time = (int)now;
     }
 
     if (strlen(appointment->appoint_dept) > 0)
@@ -1025,7 +1129,7 @@ static int place_appointment_into_queue(
 
     if (is_doctor_appointment)
     {
-        printf("🎯 [专家号] 已为您定向安排专家：%s\n", assigned_doctor->name);
+        printf("[TARGET] [专家号] 已为您定向安排专家：%s\n", assigned_doctor->name);
     }
     else
     {
@@ -1059,7 +1163,7 @@ int mark_appointment_missed(const char* appointment_id)
     // 检查链表是否初始化
     if (g_appointment_list == NULL || g_patient_list == NULL)
     {
-        printf("⚠️ 基础链表尚未初始化，无法登记爽约！\n");
+        printf("[WARN] 基础链表尚未初始化，无法登记爽约！\n");
         return 0;
     }
     
@@ -1067,14 +1171,14 @@ int mark_appointment_missed(const char* appointment_id)
     appointment = find_appointment_by_id(g_appointment_list, appointment_id);
     if (appointment == NULL)
     {
-        printf("⚠️ 未找到对应预约记录！\n");
+        printf("[WARN] 未找到对应预约记录！\n");
         return 0;
     }
     
     // 检查预约状态
     if (appointment->appointment_status != RESERVED)
     {
-        printf("⚠️ 当前预约状态为[%s]，不能执行爽约登记！\n",
+        printf("[WARN] 当前预约状态为[%s]，不能执行爽约登记！\n",
             get_appointment_status_text(appointment->appointment_status));
         return 0;
     }
@@ -1083,13 +1187,13 @@ int mark_appointment_missed(const char* appointment_id)
     patient = find_patient_by_id(g_patient_list, appointment->patient_id);
     if (patient == NULL)
     {
-        printf("⚠️ 对应患者不存在，爽约登记失败！\n");
+        printf("[WARN] 对应患者不存在，爽约登记失败！\n");
         return 0;
     }
     
     // 更新预约状态为已过号
     appointment->appointment_status = MISSED;
-    printf("✅ 预约爽约登记成功！预约编号：%s\n", appointment->appointment_id);
+    printf("[OK] 预约爽约登记成功！预约编号：%s\n", appointment->appointment_id);
     
     // 执行惩罚逻辑
     current_time = time(NULL);
@@ -1121,7 +1225,7 @@ int mark_appointment_missed(const char* appointment_id)
         patient->is_blacklisted = 1;
         patient->blacklist_expire = current_time + 90 * 24 * 3600;
         printf("⛔ [信用分扣除及拉黑] 该患者在30天内爽约3次，已被限制挂号/预约权限90天！\n");
-        printf("⚠️ 拉黑到期时间：%s\n", ctime(&patient->blacklist_expire));
+        printf("[WARN] 拉黑到期时间：%s\n", ctime(&patient->blacklist_expire));
     }
     
     return 1;
@@ -1134,20 +1238,20 @@ void query_appointment_and_patient(const char* appointment_id)
     
     if (g_appointment_list == NULL)
     {
-        printf("⚠️ 预约链表尚未初始化！\n");
+        printf("[WARN] 预约链表尚未初始化！\n");
         return;
     }
     
     if (appointment_id == NULL || strlen(appointment_id) == 0)
     {
-        printf("⚠️ 预约编号不能为空！\n");
+        printf("[WARN] 预约编号不能为空！\n");
         return;
     }
     
     appointment = find_appointment_by_id(g_appointment_list, appointment_id);
     if (appointment == NULL)
     {
-        printf("⚠️ 未找到对应预约记录！\n");
+        printf("[WARN] 未找到对应预约记录！\n");
         return;
     }
     
@@ -1194,6 +1298,6 @@ void query_appointment_and_patient(const char* appointment_id)
     }
     else
     {
-        printf("\n⚠️ 未找到对应患者信息！\n");
+        printf("\n[WARN] 未找到对应患者信息！\n");
     }
 }

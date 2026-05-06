@@ -185,4 +185,61 @@ void show_patient_visit_timeline(const char* patient_id);
  */
 void show_patient_queue_progress_self_service(void);
 
+/**
+ * @brief 判断当前请求是否触发急诊绿色通道
+ * @param symptom 患者症状描述（可为NULL）
+ * @param appoint_doctor 指定医生编号（可为NULL或空串）
+ * @param appoint_dept 指定科室（可为NULL或空串）
+ * @return 1=触发急诊绿色通道, 0=不触发
+ * @details 基于现有症状分诊 recommend_dept_by_symptom 判断，
+ *          不引入额外关键词表
+ */
+int is_emergency_request_by_existing_triage(
+    const char* symptom,
+    const char* appoint_doctor,
+    const char* appoint_dept
+);
+
+/**
+ * @brief 预约前置校验（is_walk_in == 0）
+ * @param patient 患者节点
+ * @param current_symptom 当前症状描述（可为NULL）
+ * @param appoint_doctor 指定医生编号（可为NULL或空串）
+ * @param appoint_dept 指定科室（可为NULL或空串）
+ * @return 1=允许预约, 0=拒绝
+ * @details 预约对黑名单/欠费/过号/未完成流程严格拦截，
+ *          急诊绿色通道不走预约流程
+ */
+int can_patient_make_appointment(
+    PatientNode* patient,
+    const char* current_symptom,
+    const char* appoint_doctor,
+    const char* appoint_dept
+);
+
+/**
+ * @brief 现场挂号前置校验（is_walk_in == 1）
+ * @param patient 患者节点
+ * @param current_symptom 当前症状描述（可为NULL，为空时使用patient->symptom）
+ * @param appoint_doctor 指定医生编号（可为NULL或空串）
+ * @param appoint_dept 指定科室（可为NULL或空串）
+ * @return 1=允许现场挂号, 0=拒绝
+ * @details 现场挂号对过号不拦截；黑名单/欠费/未完成流程在
+ *          急诊绿色通道下不拦截
+ */
+int can_patient_walk_in_register(
+    PatientNode* patient,
+    const char* current_symptom,
+    const char* appoint_doctor,
+    const char* appoint_dept
+);
+
+/**
+ * @brief 患者自助账户充值
+ * @param patient_id 患者编号
+ * @param amount 充值金额（必须 > 0）
+ * @return 成功返回1，失败返回0
+ */
+int patient_recharge_balance(const char* patient_id, double amount);
+
 #endif

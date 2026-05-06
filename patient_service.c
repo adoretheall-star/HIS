@@ -1,4 +1,4 @@
-// ==========================================
+﻿// ==========================================
 // 文件名: patient_service.c
 // 作用: 患者相关业务服务层 / 患者数据服务层实现
 // 描述: 实现患者信息管理的核心业务逻辑，被护士端和患者端共同复用
@@ -1404,13 +1404,7 @@ int query_patient_consult_history_verified(const char* patient_id, const char* i
         return 0;
     }
     
-    // 身份核验通过，显示信息
-    printf("\n==============================================\n");
-    printf("          历史就诊记录查询\n");
-    printf("==============================================\n");
-    printf("患者姓名: %s\n", patient->name);
-    printf("患者编号: %s\n", patient->id);
-    printf("==============================================\n\n");
+    // 身份核验通过
     
     // 检查并作废过期的待缴费订单
     check_and_void_expired_orders(patient);
@@ -2652,136 +2646,356 @@ void query_patient_complaints(const char* patient_id)
 
 void show_patient_queue_progress_self_service(void)
 {
-    char patient_id[MAX_ID_LEN] = "";
-    char id_card[MAX_ID_LEN] = "";
+    char local_patient_id[MAX_ID_LEN] = "";
+    char local_id_card[MAX_ID_LEN] = "";
+    char error_msg[256] = "";
+    int step = 1; // 1: 患者编号, 2: 身份证号, 3: 显示结果
+    PatientNode* patient = NULL;
     
-    system("cls");
-    printf("========================================================\n");
-    printf("              📋 查询我的排队进度\n");
-    printf("========================================================\n");
-    
-    get_safe_string("请输入患者编号：", patient_id, MAX_ID_LEN);
-    
-    if (strcmp(patient_id, "0") == 0 || strcmp(patient_id, "B") == 0)
+    while (1)
     {
-        printf("操作已取消。\n");
-        system("pause");
-        return;
-    }
-    
-    PatientNode* patient = find_patient_by_id(g_patient_list, patient_id);
-    
-    if (patient == NULL)
-    {
-        printf("\n❌ 未找到该患者，请检查患者编号。\n");
-        system("pause");
-        return;
-    }
-    
-    get_safe_string("请输入身份证号：", id_card, MAX_ID_LEN);
-    
-    if (strcmp(id_card, patient->id_card) != 0)
-    {
-        printf("\n❌ 身份校验失败，无法查询排队进度。\n");
-        system("pause");
-        return;
-    }
-    
-    // 身份校验通过，显示排队进度
-    system("cls");
-    printf("========================================================\n");
-    printf("              📋 我的排队进度\n");
-    printf("========================================================\n");
-    printf("患者编号：%s\n", patient->id);
-    printf("患者姓名：%s\n", patient->name);
-    printf("当前状态：%s\n", get_patient_status_text(patient->status));
-    printf("目标科室：%s\n", patient->target_dept);
-    printf("接诊医生：%s\n", patient->doctor_id);
-    printf("\n");
-    
-    if (patient->status == STATUS_PENDING)
-    {
-        if (strlen(patient->doctor_id) > 0)
+        system("cls");
+        printf("================ 查询我的排队进度 ================\n");
+        printf("提示：输入 B 返回上一步，输入 Q 退出当前操作\n");
+        printf("------------------------------------------------\n");
+        
+        if (strlen(local_patient_id) > 0)
+            printf("已输入患者编号：%s\n", local_patient_id);
+        if (strlen(local_id_card) > 0)
+            printf("已完成身份核验\n");
+        
+        if (strlen(error_msg) > 0)
         {
-            // 计算前方候诊人数
-            int waiting_count = 0;
-            PatientNode* curr = g_patient_list->next;
-            int found_current = 0;
+            printf("\n[错误] %s\n", error_msg);
+            error_msg[0] = '\0';
+        }
+        
+        if (step == 1)
+        {
+            char input[MAX_ID_LEN];
+            printf("\n请输入患者编号：");
+            get_safe_string("", input, MAX_ID_LEN);
             
-            while (curr != NULL && !found_current)
+            if (strcasecmp(input, "B") == 0)
             {
-                if (strcmp(curr->id, patient->id) == 0)
-                {
-                    found_current = 1;
-                }
-                else if (strcmp(curr->doctor_id, patient->doctor_id) == 0 && curr->status == STATUS_PENDING)
-                {
-                    waiting_count++;
-                }
-                curr = curr->next;
+                printf("当前已是第一步，返回上一级菜单\n");
+                system("pause");
+                return;
+            }
+            if (strcasecmp(input, "Q") == 0)
+            {
+                printf("操作取消！\n");
+                system("pause");
+                return;
             }
             
-            printf("【候诊进度】\n");
-            printf("前方候诊人数：%d 人\n", waiting_count);
-            
-            // 计算预计等待时间
-            int total_minutes = waiting_count * 5;
-            if (total_minutes >= 60)
+            if (!validate_patient_id(input))
             {
-                int hours = total_minutes / 60;
-                int minutes = total_minutes % 60;
-                printf("预计等待时间：约 %d 小时 %d 分钟\n", hours, minutes);
+                strcpy(error_msg, "患者编号格式不合法，正确格式为 P-XXXX，例如：P-1001");
+                continue;
+            }
+            
+            patient = find_patient_by_id(g_patient_list, input);
+            if (patient == NULL)
+            {
+                strcpy(error_msg, "未找到该患者，请重新输入");
+                continue;
+            }
+            
+            strcpy(local_patient_id, input);
+            step = 2;
+        }
+        else if (step == 2)
+        {
+            char input[MAX_ID_LEN];
+            printf("\n请输入身份证号进行身份核验：");
+            get_safe_string("", input, MAX_ID_LEN);
+            
+            if (strcasecmp(input, "B") == 0)
+            {
+                step = 1;
+                continue;
+            }
+            if (strcasecmp(input, "Q") == 0)
+            {
+                printf("操作取消！\n");
+                system("pause");
+                return;
+            }
+            
+            if (!validate_id_card(input))
+            {
+                strcpy(error_msg, "身份证号格式不合法，请重新输入");
+                continue;
+            }
+            
+            if (strcmp(input, patient->id_card) != 0)
+            {
+                strcpy(error_msg, "身份核验失败！患者编号与身份证号不匹配");
+                continue;
+            }
+            
+            strcpy(local_id_card, input);
+            step = 3;
+        }
+        else if (step == 3)
+        {
+            printf("\n------------------------------------------------\n");
+            printf("患者编号：%s\n", patient->id);
+            printf("患者姓名：%s\n", patient->name);
+            printf("当前状态：%s\n", get_patient_status_text(patient->status));
+            printf("目标科室：%s\n", patient->target_dept);
+            printf("接诊医生：%s\n", patient->doctor_id);
+            printf("\n");
+            
+            if (patient->status == STATUS_PENDING)
+            {
+                if (strlen(patient->doctor_id) > 0)
+                {
+                    // 计算前方候诊人数
+                    int waiting_count = 0;
+                    PatientNode* curr = g_patient_list->next;
+                    int found_current = 0;
+                    
+                    while (curr != NULL && !found_current)
+                    {
+                        if (strcmp(curr->id, patient->id) == 0)
+                        {
+                            found_current = 1;
+                        }
+                        else if (strcmp(curr->doctor_id, patient->doctor_id) == 0 && curr->status == STATUS_PENDING)
+                        {
+                            waiting_count++;
+                        }
+                        curr = curr->next;
+                    }
+                    
+                    printf("【候诊进度】\n");
+                    printf("前方候诊人数：%d 人\n", waiting_count);
+                    
+                    // 计算预计等待时间
+                    int total_minutes = waiting_count * 5;
+                    if (total_minutes >= 60)
+                    {
+                        int hours = total_minutes / 60;
+                        int minutes = total_minutes % 60;
+                        printf("预计等待时间：约 %d 小时 %d 分钟\n", hours, minutes);
+                    }
+                    else
+                    {
+                        printf("预计等待时间：约 %d 分钟\n", total_minutes);
+                    }
+                    
+                    printf("\n提示：预计等待时间按每名患者平均 5 分钟估算，仅供参考。\n");
+                }
+                else
+                {
+                    printf("【候诊进度】\n");
+                    printf("暂未分配接诊医生，请等待护士安排。\n");
+                }
             }
             else
             {
-                printf("预计等待时间：约 %d 分钟\n", total_minutes);
+                // 根据不同状态显示提示
+                switch (patient->status)
+                {
+                    case STATUS_EXAMINING:
+                        printf("提示：您当前正在检查中，无需等待医生初诊。\n");
+                        break;
+                    case STATUS_RECHECK_PENDING:
+                        printf("提示：您当前检查后待复诊，请等待医生复诊安排。\n");
+                        break;
+                    case STATUS_UNPAID:
+                        printf("提示：您当前已看诊待缴费，请先完成缴费。\n");
+                        break;
+                    case STATUS_WAIT_MED:
+                        printf("提示：您当前已缴费待取药，请前往药房取药。\n");
+                        break;
+                    case STATUS_NEED_HOSPITALIZE:
+                        printf("提示：您当前需住院待登记，请前往住院登记处办理。\n");
+                        break;
+                    case STATUS_HOSPITALIZED:
+                        printf("提示：您当前住院中。\n");
+                        break;
+                    case STATUS_COMPLETED:
+                        printf("提示：您本次就诊已结束。\n");
+                        break;
+                    case STATUS_NO_SHOW:
+                        printf("提示：您本次挂号已过号作废，请重新挂号或咨询服务台。\n");
+                        break;
+                    default:
+                        printf("提示：当前状态未知。\n");
+                        break;
+                }
             }
             
-            printf("\n提示：预计等待时间按每名患者平均 5 分钟估算，仅供参考。\n");
-        }
-        else
-        {
-            printf("【候诊进度】\n");
-            printf("暂未分配接诊医生，请等待护士安排。\n");
+            printf("========================================================\n");
+            system("pause");
+            return;
         }
     }
-    else
+}
+
+/**
+ * @brief 检查患者是否可以进行预约
+ * @param patient 患者节点
+ * @param current_symptom 当前症状描述
+ * @param appoint_doctor 指定医生编号
+ * @param appoint_dept 指定科室
+ * @return 1=允许预约, 0=拒绝
+ */
+int can_patient_make_appointment(
+    PatientNode* patient,
+    const char* current_symptom,
+    const char* appoint_doctor,
+    const char* appoint_dept)
+{
+    if (patient == NULL) return 0;
+    
+    // 1. 检查是否在黑名单中
+    if (patient->is_blacklisted == 1)
     {
-        // 根据不同状态显示提示
-        switch (patient->status)
+        return 0;
+    }
+    
+    // 2. 检查是否欠费
+    if (patient->balance < 0)
+    {
+        return 0;
+    }
+    
+    // 3. 检查是否有未完成流程（非终态）
+    if (patient->status != STATUS_COMPLETED && 
+        patient->status != STATUS_NO_SHOW &&
+        patient->status != STATUS_PENDING)
+    {
+        return 0;
+    }
+    
+    // 4. 检查是否为急诊（急诊不走预约流程）
+    const char* symptom = current_symptom != NULL ? current_symptom : patient->symptom;
+    if (symptom != NULL && strlen(symptom) > 0)
+    {
+        // 通过症状推荐科室
+        const char* recommended_dept = recommend_dept_by_symptom(symptom);
+        if (recommended_dept != NULL && strcmp(recommended_dept, "急诊科") == 0)
         {
-            case STATUS_EXAMINING:
-                printf("提示：您当前正在检查中，无需等待医生初诊。\n");
-                break;
-            case STATUS_RECHECK_PENDING:
-                printf("提示：您当前检查后待复诊，请等待医生复诊安排。\n");
-                break;
-            case STATUS_UNPAID:
-                printf("提示：您当前已看诊待缴费，请先完成缴费。\n");
-                break;
-            case STATUS_WAIT_MED:
-                printf("提示：您当前已缴费待取药，请前往药房取药。\n");
-                break;
-            case STATUS_NEED_HOSPITALIZE:
-                printf("提示：您当前需住院待登记，请前往住院登记处办理。\n");
-                break;
-            case STATUS_HOSPITALIZED:
-                printf("提示：您当前住院中。\n");
-                break;
-            case STATUS_COMPLETED:
-                printf("提示：您本次就诊已结束。\n");
-                break;
-            case STATUS_NO_SHOW:
-                printf("提示：您本次挂号已过号作废，请重新挂号或咨询服务台。\n");
-                break;
-            default:
-                printf("提示：当前状态未知。\n");
-                break;
+            return 0; // 急诊不走预约流程
         }
     }
     
-    printf("========================================================\n");
-    system("pause");
+    // 5. 检查指定科室是否为急诊科
+    if (appoint_dept != NULL && strlen(appoint_dept) > 0)
+    {
+        if (strcmp(appoint_dept, "急诊科") == 0)
+        {
+            return 0; // 急诊不走预约流程
+        }
+    }
+    
+    // 6. 检查指定医生是否为急诊科医生
+    if (appoint_doctor != NULL && strlen(appoint_doctor) > 0 && g_doctor_list != NULL)
+    {
+        DoctorNode* doctor = find_doctor_by_id(g_doctor_list, appoint_doctor);
+        if (doctor != NULL && strcmp(doctor->department, "急诊科") == 0)
+        {
+            return 0; // 急诊不走预约流程
+        }
+    }
+    
+    // 所有检查通过，允许预约
+    return 1;
+}
+
+/**
+ * @brief 检查患者是否可以进行现场挂号
+ * @param patient 患者节点
+ * @param current_symptom 当前症状描述
+ * @param appoint_doctor 指定医生编号
+ * @param appoint_dept 指定科室
+ * @return 1=允许现场挂号, 0=拒绝
+ */
+int can_patient_walk_in_register(
+    PatientNode* patient,
+    const char* current_symptom,
+    const char* appoint_doctor,
+    const char* appoint_dept)
+{
+    if (patient == NULL) return 0;
+    
+    // 1. 检查是否在黑名单中
+    if (patient->is_blacklisted == 1)
+    {
+        return 0;
+    }
+    
+    // 2. 检查是否欠费
+    if (patient->balance < 0)
+    {
+        return 0;
+    }
+    
+    // 3. 检查是否有未完成流程（非终态）- 现场挂号对过号不拦截
+    if (patient->status != STATUS_COMPLETED && 
+        patient->status != STATUS_NO_SHOW &&
+        patient->status != STATUS_PENDING)
+    {
+        // 急诊绿色通道下不拦截
+        const char* symptom = current_symptom != NULL ? current_symptom : patient->symptom;
+        if (symptom != NULL && strlen(symptom) > 0)
+        {
+            const char* recommended_dept = recommend_dept_by_symptom(symptom);
+            if (recommended_dept != NULL && strcmp(recommended_dept, "急诊科") == 0)
+            {
+                return 1; // 急诊绿色通道
+            }
+        }
+        return 0;
+    }
+    
+    // 所有检查通过，允许现场挂号
+    return 1;
+}
+
+/**
+ * @brief 患者自助账户充值
+ * @param patient_id 患者编号
+ * @param amount 充值金额（必须 > 0）
+ * @return 成功返回1，失败返回0
+ */
+int patient_recharge_balance(const char* patient_id, double amount)
+{
+    if (patient_id == NULL || strlen(patient_id) == 0)
+    {
+        printf("[WARN] 患者编号不能为空！\n");
+        return 0;
+    }
+    
+    if (amount <= 0)
+    {
+        printf("[WARN] 充值金额必须大于0！\n");
+        return 0;
+    }
+    
+    if (g_patient_list == NULL)
+    {
+        printf("[WARN] 患者列表尚未初始化！\n");
+        return 0;
+    }
+    
+    PatientNode* patient = find_patient_by_id(g_patient_list, patient_id);
+    if (patient == NULL)
+    {
+        printf("[WARN] 未找到对应患者，充值失败！\n");
+        return 0;
+    }
+    
+    patient->balance += amount;
+    printf("\n[OK] 充值成功！\n");
+    printf("充值金额：%.2f 元\n", amount);
+    printf("当前余额：%.2f 元\n", patient->balance);
+    
+    return 1;
 }
 
 

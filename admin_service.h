@@ -101,6 +101,7 @@ void handle_check_item_remove(void);
 // 回收站管理
 void admin_recycle_bin_menu(void);
 void show_recycle_bin(void);
+void handle_restore_from_recycle(void);
 void handle_restore_medicine_from_recycle(void);
 
 // 医疗大屏
@@ -112,5 +113,8 @@ void show_admin_medical_big_screen(void);
 
 // 报表导出中心
 void admin_report_menu(void);
+
+// 系统数据完整性检查
+void check_system_data_integrity(void);
 
 #endif // ADMIN_SERVICE_H

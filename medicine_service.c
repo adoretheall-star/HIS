@@ -330,7 +330,7 @@ void show_all_medicines()
         return;
     }
 
-    printf("\n======================================================\n");
+    printf("\n=======================================================================================================================\n");
     printf("                    药品信息列表\n");
     printf("======================================================\n");
     // 列宽设置（按显示宽度）
@@ -367,6 +367,7 @@ void show_all_medicines()
             case MEDICARE_NONE:    m_type_name = "自费"; break;
             default:               m_type_name = "未知";
         }
+
         // 打印数据行
         print_truncated_col(curr->id, ID_WIDTH);
         print_truncated_col(curr->name, NAME_WIDTH);

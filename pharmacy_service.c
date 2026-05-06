@@ -189,11 +189,11 @@ int dispense_medicine_for_patient(const char* patient_id)
         // 低库存预警
         if (med->stock == 0)
         {
-            printf("⚠️ 预警：药品 [%s] [%s] 当前库存为 0，已缺货，请及时补货。\n", med->id, med->name);
+            printf("[WARN] 预警：药品 [%s] [%s] 当前库存为 0，已缺货，请及时补货。\n", med->id, med->name);
         }
         else if (med->stock < LOW_STOCK_THRESHOLD)
         {
-            printf("⚠️ 预警：药品 [%s] [%s] 当前库存为 %d，已进入低库存状态，请及时补货。\n", med->id, med->name, med->stock);
+            printf("[WARN] 预警：药品 [%s] [%s] 当前库存为 %d，已进入低库存状态，请及时补货。\n", med->id, med->name, med->stock);
         }
         
         printf("------------------------------------------------------\n");

@@ -51,6 +51,18 @@ const char* getRoleName(int roleId);
 // 6. 检查字符串是否为空白 (只包含空格、制表符、换行符等)
 int is_blank_string(const char* str);
 
+// 6.1 检查字符串是否包含空格或制表符
+int contains_space(const char* str);
+
+// 6.2 密码掩码输入（支持Tab切换显示/隐藏）
+// 返回值: 0=正常输入, 1=B/b返回, 2=Q/q退出
+int read_password_with_toggle(const char* prompt, char* password, int max_len);
+
+// 6.3 密码掩码输入（支持Tab切换显示/隐藏，带外部可见性状态）
+// 返回值: 0=正常输入, 1=B/b返回, 2=Q/q退出
+// visible: 指向外部可见性状态的指针，Tab键会切换该状态
+int read_password_with_toggle_ext(const char* prompt, char* password, int max_len, int* visible);
+
 // 7. 检查日期字符串是否合法 (YYYY-MM-DD)
 int is_valid_date_string(const char* date_str);
 
@@ -132,5 +144,33 @@ void to_upper_string(const char* src, char* dest, int dest_size);
 
 // 33. 不区分大小写的子字符串包含检查
 int contains_ignore_case(const char* text, const char* keyword);
+
+// 34. 大屏统一宽度定义
+#define DASHBOARD_WIDTH 72
+#define BAR_WIDTH 24
+
+// 35. 打印大屏主标题
+void print_dashboard_title(const char* title);
+
+// 36. 打印大屏分区标题
+void print_section_title(const char* title);
+
+// 37. 打印指定字符的横线
+void print_dashboard_line(char ch, int width);
+
+// 38. 按显示宽度对齐打印字符串
+void print_pad_right(const char* s, int width);
+
+// 39. 打印三列键值对
+void print_kv_3cols(const char* k1, const char* v1, const char* k2, const char* v2, const char* k3, const char* v3);
+
+// 40. 打印进度条（标签宽度固定，进度条长度固定）
+void print_progress_bar_ex(const char* label, int current, int total, int bar_width);
+
+// 41. 打印单列进度条（标签按显示宽度对齐）
+void print_progress_bar_single(const char* label, int current, int total);
+
+// 42. 打印医生候诊队列（动态列宽）
+void print_doctor_queue(void);
 
 #endif

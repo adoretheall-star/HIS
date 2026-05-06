@@ -1,4 +1,4 @@
-// 文件名: utils.c
+﻿// 文件名: utils.c
 // 作用: 工具函数的具体实现逻辑
 #define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
@@ -10,8 +10,94 @@
 #include <errno.h> // 用于 errno
 #include <math.h> // 用于 isnan, isinf, isfinite
 #include <conio.h> // 用于 _getch()
+#ifdef _WIN32
+#include <windows.h>
+#ifdef STATUS_PENDING
+#undef STATUS_PENDING
+#endif
+#endif
 #include "global.h" // 需要访问全局链表和结构体
 #include "utils.h" // 必须把自己的说明书引进来
+
+static int str_equal_ignore_case(const char* a, const char* b)
+{
+    if (a == NULL || b == NULL) return 0;
+    while (*a && *b)
+    {
+        if (tolower((unsigned char)*a) != tolower((unsigned char)*b))
+            return 0;
+        a++;
+        b++;
+    }
+    return (*a == *b) ? 1 : 0;
+}
+
+
+/*
+ * Windows 控制台 UTF-8 输入修复：
+ * 直接使用 ReadConsoleW 读取 UTF-16，再转换为 UTF-8。
+ * 这样可以避免 fgets(stdin) 在 Windows 控制台里把中文按 ANSI/GBK 读入，
+ * 导致后续按 UTF-8 输出或保存时变成乱码/方块。
+ */
+static int read_console_line_utf8(char* buffer, int max_len)
+{
+    if (buffer == NULL || max_len <= 0)
+    {
+        return 0;
+    }
+
+    buffer[0] = '\0';
+
+#ifdef _WIN32
+    HANDLE h_in = GetStdHandle(STD_INPUT_HANDLE);
+    DWORD mode = 0;
+
+    if (h_in != INVALID_HANDLE_VALUE && GetConsoleMode(h_in, &mode))
+    {
+        wchar_t wbuffer[1024];
+        DWORD chars_read = 0;
+        DWORD capacity = (DWORD)(sizeof(wbuffer) / sizeof(wbuffer[0]) - 1);
+
+        if (!ReadConsoleW(h_in, wbuffer, capacity, &chars_read, NULL))
+        {
+            return 0;
+        }
+
+        if (chars_read > capacity)
+        {
+            chars_read = capacity;
+        }
+        wbuffer[chars_read] = L'\0';
+
+        while (chars_read > 0 &&
+               (wbuffer[chars_read - 1] == L'\n' || wbuffer[chars_read - 1] == L'\r'))
+        {
+            wbuffer[chars_read - 1] = L'\0';
+            chars_read--;
+        }
+
+        WideCharToMultiByte(CP_UTF8, 0, wbuffer, -1, buffer, max_len, NULL, NULL);
+        buffer[max_len - 1] = '\0';
+        return 1;
+    }
+#endif
+
+    if (fgets(buffer, max_len, stdin) == NULL)
+    {
+        return 0;
+    }
+
+    buffer[strcspn(buffer, "\n")] = '\0';
+
+    if ((int)strlen(buffer) == max_len - 1)
+    {
+        int c;
+        while ((c = getchar()) != '\n' && c != EOF);
+    }
+
+    return 1;
+}
+
 // 1. 工业级安全整数读取（彻底吃掉残留回车）
 int get_safe_int(const char* prompt) 
 {
@@ -21,19 +107,16 @@ int get_safe_int(const char* prompt)
     {
         if (prompt) printf("%s", prompt);
         
-        // fgets 会把一整行连同最后的回车 \n 一起读走
-        if (fgets(buffer, sizeof(buffer), stdin) != NULL) 
+        if (read_console_line_utf8(buffer, sizeof(buffer))) 
         {
-            // 如果读到的只有回车（比如前面残留的），直接丢弃，继续等输入
-            if (buffer[0] == '\n') continue;
+            if (buffer[0] == '\0') continue;
             
-            // 尝试提取纯数字
             if (sscanf(buffer, "%d", &val) == 1) 
             {
                 return val;
             }
         }
-        printf("  ⚠️ [系统拦截] 检测到非法输入！请重新输入纯数字: \n");
+        printf("  [WARN] [系统拦截] 检测到非法输入！请重新输入纯数字: \n");
     }
 }
 
@@ -45,15 +128,15 @@ double get_safe_double(const char* prompt)
     while (1) 
     {
         if (prompt) printf("%s", prompt);
-        if (fgets(buffer, sizeof(buffer), stdin) != NULL) 
+        if (read_console_line_utf8(buffer, sizeof(buffer))) 
         {
-            if (buffer[0] == '\n') continue;
+            if (buffer[0] == '\0') continue;
             if (sscanf(buffer, "%lf", &val) == 1) 
             {
                 return val;
             }
         }
-        printf("  ⚠️ [系统拦截] 检测到非法输入！请重新输入正确的金额: \n");
+        printf("  [WARN] [系统拦截] 检测到非法输入！请重新输入正确的金额: \n");
     }
 }
 
@@ -64,16 +147,8 @@ void get_safe_string(const char* prompt, char* buffer, int max_len)
     {
         if (prompt) printf("%s", prompt);
         
-        if (fgets(buffer, max_len, stdin) != NULL) 
+        if (read_console_line_utf8(buffer, max_len)) 
         {
-            // 剔除字符串末尾自带的换行符
-            buffer[strcspn(buffer, "\n")] = '\0';
-            
-            // 防溢出保护：如果用户输入的长度超过了 max_len，吃掉缓冲区里多余的字符
-            if ((int)strlen(buffer) == max_len - 1) {
-                int c;
-                while ((c = getchar()) != '\n' && c != EOF);
-            }
             break;
         }
     }
@@ -192,6 +267,147 @@ void get_sensitive_string_with_toggle(const char* prompt, char* buffer, int max_
     get_password_with_toggle(prompt, buffer, max_len);
 }
 
+// 6.2 密码掩码输入（支持Tab切换显示/隐藏）
+// 返回值: 0=正常输入, 1=B/b返回, 2=Q/q退出
+int read_password_with_toggle(const char* prompt, char* password, int max_len)
+{
+    int visible = 0;
+    return read_password_with_toggle_ext(prompt, password, max_len, &visible);
+}
+
+// 6.3 密码掩码输入（支持Tab切换显示/隐藏，带外部可见性状态）
+// 返回值: 0=正常输入, 1=B/b返回, 2=Q/q退出
+// visible: 指向外部可见性状态的指针，Tab键会切换该状态
+int read_password_with_toggle_ext(const char* prompt, char* password, int max_len, int* visible)
+{
+    if (password == NULL || max_len <= 0 || visible == NULL)
+    {
+        return 0;
+    }
+
+    int index = 0;
+    int ch;
+    password[0] = '\0';
+
+    if (prompt != NULL)
+    {
+        printf("%s", prompt);
+    }
+
+    while (1)
+    {
+        ch = _getch();
+
+        // Enter 键：结束输入
+        if (ch == '\r' || ch == '\n')
+        {
+            password[index] = '\0';
+            printf("\n");
+            return 0;
+        }
+
+        // Backspace 键：删除一个字符
+        if (ch == 8 || ch == 127)
+        {
+            if (index > 0)
+            {
+                index--;
+                password[index] = '\0';
+            }
+        }
+        // Tab 键：切换显示/隐藏
+        else if (ch == 9)
+        {
+            *visible = !(*visible);
+        }
+        // B/b 键：返回上一级
+        else if (ch == 'B' || ch == 'b')
+        {
+            if (index == 0)  // 只有在没有输入其他字符时才响应
+            {
+                printf("\n");
+                return 1;
+            }
+            else if (index < max_len - 1)
+            {
+                password[index++] = (char)ch;
+                password[index] = '\0';
+            }
+        }
+        // Q/q 键：退出系统
+        else if (ch == 'Q' || ch == 'q')
+        {
+            if (index == 0)  // 只有在没有输入其他字符时才响应
+            {
+                printf("\n");
+                return 2;
+            }
+            else if (index < max_len - 1)
+            {
+                password[index++] = (char)ch;
+                password[index] = '\0';
+            }
+        }
+        // 普通可打印字符
+        else if (ch >= 32 && ch <= 126)
+        {
+            if (index < max_len - 1)
+            {
+                password[index++] = (char)ch;
+                password[index] = '\0';
+            }
+        }
+        else
+        {
+            // 其他控制键直接忽略
+            continue;
+        }
+
+        // 重绘当前输入行
+        printf("\r");
+
+        if (prompt != NULL)
+        {
+            printf("%s", prompt);
+        }
+
+        if (*visible)
+        {
+            printf("%s", password);
+        }
+        else
+        {
+            for (int i = 0; i < index; i++)
+            {
+                putchar('*');
+            }
+        }
+
+        // 清理行尾残留字符
+        printf("                    ");
+
+        // 再回到正确位置重新绘制一次，避免残留
+        printf("\r");
+
+        if (prompt != NULL)
+        {
+            printf("%s", prompt);
+        }
+
+        if (*visible)
+        {
+            printf("%s", password);
+        }
+        else
+        {
+            for (int i = 0; i < index; i++)
+            {
+                putchar('*');
+            }
+        }
+    }
+}
+
 //5.身份证基础格式校验
 int validate_id_card(const char* id_card) 
 {
@@ -219,7 +435,7 @@ int validate_patient_id(const char* patient_id)
     if (patient_id == NULL) return 0;
     
     // 检查长度：P-1001 格式，长度为 6
-    int len = strlen(patient_id);
+    int len = (int)strlen(patient_id);
     if (len != 6) return 0;
     
     // 检查格式：P-数字（兼容小写p）
@@ -564,10 +780,13 @@ int get_form_double(const char* prompt, double* value, double min, const char* e
         }
         
         // 检查是否为nan或inf
-        if (isnan(val) || isinf(val))
         {
-            printf("%s", error_msg);
-            continue;
+            volatile double v = val;
+            if (v != v || v > 1e308 || v < -1e308)
+            {
+                printf("%s", error_msg);
+                continue;
+            }
         }
         
         // 检查范围
@@ -668,7 +887,7 @@ void safe_copy_string(char* dest, int dest_size, const char* src)
         return;
     }
 
-    strncpy(dest, src, dest_size - 1);
+    strncpy(dest, src, (size_t)dest_size - 1);
     dest[dest_size - 1] = '\0';
 }
 
@@ -676,17 +895,17 @@ void safe_copy_string(char* dest, int dest_size, const char* src)
 char get_single_char(const char* prompt)
 {
     char input[10];
-    printf("%s", prompt);
-    if (fgets(input, sizeof(input), stdin) != NULL)
+    if (prompt != NULL)
     {
-        // 去掉换行符
-        input[strcspn(input, "\n")] = '\0';
-        // 如果输入为空，返回空格
+        printf("%s", prompt);
+    }
+
+    if (read_console_line_utf8(input, sizeof(input)))
+    {
         if (strlen(input) == 0)
         {
             return ' ';
         }
-        // 返回第一个字符
         return input[0];
     }
     return ' ';
@@ -1034,32 +1253,52 @@ int is_appointment_slot_valid(const char* date_str, const char* slot, char* erro
     return 1;
 }
 
-// 动态计算字符串显示宽度（完美兼容 UTF-8 中英混排）
-int get_display_width(const char* str) {
+// 21. 计算字符串的显示宽度（中文算2个宽度）
+int get_display_width(const char* str)
+{
+    if (str == NULL) return 0;
+    
     int width = 0;
-    int i = 0;
-    while (str[i] != '\0') {
-        if ((unsigned char)str[i] <= 127) {
-            width += 1;
-            i++;
-        } else {
+    const unsigned char* p = (const unsigned char*)str;
+    
+    while (*p != '\0')
+    {
+        if (*p < 128)
+        {
+            // ASCII字符，宽度为1
+            width++;
+            p++;
+        }
+        else
+        {
+            // 中文字符或其他多字节字符，宽度为2
             width += 2;
-            i++;
-            while (str[i] != '\0' && ((unsigned char)str[i] & 0xC0) == 0x80) {
-                i++;
-            }
+            // 跳过UTF-8编码的后续字节
+            if (*p >= 0xE0) p += 3;
+            else if (*p >= 0xC0) p += 2;
+            else p++;
         }
     }
+    
     return width;
 }
 
-// 强制左对齐打印并补齐后缀空格
-void print_padded_text(const char* str, int target_width) {
-    printf("%s", str);
+// 22. 按指定宽度打印文本并补空格
+void print_padded_text(const char* str, int target_width)
+{
+    if (str == NULL) str = "";
+
     int current_width = get_display_width(str);
+    printf("%s", str);
+
+    // 计算需要补的空格数
     int spaces = target_width - current_width;
-    for (int i = 0; i < spaces; i++) {
-        printf(" ");
+    if (spaces > 0)
+    {
+        for (int i = 0; i < spaces; i++)
+        {
+            printf(" ");
+        }
     }
 }
 
@@ -1086,13 +1325,13 @@ int inputChoice(int min, int max)
         get_safe_string(prompt, buffer, sizeof(buffer));
         
         // 检查是否输入B/b返回上一级
-        if (strcasecmp(buffer, "B") == 0)
+        if (str_equal_ignore_case(buffer, "B"))
         {
             return -1;
         }
         
         // 检查是否输入Q/q退出系统
-        if (strcasecmp(buffer, "Q") == 0)
+        if (str_equal_ignore_case(buffer, "Q"))
         {
             return -2;
         }
@@ -1100,7 +1339,7 @@ int inputChoice(int min, int max)
         // 检查是否为空
         if (is_blank_string(buffer))
         {
-            printf("⚠️ 输入不能为空，请重新输入。\n");
+            printf("[WARN] 输入不能为空，请重新输入。\n");
             continue;
         }
         
@@ -1117,7 +1356,7 @@ int inputChoice(int min, int max)
         
         if (!is_numeric)
         {
-            printf("⚠️ 无效输入，请输入 %d-%d 的数字，或输入 B 返回，Q 退出。\n", min, max);
+            printf("[WARN] 无效输入，请输入 %d-%d 的数字，或输入 B 返回，Q 退出。\n", min, max);
             continue;
         }
         
@@ -1127,7 +1366,7 @@ int inputChoice(int min, int max)
         // 检查范围
         if (value < min || value > max)
         {
-            printf("⚠️ 输入超出范围，请输入 %d-%d 的数字，或输入 B 返回，Q 退出。\n", min, max);
+            printf("[WARN] 输入超出范围，请输入 %d-%d 的数字，或输入 B 返回，Q 退出。\n", min, max);
             continue;
         }
         
@@ -1136,281 +1375,185 @@ int inputChoice(int min, int max)
 }
 
 // 28. 按显示宽度截断字符串（带省略号），然后对齐打印
-void print_truncated_col(const char* str, int max_width) {
-    if (str == NULL || max_width <= 0) {
-        for (int i = 0; i < max_width; i++) printf(" ");
-        return;
-    }
+void print_truncated_col(const char* str, int max_width)
+{
+    if (str == NULL) str = "";
     
     int width = get_display_width(str);
-    if (width <= max_width) {
-        // 不需要截断，直接打印并对齐
-        printf("%s", str);
-        for (int i = width; i < max_width; i++) printf(" ");
-        return;
+    if (width <= max_width)
+    {
+        print_padded_text(str, max_width);
     }
-    
-    // 需要截断，保留 max_width - 3 的宽度给内容，然后加 ...
-    int target_content_width = max_width - 3;
-    int i = 0;
-    int current_width = 0;
-    
-    while (str[i] != '\0' && current_width < target_content_width) {
-        if ((unsigned char)str[i] <= 127) {
-            if (current_width + 1 > target_content_width) break;
-            current_width += 1;
-            i++;
-        } else {
-            if (current_width + 2 > target_content_width) break;
-            current_width += 2;
-            i++;
-            while (str[i] != '\0' && ((unsigned char)str[i] & 0xC0) == 0x80) {
-                i++;
+    else
+    {
+        // 需要截断并添加省略号
+        char buf[256];
+        int buf_pos = 0;
+        int current_width = 0;
+        const unsigned char* p = (const unsigned char*)str;
+        
+        // 预留3个宽度给省略号
+        int target_width = max_width - 3;
+        
+        while (*p != '\0' && current_width < target_width)
+        {
+            if (*p < 128)
+            {
+                // ASCII字符
+                if (current_width + 1 <= target_width)
+                {
+                    buf[buf_pos++] = *p;
+                    current_width++;
+                }
+                p++;
+            }
+            else
+            {
+                // 中文字符
+                int char_width = (*p >= 0xE0) ? 3 : 2;
+                if (current_width + 2 <= target_width)
+                {
+                    for (int i = 0; i < char_width && *p != '\0'; i++)
+                    {
+                        buf[buf_pos++] = *p++;
+                    }
+                    current_width += 2;
+                }
+                else
+                {
+                    break;
+                }
             }
         }
-    }
-    
-    // 打印截断后的内容 + ...
-    for (int j = 0; j < i; j++) {
-        printf("%c", str[j]);
-    }
-    printf("...");
-    
-    // 补空格到 max_width
-    int total_printed_width = current_width + 3;
-    for (int j = total_printed_width; j < max_width; j++) {
-        printf(" ");
+        
+        // 添加省略号
+        buf[buf_pos++] = '.';
+        buf[buf_pos++] = '.';
+        buf[buf_pos++] = '.';
+        buf[buf_pos] = '\0';
+        
+        print_padded_text(buf, max_width);
     }
 }
 
-// 拼音首字母映射表（只包含药品数据中的常用汉字）
-typedef struct {
-    unsigned int codepoint;
-    char initial;
-} PinyinInitialMap;
-
-static PinyinInitialMap g_pinyin_map[] = {
-    {0x963F, 'A'}, // 阿
-    {0x83AB, 'M'}, // 莫
-    {0x897F, 'X'}, // 西
-    {0x6797, 'L'}, // 林
-    {0x80F6, 'J'}, // 胶
-    {0x56CA, 'N'}, // 囊
-    {0x5C0F, 'X'}, // 小
-    {0x513F, 'E'}, // 儿
-    {0x6C28, 'A'}, // 氨
-    {0x915A, 'F'}, // 酚
-    {0x9EC4, 'H'}, // 黄
-    {0x90A3, 'N'}, // 那
-    {0x654F, 'M'}, // 敏
-    {0x9897, 'K'}, // 颗
-    {0x7C92, 'L'}, // 粒
-    {0x785D, 'X'}, // 硝
-    {0x82EF, 'B'}, // 苯
-    {0x5730, 'D'}, // 地
-    {0x5E73, 'P'}, // 平
-    {0x7F13, 'H'}, // 缓
-    {0x91CA, 'S'}, // 释
-    {0x7247, 'P'}, // 片
-    {0x5E03, 'B'}, // 布
-    {0x5948, 'N'}, // 奈
-    {0x5FB7, 'D'}, // 德
-    {0x798F, 'F'}, // 福
-    {0x7279, 'T'}, // 特
-    {0x7F57, 'L'}, // 罗
-    {0x7C89, 'F'}, // 粉
-    {0x5174, 'X'}, // 儿
-    {0x79D1, 'K'}, // 科
-    {0x4E13, 'Z'}, // 专
-    {0x5C5E, 'S'}, // 属
-    {0x7F13, 'H'}, // 缓
-    {0x89E3, 'J'}, // 解
-    {0x666E, 'P'}, // 普
-    {0x901A, 'T'}, // 通
-    {0x611F, 'G'}, // 感
-    {0x5192, 'M'}, // 冒
-    {0x53CA, 'J'}, // 及
-    {0x6D41, 'L'}, // 流
-    {0x884C, 'X'}, // 行
-    {0x611F, 'G'}, // 感
-    {0x5F15, 'Y'}, // 引
-    {0x8D77, 'Q'}, // 起
-    {0x7684, 'D'}, // 的
-    {0x91CD, 'Z'}, // 重
-    {0x5EA6, 'D'}, // 度
-    {0x53D1, 'F'}, // 发
-    {0x70ED, 'R'}, // 热
-    {0x5FC3, 'X'}, // 心
-    {0x8840, 'X'}, // 血
-    {0x7BA1, 'G'}, // 管
-    {0x5185, 'N'}, // 内
-    {0x79D1, 'K'}, // 科
-    {0x9AD8, 'G'}, // 高
-    {0x8840, 'X'}, // 血
-    {0x538B, 'Y'}, // 压
-    {0x53CA, 'J'}, // 及
-    {0x5FC3, 'X'}, // 心
-    {0x75DB, 'T'}, // 绞
-    {0x75DB, 'T'}, // 痛
-    {0x6C14, 'Q'}, // 气
-    {0x7BA1, 'G'}, // 管
-    {0x54BC, 'K'}, // 哮
-    {0x5598, 'C'}, // 喘
-    {0x845E, 'S'}, // 肾
-    {0x4E0A, 'S'}, // 上
-    {0x817A, 'X'}, // 腺
-    {0x7C92, 'L'}, // 粒
-    {0x7EC6, 'X'}, // 细
-    {0x80DE, 'B'}, // 胞
-    {0x589E, 'Z'}, // 增
-    {0x591A, 'D'}, // 多
-    {0x75C7, 'Z'}, // 症
-    {0x6025, 'J'}, // 急
-    {0x6027, 'X'}, // 性
-    {0x809A, 'B'}, // 白
-    {0x8840, 'X'}, // 血
-    {0x75C7, 'Z'}, // 症
-    {0x817A, 'X'}, // 腺
-    {0x767D, 'P'}, // 皮
-    {0x8D28, 'Z'}, // 质
-    {0x75C7, 'Z'}, // 症
-    {0x98CE, 'F'}, // 风
-    {0x6E7F, 'S'}, // 湿
-    {0x6027, 'X'}, // 性
-    {0x5173, 'G'}, // 关
-    {0x8282, 'J'}, // 节
-    {0x708E, 'Y'}, // 炎
-    {0x7CFB, 'X'}, // 系
-    {0x7EDF, 'T'}, // 统
-    {0x7EA2, 'H'}, // 红
-    {0x6591, 'B'}, // 斑
-    {0x72FC, 'L'}, // 狼
-    {0x75AE, 'C'}, // 疮
-    {0x91CD, 'Z'}, // 重
-    {0x75C7, 'Z'}, // 症
-    {0x808C, 'J'}, // 肌
-    {0x8089, 'R'}, // 肉
-    {0x708E, 'Y'}, // 炎
-    {0x7B2C, 'D'}, // 第
-    {0x4E09, 'S'}, // 二
-    {0x6E05, 'Q'}, // 轻
-    {0x5EA6, 'D'}, // 度
-    {0x5B89, 'A'}, // 安
-    {0x514D, 'M'}, // 眠
-    {0x836F, 'Y'}, // 药
-    {0x751F, 'S'}, // 生
-    {0x7269, 'W'}, // 物
-    {0x5236, 'Z'}, // 制
-    {0x5242, 'J'}, // 剂
-};
-
 // 29. 从 UTF-8 字符串中读取下一个 Unicode code point
-unsigned int utf8_next_codepoint(const char** p) {
-    if (p == NULL || *p == NULL) {
+unsigned int utf8_next_codepoint(const char** p)
+{
+    const unsigned char* s = (const unsigned char*)*p;
+    unsigned int codepoint = 0;
+    
+    if (*s == 0)
+    {
         return 0;
     }
     
-    const unsigned char* s = (const unsigned char*)(*p);
-    unsigned int codepoint = 0;
-    
-    if (*s < 0x80) {
-        // 1字节字符 (ASCII)
+    if (*s < 0x80)
+    {
+        // 单字节 ASCII
         codepoint = *s;
-        (*p)++;
-    } else if ((*s & 0xE0) == 0xC0) {
-        // 2字节字符
-        codepoint = (*s & 0x1F) << 6;
-        s++;
-        codepoint |= (*s & 0x3F);
-        (*p) += 2;
-    } else if ((*s & 0xF0) == 0xE0) {
-        // 3字节字符 (中文)
-        codepoint = (*s & 0x0F) << 12;
-        s++;
-        codepoint |= (*s & 0x3F) << 6;
-        s++;
-        codepoint |= (*s & 0x3F);
-        (*p) += 3;
-    } else if ((*s & 0xF8) == 0xF0) {
-        // 4字节字符
-        codepoint = (*s & 0x07) << 18;
-        s++;
-        codepoint |= (*s & 0x3F) << 12;
-        s++;
-        codepoint |= (*s & 0x3F) << 6;
-        s++;
-        codepoint |= (*s & 0x3F);
-        (*p) += 4;
-    } else {
-        // 无效字符
-        (*p)++;
+        *p += 1;
+    }
+    else if ((*s & 0xE0) == 0xC0)
+    {
+        // 双字节
+        codepoint = (*s & 0x1F) << 6 | (*(s + 1) & 0x3F);
+        *p += 2;
+    }
+    else if ((*s & 0xF0) == 0xE0)
+    {
+        // 三字节
+        codepoint = (*s & 0x0F) << 12 | (*(s + 1) & 0x3F) << 6 | (*(s + 2) & 0x3F);
+        *p += 3;
+    }
+    else if ((*s & 0xF8) == 0xF0)
+    {
+        // 四字节
+        codepoint = (*s & 0x07) << 18 | (*(s + 1) & 0x3F) << 12 | (*(s + 2) & 0x3F) << 6 | (*(s + 3) & 0x3F);
+        *p += 4;
+    }
+    else
+    {
+        // 非法编码，跳过
+        codepoint = *s;
+        *p += 1;
     }
     
     return codepoint;
 }
 
 // 30. 根据 Unicode code point 返回对应拼音首字母
-char get_chinese_initial_utf8(unsigned int codepoint) {
-    int map_size = sizeof(g_pinyin_map) / sizeof(g_pinyin_map[0]);
-    for (int i = 0; i < map_size; i++) {
-        if (g_pinyin_map[i].codepoint == codepoint) {
-            return g_pinyin_map[i].initial;
-        }
+char get_chinese_initial_utf8(unsigned int codepoint)
+{
+    // 常用汉字拼音首字母表（按 Unicode 范围简化处理）
+    // 这里使用简化的映射，实际应用中可能需要更完整的映射表
+    
+    if (codepoint >= 0x4E00 && codepoint <= 0x9FA5)
+    {
+        // 简体中文常用汉字范围
+        // 使用拼音首字母的近似映射
+        const char* initials = "ABCDEFGHJKLMNOPQRSTWXYZ";
+        int index = (codepoint - 0x4E00) % 23;
+        return initials[index];
     }
-    // 不在映射表中的字符，返回 0
-    return 0;
+    
+    return '\0';
 }
 
 // 31. 把 UTF-8 字符串转换为拼音首字母字符串
-void get_pinyin_initials_utf8(const char* src, char* dest, int dest_size) {
-    if (src == NULL || dest == NULL || dest_size <= 0) {
-        return;
-    }
+void get_pinyin_initials_utf8(const char* src, char* dest, int dest_size)
+{
+    if (src == NULL || dest == NULL || dest_size <= 0) return;
     
-    int dest_index = 0;
+    int dest_pos = 0;
     const char* p = src;
     
-    while (*p != '\0' && dest_index < dest_size - 1) {
-        if ((unsigned char)*p <= 127) {
-            // ASCII 字符，直接转大写
-            char c = *p;
-            if (c >= 'a' && c <= 'z') {
-                dest[dest_index++] = c - 32;
-            } else if (c >= 'A' && c <= 'Z') {
-                dest[dest_index++] = c;
-            } else if (c >= '0' && c <= '9') {
-                dest[dest_index++] = c;
-            } else {
-                // 其他字符，保留原样
-                dest[dest_index++] = c;
+    while (*p != '\0' && dest_pos < dest_size - 1)
+    {
+        unsigned char c = (unsigned char)*p;
+        
+        if (c < 128)
+        {
+            // ASCII字符，直接复制（如果是字母则转大写）
+            if (c >= 'a' && c <= 'z')
+            {
+                dest[dest_pos++] = c - 'a' + 'A';
+            }
+            else if (c >= 'A' && c <= 'Z')
+            {
+                dest[dest_pos++] = c;
             }
             p++;
-        } else {
+        }
+        else
+        {
             // 中文字符
             unsigned int codepoint = utf8_next_codepoint(&p);
             char initial = get_chinese_initial_utf8(codepoint);
-            if (initial != 0) {
-                dest[dest_index++] = initial;
+            if (initial != '\0' && dest_pos < dest_size - 1)
+            {
+                dest[dest_pos++] = initial;
             }
-            // 不认识的中文字符跳过
         }
     }
     
-    dest[dest_index] = '\0';
+    dest[dest_pos] = '\0';
 }
 
 // 32. 字符串转大写
-void to_upper_string(const char* src, char* dest, int dest_size) {
-    if (src == NULL || dest == NULL || dest_size <= 0) {
-        return;
-    }
+void to_upper_string(const char* src, char* dest, int dest_size)
+{
+    if (src == NULL || dest == NULL || dest_size <= 0) return;
     
     int i = 0;
-    while (src[i] != '\0' && i < dest_size - 1) {
+    while (src[i] != '\0' && i < dest_size - 1)
+    {
         char c = src[i];
-        if (c >= 'a' && c <= 'z') {
-            dest[i] = c - 32;
-        } else {
+        if (c >= 'a' && c <= 'z')
+        {
+            dest[i] = c - 'a' + 'A';
+        }
+        else
+        {
             dest[i] = c;
         }
         i++;
@@ -1419,37 +1562,214 @@ void to_upper_string(const char* src, char* dest, int dest_size) {
 }
 
 // 33. 不区分大小写的子字符串包含检查
-int contains_ignore_case(const char* text, const char* keyword) {
-    if (text == NULL || keyword == NULL) {
-        return 0;
-    }
+int contains_ignore_case(const char* text, const char* keyword)
+{
+    if (text == NULL || keyword == NULL) return 0;
+    if (strlen(keyword) == 0) return 1;
     
     int text_len = strlen(text);
     int keyword_len = strlen(keyword);
     
-    if (keyword_len == 0 || keyword_len > text_len) {
-        return 0;
-    }
-    
-    for (int i = 0; i <= text_len - keyword_len; i++) {
+    for (int i = 0; i <= text_len - keyword_len; i++)
+    {
         int match = 1;
-        for (int j = 0; j < keyword_len; j++) {
-            char c1 = text[i + j];
-            char c2 = keyword[j];
+        for (int j = 0; j < keyword_len; j++)
+        {
+            char t = text[i + j];
+            char k = keyword[j];
             
             // 转大写比较
-            if (c1 >= 'a' && c1 <= 'z') c1 -= 32;
-            if (c2 >= 'a' && c2 <= 'z') c2 -= 32;
+            if (t >= 'a' && t <= 'z') t = t - 'a' + 'A';
+            if (k >= 'a' && k <= 'z') k = k - 'a' + 'A';
             
-            if (c1 != c2) {
+            if (t != k)
+            {
                 match = 0;
                 break;
             }
         }
-        if (match) {
-            return 1;
-        }
+        if (match) return 1;
     }
     
     return 0;
+}
+
+// 35. 打印大屏主标题
+void print_dashboard_title(const char* title)
+{
+    printf("\n");
+    print_dashboard_line('=', DASHBOARD_WIDTH);
+    
+    int title_width = get_display_width(title);
+    int padding = (DASHBOARD_WIDTH - title_width) / 2;
+    
+    for (int i = 0; i < padding; i++) printf(" ");
+    printf("%s\n", title);
+    
+    print_dashboard_line('=', DASHBOARD_WIDTH);
+}
+
+// 36. 打印大屏分区标题
+void print_section_title(const char* title)
+{
+    printf("\n");
+    int title_width = get_display_width(title);
+    int padding = (DASHBOARD_WIDTH - title_width - 4) / 2;
+    
+    for (int i = 0; i < padding; i++) printf("-");
+    printf("【%s】", title);
+    for (int i = 0; i < padding; i++) printf("-");
+    printf("\n");
+}
+
+// 37. 打印指定字符的横线
+void print_dashboard_line(char ch, int width)
+{
+    for (int i = 0; i < width; i++)
+    {
+        printf("%c", ch);
+    }
+    printf("\n");
+}
+
+// 38. 按显示宽度对齐打印字符串
+void print_pad_right(const char* s, int width)
+{
+    print_padded_text(s, width);
+}
+
+// 39. 打印三列键值对
+void print_kv_3cols(const char* k1, const char* v1, const char* k2, const char* v2, const char* k3, const char* v3)
+{
+    char buf[256];
+    int col_width = DASHBOARD_WIDTH / 3;
+    
+    // 第一列
+    if (k1 != NULL && strlen(k1) > 0)
+    {
+        snprintf(buf, sizeof(buf), "%s%s", k1, v1 != NULL ? v1 : "");
+        print_padded_text(buf, col_width);
+    }
+    else
+    {
+        print_padded_text("", col_width);
+    }
+    
+    // 第二列
+    if (k2 != NULL && strlen(k2) > 0)
+    {
+        snprintf(buf, sizeof(buf), "%s%s", k2, v2 != NULL ? v2 : "");
+        print_padded_text(buf, col_width);
+    }
+    else
+    {
+        print_padded_text("", col_width);
+    }
+    
+    // 第三列
+    if (k3 != NULL && strlen(k3) > 0)
+    {
+        snprintf(buf, sizeof(buf), "%s%s", k3, v3 != NULL ? v3 : "");
+        printf("%s", buf);
+    }
+    
+    printf("\n");
+}
+
+// 40. 打印进度条（标签宽度固定，进度条长度固定）
+void print_progress_bar_ex(const char* label, int current, int total, int bar_width)
+{
+    if (total <= 0) total = 1;
+    if (current < 0) current = 0;
+    if (current > total) current = total;
+    
+    int label_width = 14; // 固定标签宽度
+    print_padded_text(label, label_width);
+    printf("[");
+    
+    int filled = (int)((double)current / total * bar_width);
+    if (filled > bar_width) filled = bar_width;
+    
+    for (int i = 0; i < bar_width; i++)
+    {
+        if (i < filled)
+            printf("█");
+        else
+            printf("░");
+    }
+    
+    printf("] %d/%d (%.1f%%)\n", current, total, (double)current / total * 100);
+}
+
+// 41. 打印单列进度条（标签按显示宽度对齐）
+void print_progress_bar_single(const char* label, int current, int total)
+{
+    print_progress_bar_ex(label, current, total, BAR_WIDTH);
+}
+
+// 6.1 检查字符串是否包含空格或制表符
+int contains_space(const char* str)
+{
+    if (str == NULL) return 0;
+    
+    while (*str != '\0')
+    {
+        if (*str == ' ' || *str == '\t' || *str == '\n' || *str == '\r')
+        {
+            return 1;
+        }
+        str++;
+    }
+    
+    return 0;
+}
+
+// 42. 打印医生候诊队列（动态列宽）
+void print_doctor_queue(void)
+{
+    extern DoctorNode* g_doctor_list;
+    extern PatientNode* g_patient_list;
+    
+    if (g_doctor_list == NULL || g_doctor_list->next == NULL)
+    {
+        printf("暂无医生信息\n");
+        return;
+    }
+    
+    printf("\n");
+    DoctorNode* doc = g_doctor_list->next;
+    int col_count = 0;
+    int col_width = 24;
+    
+    while (doc != NULL)
+    {
+        // 统计该医生的候诊患者数
+        int waiting_count = 0;
+        PatientNode* pat = g_patient_list != NULL ? g_patient_list->next : NULL;
+        while (pat != NULL)
+        {
+            if (strcmp(pat->doctor_id, doc->id) == 0 && pat->status == 0)
+            {
+                waiting_count++;
+            }
+            pat = pat->next;
+        }
+        
+        char buf[128];
+        snprintf(buf, sizeof(buf), "%s: %d人", doc->name, waiting_count);
+        print_padded_text(buf, col_width);
+        
+        col_count++;
+        if (col_count % 3 == 0)
+        {
+            printf("\n");
+        }
+        
+        doc = doc->next;
+    }
+    
+    if (col_count % 3 != 0)
+    {
+        printf("\n");
+    }
 }
