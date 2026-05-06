@@ -1669,12 +1669,17 @@ void show_check_records_by_patient_id(const char* patient_id)
 
     const char* p_name = get_patient_name_by_id(patient_id);
 
-    printf("\n==============================================================\n");
+    int chk_sep = 92; // 6 cols, print_col adds +12
+    printf("\n");
+    for (int i = 0; i < chk_sep; i++) printf("=");
+    printf("\n");
     printf("         患者检查记录查询\n");
-    printf("==============================================================\n");
+    for (int i = 0; i < chk_sep; i++) printf("=");
+    printf("\n");
     printf("患者编号：%s\n", patient_id);
     printf("患者姓名：%s\n", p_name ? p_name : "未知");
-    printf("--------------------------------------------------------------\n");
+    for (int i = 0; i < chk_sep; i++) printf("-");
+    printf("\n");
     print_col("记录编号", 12);
     print_col("检查项目", 20);
     print_col("科室", 12);
@@ -1682,7 +1687,8 @@ void show_check_records_by_patient_id(const char* patient_id)
     print_col("完成", 8);
     print_col("缴费", 6);
     printf("\n");
-    printf("--------------------------------------------------------------\n");
+    for (int i = 0; i < chk_sep; i++) printf("-");
+    printf("\n");
 
     CheckRecordPtrNode* curr = records;
     int count = 0;
@@ -1700,7 +1706,8 @@ void show_check_records_by_patient_id(const char* patient_id)
         curr = curr->next;
     }
 
-    printf("--------------------------------------------------------------\n");
+    for (int i = 0; i < chk_sep; i++) printf("-");
+    printf("\n");
     printf("共 %d 条检查记录\n", count);
 
     curr = records;

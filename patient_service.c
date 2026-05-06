@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <strings.h>
 #include "global.h"
 #include "list_ops.h"
 #include "appointment.h"
@@ -247,14 +248,13 @@ static const char* get_display_text(const char* text)
     {
         return "暂无";
     }
-
-
-#include <stdlib.h>
+    return text;
+}
 
 /**
- * @brief 获取汉字的拼音首字母
- * @param c 汉字字符
- * @return 拼音首字母（大写），非汉字返回原字符
+ * @brief 获取UTF-8字符长度
+ * @param first_byte 第一个字节
+ * @return 字符长度
  */
 static int utf8_char_len(unsigned char first_byte)
 {
@@ -292,7 +292,9 @@ static void name_to_pinyin(const char* name, char* pinyin, int max_len)
         }
         else
         {
-            char initial = get_chinese_pinyin_initial_utf8(&name[i], clen);
+            const char* p = &name[i];
+            unsigned int codepoint = utf8_next_codepoint(&p);
+            char initial = get_chinese_initial_utf8(codepoint);
             if (initial != 0)
                 pinyin[pos++] = initial;
             i += clen;
@@ -301,9 +303,6 @@ static void name_to_pinyin(const char* name, char* pinyin, int max_len)
     
     pinyin[pos] = '\0';
 }
-
-
-typedef struct {
 
 
 /**
@@ -338,8 +337,8 @@ static PatientNode* get_patient_by_id_checked(const char* patient_id, const char
         return NULL;
     }
 
-
-    const char* dept;    // �Ƽ�����
+    return patient;
+}
 
 /**
  * @brief 根据症状描述推荐科室（基于权重积分与一票否决算法）
@@ -936,7 +935,9 @@ int query_basic_patient_record(const char* patient_id, const char* id_card)
     printf("最近一次处理意见: %s\n",
         strlen(patient->treatment_advice) > 0 ? patient->treatment_advice : "暂无处理意见");
     printf("身份证号: %s\n", masked_id);
-
+    printf("==============================================\n");
+    return 1;
+}
 
 /**
  * @brief 更新患者档案信息
@@ -1753,8 +1754,10 @@ int process_patient_payment(const char* patient_id)
         return 0;
     }
 
-
-    int max_no = 0;
+    int index = 1;
+    double total_amount = 0;
+    double medicare_cover = 0;
+    double actual_pay = 0;
 
     printf("\n================ 🏥 账单明细 ================\n");
 
@@ -1782,8 +1785,9 @@ int process_patient_payment(const char* patient_id)
                 }
             }
 
-
-
+            total_amount += item_total;
+            medicare_cover += (item_total - item_actual);
+            actual_pay += item_actual;
 
             printf("[%d] 药品: %s | 单价: %.2f | 数量: %d | 小计: %.2f | 医保后: %.2f\n",
                    index++, med->name, med->price, p_curr->quantity, item_total, item_actual);
@@ -1817,8 +1821,9 @@ int process_patient_payment(const char* patient_id)
                     }
                 }
 
-
-    if (new_id == NULL)
+                total_amount += item_total;
+                medicare_cover += (item_total - item_actual);
+                actual_pay += item_actual;
 
                 printf("[%d] 检查: %s | 单价: %.2f | 小计: %.2f | 医保后: %.2f\n",
                        index++, check_item->item_name, check_item->price, item_total, item_actual);
@@ -1826,9 +1831,6 @@ int process_patient_payment(const char* patient_id)
         }
         cr_curr = cr_curr->next;
     }
-
-
-    {
 
     printf("------------------------------------------\n");
     printf("总计金额: %.2f 元\n", total_amount);
@@ -1878,6 +1880,9 @@ int process_patient_payment(const char* patient_id)
         printf("✅ 缴费成功！已扣除 %.2f 元，当前剩余余额 %.2f 元。\n", actual_pay, patient->balance);
         printf("📢 请移步至【药房】排队取药。\n");
     }
+    
+    return 1;
+}
 
 
 
@@ -2217,7 +2222,9 @@ int submit_new_complaint(const char* patient_id)
     printf("工单编号：%s\n", complaint_id);
     printf("提交时间：%s\n", submit_time);
     printf("我们会尽快处理您的投诉，感谢您的反馈！\n");
-
+    
+    return 1;
+}
 
 // ==========================================
 // 患者就诊流程时间轴模块
@@ -2922,8 +2929,5 @@ int patient_recharge_balance(const char* patient_id, double amount)
     
     return 1;
 }
-
-
-/**
 
 

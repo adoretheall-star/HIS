@@ -349,7 +349,8 @@ void show_all_medicines()
     print_truncated_col("单价(元)", PRICE_WIDTH);
     print_truncated_col("库存", STOCK_WIDTH);
     print_truncated_col("医保类型", TYPE_WIDTH);
-    printf("效期\n");
+    print_truncated_col("效期", EXPIRY_WIDTH);
+    printf("\n");
 
     // 打印分隔线
     int total_width = ID_WIDTH + NAME_WIDTH + GEN_NAME_WIDTH + PRICE_WIDTH + STOCK_WIDTH + TYPE_WIDTH + EXPIRY_WIDTH;
@@ -379,7 +380,8 @@ void show_all_medicines()
         snprintf(stock_str, sizeof(stock_str), "%d", curr->stock);
         print_truncated_col(stock_str, STOCK_WIDTH);
         print_truncated_col(m_type_name, TYPE_WIDTH);
-        printf("%s\n", curr->expiry_date);
+        print_truncated_col(curr->expiry_date, EXPIRY_WIDTH);
+        printf("\n");
         curr = curr->next;
     }
 }
@@ -532,7 +534,8 @@ void show_low_stock_medicines_with_title(int threshold, int show_title)
     print_truncated_col("单价(元)", PRICE_WIDTH);
     print_truncated_col("库存", STOCK_WIDTH);
     print_truncated_col("医保类型", TYPE_WIDTH);
-    printf("效期\n");
+    print_truncated_col("效期", EXPIRY_WIDTH);
+    printf("\n");
 
     // 打印分隔线
     int total_width = ID_WIDTH + NAME_WIDTH + GEN_NAME_WIDTH + PRICE_WIDTH + STOCK_WIDTH + TYPE_WIDTH + EXPIRY_WIDTH;
@@ -542,7 +545,7 @@ void show_low_stock_medicines_with_title(int threshold, int show_title)
     curr = g_medicine_list->next;
     while (curr != NULL)
     {
-        if (curr->stock < threshold)
+        if (curr->stock <= threshold)
         {
             const char* m_type_name = NULL;
             switch (curr->m_type)
@@ -563,7 +566,8 @@ void show_low_stock_medicines_with_title(int threshold, int show_title)
             snprintf(stock_str, sizeof(stock_str), "%d", curr->stock);
             print_truncated_col(stock_str, STOCK_WIDTH);
             print_truncated_col(m_type_name, TYPE_WIDTH);
-            printf("%s\n", curr->expiry_date);
+            print_truncated_col(curr->expiry_date, EXPIRY_WIDTH);
+            printf("\n");
             found = 1;
         }
         curr = curr->next;
@@ -617,6 +621,7 @@ void show_expiring_medicines_with_title(const char* today, int days_threshold, i
     const int STOCK_WIDTH = 8;
     const int TYPE_WIDTH = 10;
     const int EXPIRY_WIDTH = 12;
+    const int DAYS_WIDTH = 12;
 
     // 打印表头
     print_truncated_col("药品编号", ID_WIDTH);
@@ -625,10 +630,12 @@ void show_expiring_medicines_with_title(const char* today, int days_threshold, i
     print_truncated_col("单价(元)", PRICE_WIDTH);
     print_truncated_col("库存", STOCK_WIDTH);
     print_truncated_col("医保类型", TYPE_WIDTH);
-    printf("效期      剩余天数\n");
+    print_truncated_col("效期", EXPIRY_WIDTH);
+    print_truncated_col("剩余天数", DAYS_WIDTH);
+    printf("\n");
 
     // 打印分隔线
-    int total_width = ID_WIDTH + NAME_WIDTH + GEN_NAME_WIDTH + PRICE_WIDTH + STOCK_WIDTH + TYPE_WIDTH + EXPIRY_WIDTH + 12;
+    int total_width = ID_WIDTH + NAME_WIDTH + GEN_NAME_WIDTH + PRICE_WIDTH + STOCK_WIDTH + TYPE_WIDTH + EXPIRY_WIDTH + DAYS_WIDTH;
     for (int i = 0; i < total_width; i++) printf("-");
     printf("\n");
 
@@ -665,7 +672,11 @@ void show_expiring_medicines_with_title(const char* today, int days_threshold, i
             snprintf(stock_str, sizeof(stock_str), "%d", curr->stock);
             print_truncated_col(stock_str, STOCK_WIDTH);
             print_truncated_col(m_type_name, TYPE_WIDTH);
-            printf("%s  %-4d天\n", curr->expiry_date, diff_days);
+            print_truncated_col(curr->expiry_date, EXPIRY_WIDTH);
+            char days_str[16];
+            snprintf(days_str, sizeof(days_str), "%d天", diff_days);
+            print_truncated_col(days_str, DAYS_WIDTH);
+            printf("\n");
             found = 1;
         }
 
@@ -698,7 +709,7 @@ void show_comprehensive_stock_alert(int low_stock_threshold, const char* today, 
 
     // ================ 近效期药品 ================
     printf("\n============= 近效期药品 ==============\n");
-    
+
     // 列宽设置（按显示宽度）
     const int ID_WIDTH = 10;
     const int NAME_WIDTH = 20;
@@ -707,6 +718,7 @@ void show_comprehensive_stock_alert(int low_stock_threshold, const char* today, 
     const int STOCK_WIDTH = 8;
     const int TYPE_WIDTH = 10;
     const int EXPIRY_WIDTH = 12;
+    const int DAYS_WIDTH = 12;
 
     // 打印表头
     print_truncated_col("药品编号", ID_WIDTH);
@@ -715,10 +727,12 @@ void show_comprehensive_stock_alert(int low_stock_threshold, const char* today, 
     print_truncated_col("单价(元)", PRICE_WIDTH);
     print_truncated_col("库存", STOCK_WIDTH);
     print_truncated_col("医保类型", TYPE_WIDTH);
-    printf("效期      剩余天数\n");
+    print_truncated_col("效期", EXPIRY_WIDTH);
+    print_truncated_col("剩余天数", DAYS_WIDTH);
+    printf("\n");
 
     // 打印分隔线
-    int total_width = ID_WIDTH + NAME_WIDTH + GEN_NAME_WIDTH + PRICE_WIDTH + STOCK_WIDTH + TYPE_WIDTH + EXPIRY_WIDTH + 12;
+    int total_width = ID_WIDTH + NAME_WIDTH + GEN_NAME_WIDTH + PRICE_WIDTH + STOCK_WIDTH + TYPE_WIDTH + EXPIRY_WIDTH + DAYS_WIDTH;
     for (int i = 0; i < total_width; i++) printf("-");
     printf("\n");
 
@@ -751,7 +765,11 @@ void show_comprehensive_stock_alert(int low_stock_threshold, const char* today, 
                 snprintf(stock_str, sizeof(stock_str), "%d", curr->stock);
                 print_truncated_col(stock_str, STOCK_WIDTH);
                 print_truncated_col(m_type_name, TYPE_WIDTH);
-                printf("%s  %-4d天\n", curr->expiry_date, diff_days);
+                print_truncated_col(curr->expiry_date, EXPIRY_WIDTH);
+                char days_str[16];
+                snprintf(days_str, sizeof(days_str), "%d天", diff_days);
+                print_truncated_col(days_str, DAYS_WIDTH);
+                printf("\n");
                 expiring_count++;
             }
         }
@@ -777,7 +795,8 @@ void show_comprehensive_stock_alert(int low_stock_threshold, const char* today, 
     print_truncated_col("单价(元)", PRICE_WIDTH);
     print_truncated_col("库存", STOCK_WIDTH);
     print_truncated_col("医保类型", TYPE_WIDTH);
-    printf("效期\n");
+    print_truncated_col("效期", EXPIRY_WIDTH);
+    printf("\n");
 
     // 打印分隔线
     total_width = ID_WIDTH + NAME_WIDTH + GEN_NAME_WIDTH + PRICE_WIDTH + STOCK_WIDTH + TYPE_WIDTH + EXPIRY_WIDTH;
@@ -788,7 +807,7 @@ void show_comprehensive_stock_alert(int low_stock_threshold, const char* today, 
     curr = g_medicine_list->next;
     while (curr != NULL)
     {
-        if (curr->stock < low_stock_threshold)
+        if (curr->stock <= low_stock_threshold)
         {
             const char* m_type_name = NULL;
             switch (curr->m_type)
@@ -809,7 +828,8 @@ void show_comprehensive_stock_alert(int low_stock_threshold, const char* today, 
             snprintf(stock_str, sizeof(stock_str), "%d", curr->stock);
             print_truncated_col(stock_str, STOCK_WIDTH);
             print_truncated_col(m_type_name, TYPE_WIDTH);
-            printf("%s\n", curr->expiry_date);
+            print_truncated_col(curr->expiry_date, EXPIRY_WIDTH);
+            printf("\n");
             low_stock_count++;
         }
         curr = curr->next;

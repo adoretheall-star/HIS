@@ -184,31 +184,29 @@ void show_all_beds()
 
     }
 
-    printf("\n=======================================================================\n");
+    int bed_sep_width = 111; // 8 cols, print_col adds +16
+
+    printf("\n");
+    for (int i = 0; i < bed_sep_width; i++) printf("=");
+    printf("\n");
 
     printf("                           全部床位信息\n");
 
-    printf("=======================================================================\n");
-
-    print_col("病房编号", 12);
-
-    print_col("床位编号", 12);
-
-    print_col("科室", 10);
-
-    print_col("类型", 10);
-
-    print_col("状态", 8);
-
-    print_col("患者编号", 13);
-
-    print_col("患者姓名", 12);
-
-    print_col("身份证号", 18);
-
+    for (int i = 0; i < bed_sep_width; i++) printf("=");
     printf("\n");
 
-    printf("-----------------------------------------------------------------------\n");
+    print_col("病房编号", 12);
+    print_col("床位编号", 12);
+    print_col("科室", 10);
+    print_col("类型", 10);
+    print_col("状态", 8);
+    print_col("患者编号", 13);
+    print_col("患者姓名", 12);
+    print_col("身份证号", 18);
+    printf("\n");
+
+    for (int i = 0; i < bed_sep_width; i++) printf("-");
+    printf("\n");
 
     curr = g_ward_list->next;
 
@@ -300,13 +298,14 @@ void show_all_beds()
 
     }
 
-    printf("-----------------------------------------------------------------------\n");
+    for (int i = 0; i < bed_sep_width; i++) printf("-");
+    printf("\n");
 
     printf("总计 %d 张床位 其中 %d 张已占用 %d 张空闲\n",
-
         total, occupied, total - occupied);
 
-    printf("=======================================================================\n");
+    for (int i = 0; i < bed_sep_width; i++) printf("=");
+    printf("\n");
 
 }
 
@@ -328,23 +327,25 @@ void show_free_beds()
 
     }
 
-    printf("\n=======================================================================\n");
+    int free_bed_sep = 52; // 4 cols, print_col adds +8
+
+    printf("\n");
+    for (int i = 0; i < free_bed_sep; i++) printf("=");
+    printf("\n");
 
     printf("                           空闲床位信息\n");
 
-    printf("=======================================================================\n");
-
-    print_col("病房编号", 12);
-
-    print_col("床位编号", 12);
-
-    print_col("科室", 10);
-
-    print_col("类型", 10);
-
+    for (int i = 0; i < free_bed_sep; i++) printf("=");
     printf("\n");
 
-    printf("-----------------------------------------------------------------------\n");
+    print_col("病房编号", 12);
+    print_col("床位编号", 12);
+    print_col("科室", 10);
+    print_col("类型", 10);
+    printf("\n");
+
+    for (int i = 0; i < free_bed_sep; i++) printf("-");
+    printf("\n");
 
     curr = g_ward_list->next;
 
@@ -374,11 +375,13 @@ void show_free_beds()
 
     }
 
-    printf("-----------------------------------------------------------------------\n");
+    for (int i = 0; i < free_bed_sep; i++) printf("-");
+    printf("\n");
 
     printf("总计 %d 张空闲床位\n", free_count);
 
-    printf("=======================================================================\n");
+    for (int i = 0; i < free_bed_sep; i++) printf("=");
+    printf("\n");
 
 }
 
@@ -907,37 +910,35 @@ void show_inpatient_record_by_patient_id(const char* patient_id)
 
     }
 
-    printf("\n==============================================================\n");
+    int inp_sep_width = 108; // 9 cols, print_col adds +18
+
+    printf("\n");
+    for (int i = 0; i < inp_sep_width; i++) printf("=");
+    printf("\n");
 
     printf("                    患者住院记录\n");
 
-    printf("==============================================================\n");
+    for (int i = 0; i < inp_sep_width; i++) printf("=");
+    printf("\n");
 
     printf("患者信息 %s - %s\n", patient->id, patient->name);
 
-    printf("--------------------------------------------------------------\n");
-
-    print_col("住院中", 12);
-
-    print_col("病房编号", 12);
-
-    print_col("床位编号", 12);
-
-    print_col("推荐类型", 10);
-
-    print_col("实际类型", 10);
-
-    print_col("预计天数", 8);
-
-    print_col("已住天数", 8);
-
-    print_col("押金余额", 10);
-
-    print_col("状态", 8);
-
+    for (int i = 0; i < inp_sep_width; i++) printf("-");
     printf("\n");
 
-    printf("--------------------------------------------------------------\n");
+    print_col("住院中", 12);
+    print_col("病房编号", 12);
+    print_col("床位编号", 12);
+    print_col("推荐类型", 10);
+    print_col("实际类型", 10);
+    print_col("预计天数", 8);
+    print_col("已住天数", 8);
+    print_col("押金余额", 10);
+    print_col("状态", 8);
+    printf("\n");
+
+    for (int i = 0; i < inp_sep_width; i++) printf("-");
+    printf("\n");
 
     curr = g_inpatient_list->next;
 
@@ -1005,7 +1006,8 @@ void show_inpatient_record_by_patient_id(const char* patient_id)
 
     }
 
-    printf("==============================================================\n");
+    for (int i = 0; i < inp_sep_width; i++) printf("=");
+    printf("\n");
 
 }
 
