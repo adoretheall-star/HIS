@@ -484,7 +484,7 @@ int check_duplicate_appointment_early(
 // ==========================================
 int can_patient_register_or_appoint(PatientNode* patient)
 {
-    return can_patient_make_appointment(patient, patient ? patient->symptom : NULL, NULL, NULL);
+    return can_patient_make_appointment(patient, patient ? patient->symptom : NULL, NULL, NULL, NULL);
 }
 
 // 预约登记

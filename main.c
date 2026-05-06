@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // 文件名: main.c
 // 描述: 智慧医疗信息管理系统 - 主入口
 // 作者:周宇轩
@@ -223,25 +223,23 @@ static void admin_menu()
         printf("  [7] 修改护士值班状态\n");
 printf("  [8] 查看药师值班状态\n");
         printf("  [9] 修改药师值班状态\n");
-        printf("  [10] 管理统计面板\n");
+        printf("  [10] 综合管理面板\n");
         printf("  [11] 预警管理\n");
-        printf("  [12] 负载监控查看\n");
-        printf("  [13] 公共状态统计\n");
-        printf("  [14] 传染病异常提醒\n");
-        printf("  [15] 操作日志\n");
-        printf("  [16] 药品与发药管理\n");
-        printf("  [17] 床位资源管理\n");
-        printf("  [18] 投诉管理\n");
-        printf("  [19] 评价管理\n");
-        printf("  [20] 患者档案管理\n");
-        printf("  [21] 检查项目管理\n");
-        printf("  [22] 查询检查记录\n");
-        printf("  [23] 回收站管理\n");
-        printf("  [24] 医疗风险大屏\n");
-        printf("  [25] 报表导出中心\n");
-        printf("  [26] 个人中心\n");
-        printf("  [27] 系统数据完整性检查\n");
-        printf("  [28] 演示模式设置\n");
+        printf("  [12] 传染病异常提醒\n");
+        printf("  [13] 操作日志\n");
+        printf("  [14] 药品与发药管理\n");
+        printf("  [15] 床位资源管理\n");
+        printf("  [16] 投诉管理\n");
+        printf("  [17] 评价管理\n");
+        printf("  [18] 患者档案管理\n");
+        printf("  [19] 检查项目管理\n");
+        printf("  [20] 查询检查记录\n");
+        printf("  [21] 回收站管理\n");
+        printf("  [22] 医疗风险大屏\n");
+        printf("  [23] 报表导出中心\n");
+        printf("  [24] 个人中心\n");
+        printf("  [25] 系统数据完整性检查\n");
+        printf("  [26] 演示模式设置\n");
         printf("  [0] 退出登录\n");
         printf("------------------------------------------------------\n");
 
@@ -304,80 +302,70 @@ printf("  [8] 查看药师值班状态\n");
                 break;
             case 12:
                 system("cls");
-                show_load_monitoring();
+                show_infectious_disease_alerts();
                 system("pause");
                 break;
             case 13:
                 system("cls");
-                show_public_status_statistics();
-                system("pause");
-                break;
-            case 14:
-                system("cls");
-                show_infectious_disease_alerts();
-                system("pause");
-                break;
-            case 15:
-                system("cls");
                 show_logs();
                 break;
-            case 16:
+            case 14:
                 system("cls");
                 admin_medicine_menu();
                 system("pause");
                 break;
-            case 17:
+            case 15:
                 system("cls");
                 admin_ward_resource_menu();
                 system("pause");
                 break;
-            case 18:
+            case 16:
                 system("cls");
                 admin_complaint_menu();
                 system("pause");
                 break;
-            case 19:
+            case 17:
                 system("cls");
                 admin_evaluation_menu();
                 system("pause");
                 break;
-            case 20:
+            case 18:
                 system("cls");
                 patient_archive_menu();
                 system("pause");
                 break;
-            case 21:
+            case 19:
                 system("cls");
                 admin_check_item_menu();
                 system("pause");
                 break;
-            case 22:
+            case 20:
                 system("cls");
                 handle_query_check_records();
                 system("pause");
                 break;
-            case 23:
+            case 21:
                 system("cls");
                 admin_recycle_bin_menu();
                 system("pause");
                 break;
-            case 24:
+            case 22:
                 show_admin_medical_big_screen();
                 break;
-            case 25:
+            case 23:
                 system("cls");
                 admin_report_menu();
                 system("pause");
                 break;
-            case 26:
+            case 24:
                 system("cls");
                 user_profile_menu(g_current_account);
                 break;
-            case 27:
+            case 25:
                 check_system_data_integrity();
                 system("pause");
                 break;
-            case 28:
+            case 26:
                 system("cls");
                 handle_demo_mode();
                 system("pause");
@@ -1988,7 +1976,7 @@ back_to_decision:
                 }
             }
 
-            printf("\n⛔ [熔断机制] 该患者已连续 3 次叫号未到，系统已将其从当前排队序列中移除！\n");
+            printf("\n" RED "⛔ [熔断机制] 该患者已连续 3 次叫号未到，系统已将其从当前排队序列中移除！" RESET "\n");
             printf("如需看诊，请患者重新前往服务台挂号。\n");
         }
         else
@@ -2912,7 +2900,7 @@ static void display_recent_alerts()
 {
     int has_content = 0;
 
-    printf("\n[ALERT] [安全预警中心] 最近预警：\n");
+    printf("\n" RED "[ALERT] [安全预警中心] 最近预警：" RESET "\n");
     printf("------------------------------------------------------\n");
 
     // === 实时扫描：住院欠费预警 ===
@@ -2924,7 +2912,7 @@ static void display_recent_alerts()
             if (ir->is_active && ir->deposit_balance < 0)
             {
                 PatientNode* p = find_patient_by_id(g_patient_list, ir->patient_id);
-                printf("[ALERT] 住院欠费：%s（%s）押金 %.2f 元，已欠费！\n",
+                printf(RED "[ALERT] 住院欠费：%s（%s）押金 %.2f 元，已欠费！" RESET "\n",
                     p ? p->name : "未知", ir->patient_id, ir->deposit_balance);
                 has_content = 1;
             }
@@ -2950,7 +2938,7 @@ static void display_recent_alerts()
                 if (ir->deposit_balance < rate * 3)
                 {
                     PatientNode* p = find_patient_by_id(g_patient_list, ir->patient_id);
-                    printf("[WARN] 押金不足：%s（%s）余额 %.2f，不足3天费用\n",
+                    printf(YELLOW "[WARN] 押金不足：%s（%s）余额 %.2f，不足3天费用" RESET "\n",
                         p ? p->name : "未知", ir->patient_id, ir->deposit_balance);
                     has_content = 1;
                 }
@@ -2967,7 +2955,7 @@ static void display_recent_alerts()
         {
             if (m->stock < 5)
             {
-                printf("[WARN] 低库存：药品 [%s] %s 库存 %d，低于阈值5\n",
+                printf(RED "[WARN] 低库存：药品 [%s] %s 库存 %d，低于阈值5" RESET "\n",
                     m->id, m->name, m->stock);
                 has_content = 1;
             }
@@ -2992,7 +2980,7 @@ static void display_recent_alerts()
                     double days_left = difftime(exp_time, time(NULL)) / 86400.0;
                     if (days_left <= 30)
                     {
-                        printf("[WARN] 临期药品：%s [%s] %d天后过期\n",
+                        printf(YELLOW "[WARN] 临期药品：%s [%s] %d天后过期" RESET "\n",
                             m->name, m->id, (int)days_left);
                         has_content = 1;
                     }
@@ -3012,7 +3000,7 @@ static void display_recent_alerts()
         {
             char time_str[20];
             strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", localtime(&curr->time));
-            printf("[%s] %s\n", time_str, curr->message);
+            printf(RED "[%s] %s" RESET "\n", time_str, curr->message);
             curr = curr->prev;
             count++;
             has_content = 1;
@@ -3020,7 +3008,7 @@ static void display_recent_alerts()
     }
 
     if (!has_content)
-        printf("[OK] 当前无预警，系统运行正常\n");
+        printf(GREEN "[OK] 当前无预警，系统运行正常" RESET "\n");
 
     printf("------------------------------------------------------\n");
 }
@@ -3142,7 +3130,7 @@ static void internal_login_menu()
         
         if (lock_duration < 60)
         {
-            printf("\n⛔ 账号已被锁定！请 %d 秒后再试。\n", 60 - lock_duration);
+            printf("\n" RED "⛔ 账号已被锁定！请 %d 秒后再试。" RESET "\n", 60 - lock_duration);
             system("pause");
             return;
         }
@@ -3174,7 +3162,7 @@ static void internal_login_menu()
         if (account->error_count >= 3)
         {
             account->lock_time = time(NULL);
-            printf("\n⛔ 密码错误！账号已被锁定 60 秒。\n");
+            printf("\n" RED "⛔ 密码错误！账号已被锁定 60 秒。" RESET "\n");
         }
         else
         {
@@ -3581,10 +3569,11 @@ static void handle_internal_appointment_register()
             system("pause");
             return;
         }
-
-        if (!can_patient_make_appointment(patient, patient->symptom, appoint_doctor, appoint_dept))
+        
+        char error_msg[256];
+        if (!can_patient_make_appointment(patient, patient->symptom, appoint_doctor, appoint_dept, error_msg))
         {
-            printf("\n预约已取消。\n");
+            printf("\n[ERROR] 预约失败：%s\n", error_msg);
             system("pause");
             return;
         }
@@ -4215,7 +4204,7 @@ static void handle_patient_self_balance_query()
     printf("  姓名：%s\n", patient->name);
     printf("  账户余额：%.2f 元\n", patient->balance);
     if (patient->balance < 0)
-        printf("  [WARN] 余额已欠费，请及时充值！\n");
+        printf("  " RED "[WARN] 余额已欠费，请及时充值！" RESET "\n");
     printf("=============================================\n");
 
     InpatientRecord* ir = find_active_inpatient_by_patient_id(patient->id);
@@ -4225,7 +4214,7 @@ static void handle_patient_self_balance_query()
         printf("  住院号：%s\n", ir->inpatient_id);
         printf("  押金余额：%.2f 元\n", ir->deposit_balance);
         if (ir->deposit_balance < 0)
-            printf("  [WARN] 押金已欠费，请及时催缴！\n");
+            printf("  " RED "[WARN] 押金已欠费，请及时催缴！" RESET "\n");
         printf("---------------------------------------------\n");
     }
 }
@@ -4676,10 +4665,10 @@ static void handle_patient_self_appointment_register()
         }
     }
     // ==========================================
-
-    if (!can_patient_make_appointment(patient, current_symptom, appoint_doctor, appoint_dept))
+    
+    if (!can_patient_make_appointment(patient, current_symptom, appoint_doctor, appoint_dept, error_msg))
     {
-        printf("\n预约已取消。\n");
+        printf("\n[ERROR] 预约失败：%s\n", error_msg);
         safe_copy_string(patient->symptom, MAX_SYMPTOM_LEN, old_symptom);
         patient->is_emergency = old_is_emergency;
         system("pause");
@@ -4698,7 +4687,7 @@ static void handle_patient_self_appointment_register()
     {
         if (is_current_emergency == 1)
         {
-            printf("\n[ALERT] [绿色通道启动] 生命至上！已为您开启\"先诊疗后付费\"特权！\n");
+            printf("\n" GREEN "[绿色通道启动] 生命至上！已为您开启\"先诊疗后付费\"特权！" RESET "\n");
             patient->balance -= reg_fee;
             if (patient->balance < 0)
             {
@@ -5429,7 +5418,7 @@ static void handle_patient_self_registration()
     {
         if (patient->is_emergency == 1)
         {
-            printf("\n[ALERT] [绿色通道启动] 生命至上！已为您开启\"先诊疗后付费\"特权！\n");
+            printf("\n" GREEN "[绿色通道启动] 生命至上！已为您开启\"先诊疗后付费\"特权！" RESET "\n");
             patient->balance -= reg_fee;
             if (patient->balance < 0)
             {
@@ -8361,7 +8350,7 @@ static void handle_admin_add_ward_bed()
         switch (step)
         {
         case 0:
-            get_safe_string("请输入所属病房编号（例如 R-101）：", room_id, MAX_ID_LEN);
+            get_safe_string("请输入所属病房编号（例如 B-101）：", room_id, MAX_ID_LEN);
             if (my_strcasecmp(room_id, "B") == 0 || my_strcasecmp(room_id, "Q") == 0)
             {
                 printf("\n已退出新增床位操作。\n");
@@ -8376,7 +8365,7 @@ static void handle_admin_add_ward_bed()
             break;
 
         case 1:
-            get_safe_string("请输入床位编号（例如 W-101）：", bed_id, MAX_ID_LEN);
+            get_safe_string("请输入床位编号（例如 101-1）：", bed_id, MAX_ID_LEN);
             if (my_strcasecmp(bed_id, "B") == 0)
             {
                 step = 0;

@@ -2780,31 +2780,46 @@ int can_patient_make_appointment(
     PatientNode* patient,
     const char* current_symptom,
     const char* appoint_doctor,
-    const char* appoint_dept)
+    const char* appoint_dept,
+    char* error_msg)
 {
-    if (patient == NULL) return 0;
+    if (patient == NULL)
+    {
+        if (error_msg != NULL) strcpy(error_msg, "患者信息不存在");
+        return 0;
+    }
     
     // 1. 检查是否在黑名单中
     if (patient->is_blacklisted == 1)
     {
+        if (error_msg != NULL) strcpy(error_msg, "该患者已被列入黑名单，无法预约");
         return 0;
     }
     
     // 2. 检查是否欠费
     if (patient->balance < 0)
     {
+        if (error_msg != NULL) strcpy(error_msg, "该患者账户已欠费，请先充值后再预约");
         return 0;
     }
     
-    // 3. 检查是否有未完成流程（非终态）
+    // 3. 检查过号次数（爽约次数）
+    if (patient->missed_count >= 3)
+    {
+        if (error_msg != NULL) strcpy(error_msg, "该患者过号次数过多（3次及以上），暂时无法预约");
+        return 0;
+    }
+    
+    // 4. 检查是否有未完成流程（非终态）
     if (patient->status != STATUS_COMPLETED && 
         patient->status != STATUS_NO_SHOW &&
         patient->status != STATUS_PENDING)
     {
+        if (error_msg != NULL) strcpy(error_msg, "该患者有未完成的就诊流程，请先完成后再预约");
         return 0;
     }
     
-    // 4. 检查是否为急诊（急诊不走预约流程）
+    // 5. 检查是否为急诊（急诊不走预约流程）
     const char* symptom = current_symptom != NULL ? current_symptom : patient->symptom;
     if (symptom != NULL && strlen(symptom) > 0)
     {
@@ -2812,25 +2827,28 @@ int can_patient_make_appointment(
         const char* recommended_dept = recommend_dept_by_symptom(symptom);
         if (recommended_dept != NULL && strcmp(recommended_dept, "急诊科") == 0)
         {
+            if (error_msg != NULL) strcpy(error_msg, "该症状建议走急诊绿色通道，请直接前往急诊科");
             return 0; // 急诊不走预约流程
         }
     }
     
-    // 5. 检查指定科室是否为急诊科
+    // 6. 检查指定科室是否为急诊科
     if (appoint_dept != NULL && strlen(appoint_dept) > 0)
     {
         if (strcmp(appoint_dept, "急诊科") == 0)
         {
+            if (error_msg != NULL) strcpy(error_msg, "急诊科不走预约流程，请直接前往急诊科");
             return 0; // 急诊不走预约流程
         }
     }
     
-    // 6. 检查指定医生是否为急诊科医生
+    // 7. 检查指定医生是否为急诊科医生
     if (appoint_doctor != NULL && strlen(appoint_doctor) > 0 && g_doctor_list != NULL)
     {
         DoctorNode* doctor = find_doctor_by_id(g_doctor_list, appoint_doctor);
         if (doctor != NULL && strcmp(doctor->department, "急诊科") == 0)
         {
+            if (error_msg != NULL) strcpy(error_msg, "急诊科不走预约流程，请直接前往急诊科");
             return 0; // 急诊不走预约流程
         }
     }

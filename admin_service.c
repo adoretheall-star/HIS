@@ -836,6 +836,8 @@ void show_admin_dashboard(void)
     int doctor_count = 0;
     int nurse_count = 0;
     int pharmacist_count = 0;
+    int bed_count = 0;
+    int occupied_beds = 0;
 
     // 统计患者数量和待发药患者数量
     if (g_patient_list != NULL && g_patient_list->next != NULL)
@@ -911,18 +913,51 @@ void show_admin_dashboard(void)
         }
     }
 
-    printf("\n==============================================================\n");
-    printf("                      管理统计面板\n");
-    printf("==============================================================\n");
+    // 统计床位信息
+    if (g_ward_list != NULL && g_ward_list->next != NULL)
+    {
+        WardNode* curr = g_ward_list->next;
+        while (curr != NULL)
+        {
+            bed_count++;
+            if (curr->is_occupied)
+                occupied_beds++;
+            curr = curr->next;
+        }
+    }
+
+    printf("\n================================================================================\n");
+    printf("                           综合管理面板\n");
+    printf("================================================================================\n");
+
+    // 人员统计
+    printf("\n【人员统计】\n");
+    printf("--------------------------------------------------------------------------------\n");
     printf("患者总数：%d\n", patient_count);
-    printf("当前待发药患者数量：%d\n", waiting_dispense_count);
-    printf("药品总数：%d\n", medicine_count);
-    printf("低库存药品数量：%d\n", low_stock_count);
-    printf("近效期药品数量：%d\n", expiring_medicine_count);
     printf("医生总数：%d\n", doctor_count);
     printf("护士总数：%d\n", nurse_count);
     printf("药师总数：%d\n", pharmacist_count);
-    printf("==============================================================\n");
+    printf("--------------------------------------------------------------------------------\n");
+
+    // 药品统计
+    printf("\n【药品统计】\n");
+    printf("--------------------------------------------------------------------------------\n");
+    printf("药品总数：%d\n", medicine_count);
+    printf("低库存药品数量：" RED "%d" RESET "\n", low_stock_count);
+    printf("近效期药品数量：" YELLOW "%d" RESET "\n", expiring_medicine_count);
+    printf("--------------------------------------------------------------------------------\n");
+
+    // 业务统计
+    printf("\n【业务统计】\n");
+    printf("--------------------------------------------------------------------------------\n");
+    printf("当前待发药患者数量：" YELLOW "%d" RESET "\n", waiting_dispense_count);
+    printf("床位总数：%d\n", bed_count);
+    printf("已占用床位：%d\n", occupied_beds);
+    printf("空闲床位：%d\n", bed_count - occupied_beds);
+    printf("--------------------------------------------------------------------------------\n");
+
+    printf("\n提示：此面板数据实时更新，可作为系统运行监控参考。\n");
+    printf("================================================================================\n");
 }
 
 // 解析日期字符串为 tm 结构
@@ -1060,16 +1095,16 @@ static void show_low_stock_warning(void)
     int title_width = get_display_width("低库存药品预警");
     int title_padding = (total_width - title_width) / 2;
     for (int i = 0; i < title_padding; i++) printf(" ");
-    printf("低库存药品预警");
+    printf(RED "低库存药品预警" RESET);
     for (int i = 0; i < total_width - title_width - title_padding; i++) printf(" ");
     printf("\n");
-    
+
     for (int i = 0; i < total_width; i++) printf("=");
     printf("\n");
-    
+
     if (count == 0)
     {
-        printf("当前无低库存药品预警\n");
+        printf(GREEN "当前无低库存药品预警" RESET "\n");
     }
     else
     {
@@ -1145,13 +1180,6 @@ static void show_low_stock_warning(void)
 // 系统预警查看模块（整合所有7种预警类型）
 // ==========================================
 
-// 颜色定义
-#define RED "\033[31m"
-#define GREEN "\033[32m"
-#define YELLOW "\033[33m"
-#define BLUE "\033[34m"
-#define RESET "\033[0m"
-
 // 预警管理子菜单
 void admin_alert_menu()
 {
@@ -1161,7 +1189,7 @@ void admin_alert_menu()
     {
         system("cls");
         printf("\n======================================================\n");
-        printf("                [WARN]  预警管理\n");
+        printf("              " RED "  [WARN]  预警管理" RESET "\n");
         printf("======================================================\n");
         printf("  [1] 查看事件预警（恶意挂号、爽约、急诊）\n");
         printf("  [2] 查看药品预警（低库存、临期药）\n");
@@ -2812,21 +2840,21 @@ static void show_waiting_dispense_warning(void)
     total_width = id_width + name_width + age_width + status_width + dept_width + 20; // 20是列间距总和
     for (int i = 0; i < total_width; i++) printf("=");
     printf("\n");
-    
+
     // 输出标题
     int title_width = get_display_width("待发药患者预警");
     int title_padding = (total_width - title_width) / 2;
     for (int i = 0; i < title_padding; i++) printf(" ");
-    printf("待发药患者预警");
+    printf(YELLOW "待发药患者预警" RESET);
     for (int i = 0; i < total_width - title_width - title_padding; i++) printf(" ");
     printf("\n");
-    
+
     for (int i = 0; i < total_width; i++) printf("=");
     printf("\n");
-    
+
     if (count == 0)
     {
-        printf("当前无待发药患者\n");
+        printf(GREEN "当前无待发药患者" RESET "\n");
     }
     else
     {
@@ -3003,20 +3031,32 @@ void show_resource_warnings(void)
             }
         }
 
-        // 计算空闲床位数（假设有100个床位）
-        free_beds = 100 - occupied_beds;
+        // 统计总床位数
+        int total_beds = 0;
+        if (g_ward_list != NULL && g_ward_list->next != NULL)
+        {
+            WardNode* ward_curr = g_ward_list->next;
+            while (ward_curr != NULL)
+            {
+                total_beds++;
+                ward_curr = ward_curr->next;
+            }
+        }
+        
+        // 计算空闲床位数
+        free_beds = total_beds - occupied_beds;
         if (free_beds < 0) free_beds = 0;
 
         printf("\n==============================================================\n");
-        printf("                      资源预警\n");
+        printf("                     " YELLOW "资源预警" RESET "\n");
         printf("==============================================================\n");
-        printf("低库存药品数量：%d\n", low_stock_count);
-        printf("近效期药品数量：%d\n", expiring_medicine_count);
-        printf("待发药患者数量：%d\n", waiting_dispense_count);
+        printf("低库存药品数量：" RED "%d" RESET "\n", low_stock_count);
+        printf("近效期药品数量：" YELLOW "%d" RESET "\n", expiring_medicine_count);
+        printf("待发药患者数量：" YELLOW "%d" RESET "\n", waiting_dispense_count);
         printf("当前已占用床位数：%d\n", occupied_beds);
-        printf("当前空闲床位数：%d\n", free_beds);
-        printf("押金预警住院患者数量：%d\n", deposit_warning_count);
-        printf("欠费 / 待缴费患者数量：%d\n", unpaid_patient_count);
+        printf("当前空闲床位数：" GREEN "%d" RESET "\n", free_beds);
+        printf("押金预警住院患者数量：" RED "%d" RESET "\n", deposit_warning_count);
+        printf("欠费 / 待缴费患者数量：" RED "%d" RESET "\n", unpaid_patient_count);
         printf("==============================================================\n");
         printf("请选择要查看的预警详情\n");
         printf("==============================================================\n");
@@ -3108,8 +3148,20 @@ static void show_bed_occupancy_warning(void)
         }
     }
 
-    // 计算空闲床位数（假设有100个床位）
-    free_count = 100 - occupied_count;
+    // 统计总床位数
+    int total_beds = 0;
+    if (g_ward_list != NULL && g_ward_list->next != NULL)
+    {
+        WardNode* ward_curr = g_ward_list->next;
+        while (ward_curr != NULL)
+        {
+            total_beds++;
+            ward_curr = ward_curr->next;
+        }
+    }
+    
+    // 计算空闲床位数
+    free_count = total_beds - occupied_count;
     if (free_count < 0) free_count = 0;
 
     if (occupied_count == 0)
@@ -6666,10 +6718,10 @@ static int export_medicine_report(void)
     
     // 写入低库存药品明细
     fprintf(fp, "【低库存药品明细】\n");
-    fprintf(fp, "------------------------------------------------------------\n");
-    fprintf(fp, "%-12s | %-16s | %-12s | %-16s | %-8s | %-6s | %-12s\n",
+    fprintf(fp, "--------------------------------------------------------------------------------\n");
+    fprintf(fp, "%-10s | %-20s | %-14s | %-24s | %-8s | %-6s | %-12s\n",
             "药品编号", "药品名称", "别名", "通用名", "单价", "库存", "有效期");
-    fprintf(fp, "------------------------------------------------------------\n");
+    fprintf(fp, "--------------------------------------------------------------------------------\n");
     
     if (g_medicine_list != NULL)
     {
@@ -6678,11 +6730,16 @@ static int export_medicine_report(void)
         {
             if (curr->stock < 10)
             {
-                fprintf(fp, "%-12s | %-16s | %-12s | %-16s | %-8.2f | %-6d | %-12s\n",
+                char name[21], alias[15], generic[25];
+                safe_utf8_truncate(name, curr->name, 20);
+                safe_utf8_truncate(alias, strlen(curr->alias) > 0 ? curr->alias : "无", 14);
+                safe_utf8_truncate(generic, strlen(curr->generic_name) > 0 ? curr->generic_name : "无", 24);
+                
+                fprintf(fp, "%-10s | %-20s | %-14s | %-24s | %8.2f | %6d | %-12s\n",
                         curr->id,
-                        curr->name,
-                        strlen(curr->alias) > 0 ? curr->alias : "无",
-                        strlen(curr->generic_name) > 0 ? curr->generic_name : "无",
+                        name,
+                        alias,
+                        generic,
                         curr->price,
                         curr->stock,
                         strlen(curr->expiry_date) > 0 ? curr->expiry_date : "无");
@@ -6690,14 +6747,14 @@ static int export_medicine_report(void)
             curr = curr->next;
         }
     }
-    fprintf(fp, "------------------------------------------------------------\n\n");
+    fprintf(fp, "--------------------------------------------------------------------------------\n\n");
     
     // 写入近效期药品明细
     fprintf(fp, "【近效期药品明细】\n");
-    fprintf(fp, "------------------------------------------------------------\n");
-    fprintf(fp, "%-12s | %-16s | %-12s | %-16s | %-8s | %-6s | %-12s\n",
+    fprintf(fp, "--------------------------------------------------------------------------------\n");
+    fprintf(fp, "%-10s | %-20s | %-14s | %-24s | %-8s | %-6s | %-12s\n",
             "药品编号", "药品名称", "别名", "通用名", "单价", "库存", "有效期");
-    fprintf(fp, "------------------------------------------------------------\n");
+    fprintf(fp, "--------------------------------------------------------------------------------\n");
     
     if (g_medicine_list != NULL)
     {
@@ -6707,11 +6764,16 @@ static int export_medicine_report(void)
             int days = days_from_today(curr->expiry_date);
             if (days >= 0 && days <= 30)
             {
-                fprintf(fp, "%-12s | %-16s | %-12s | %-16s | %-8.2f | %-6d | %-12s\n",
+                char name[21], alias[15], generic[25];
+                safe_utf8_truncate(name, curr->name, 20);
+                safe_utf8_truncate(alias, strlen(curr->alias) > 0 ? curr->alias : "无", 14);
+                safe_utf8_truncate(generic, strlen(curr->generic_name) > 0 ? curr->generic_name : "无", 24);
+                
+                fprintf(fp, "%-10s | %-20s | %-14s | %-24s | %8.2f | %6d | %-12s\n",
                         curr->id,
-                        curr->name,
-                        strlen(curr->alias) > 0 ? curr->alias : "无",
-                        strlen(curr->generic_name) > 0 ? curr->generic_name : "无",
+                        name,
+                        alias,
+                        generic,
                         curr->price,
                         curr->stock,
                         strlen(curr->expiry_date) > 0 ? curr->expiry_date : "无");
@@ -6719,14 +6781,14 @@ static int export_medicine_report(void)
             curr = curr->next;
         }
     }
-    fprintf(fp, "------------------------------------------------------------\n\n");
+    fprintf(fp, "--------------------------------------------------------------------------------\n\n");
     
     // 写入已过期药品明细
     fprintf(fp, "【已过期药品明细】\n");
-    fprintf(fp, "------------------------------------------------------------\n");
-    fprintf(fp, "%-12s | %-16s | %-12s | %-16s | %-8s | %-6s | %-12s\n",
+    fprintf(fp, "--------------------------------------------------------------------------------\n");
+    fprintf(fp, "%-10s | %-20s | %-14s | %-24s | %-8s | %-6s | %-12s\n",
             "药品编号", "药品名称", "别名", "通用名", "单价", "库存", "有效期");
-    fprintf(fp, "------------------------------------------------------------\n");
+    fprintf(fp, "--------------------------------------------------------------------------------\n");
     
     if (g_medicine_list != NULL)
     {
@@ -6736,11 +6798,16 @@ static int export_medicine_report(void)
             int days = days_from_today(curr->expiry_date);
             if (days < 0)
             {
-                fprintf(fp, "%-12s | %-16s | %-12s | %-16s | %-8.2f | %-6d | %-12s\n",
+                char name[21], alias[15], generic[25];
+                safe_utf8_truncate(name, curr->name, 20);
+                safe_utf8_truncate(alias, strlen(curr->alias) > 0 ? curr->alias : "无", 14);
+                safe_utf8_truncate(generic, strlen(curr->generic_name) > 0 ? curr->generic_name : "无", 24);
+                
+                fprintf(fp, "%-10s | %-20s | %-14s | %-24s | %8.2f | %6d | %-12s\n",
                         curr->id,
-                        curr->name,
-                        strlen(curr->alias) > 0 ? curr->alias : "无",
-                        strlen(curr->generic_name) > 0 ? curr->generic_name : "无",
+                        name,
+                        alias,
+                        generic,
                         curr->price,
                         curr->stock,
                         strlen(curr->expiry_date) > 0 ? curr->expiry_date : "无");
@@ -6748,7 +6815,7 @@ static int export_medicine_report(void)
             curr = curr->next;
         }
     }
-    fprintf(fp, "------------------------------------------------------------\n");
+    fprintf(fp, "--------------------------------------------------------------------------------\n");
     fclose(fp);
     
     printf("[OK] 报表导出成功：%s\n", filename);
@@ -7234,10 +7301,10 @@ static int export_log_report(void)
     
     // 写入日志明细
     fprintf(fp, "【日志明细】\n");
-    fprintf(fp, "------------------------------------------------------------\n");
-    fprintf(fp, "%-18s | %-12s | %-15s | %-30s\n",
+    fprintf(fp, "--------------------------------------------------------------------------\n");
+    fprintf(fp, "%-20s | %-14s | %-16s | %-35s\n",
             "操作时间", "操作类型", "操作对象", "操作说明");
-    fprintf(fp, "------------------------------------------------------------\n");
+    fprintf(fp, "--------------------------------------------------------------------------\n");
     
     if (g_log_list != NULL)
     {
@@ -7245,10 +7312,10 @@ static int export_log_report(void)
         int log_num = 1;
         while (curr != NULL)
         {
-            char desc[31];
-            safe_utf8_truncate(desc, curr->description, 30);
+            char desc[36];
+            safe_utf8_truncate(desc, curr->description, 35);
             
-            fprintf(fp, "%-18s | %-12s | %-15s | %-30s\n",
+            fprintf(fp, "%-20s | %-14s | %-16s | %-35s\n",
                     curr->timestamp,
                     curr->operation,
                     curr->target,
@@ -7257,7 +7324,7 @@ static int export_log_report(void)
             curr = curr->next;
         }
     }
-    fprintf(fp, "------------------------------------------------------------\n");
+    fprintf(fp, "--------------------------------------------------------------------------\n");
     
     fclose(fp);
     
