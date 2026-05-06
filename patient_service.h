@@ -214,7 +214,8 @@ int can_patient_make_appointment(
     PatientNode* patient,
     const char* current_symptom,
     const char* appoint_doctor,
-    const char* appoint_dept
+    const char* appoint_dept,
+    char* error_msg
 );
 
 /**

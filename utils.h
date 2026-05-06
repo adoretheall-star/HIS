@@ -145,7 +145,17 @@ void to_upper_string(const char* src, char* dest, int dest_size);
 // 33. 不区分大小写的子字符串包含检查
 int contains_ignore_case(const char* text, const char* keyword);
 
-// 34. 大屏统一宽度定义
+// 34. 控制台颜色宏定义（ANSI 转义序列，全系统通用）
+#define RED     "\033[31m"
+#define GREEN   "\033[32m"
+#define YELLOW  "\033[33m"
+#define BLUE    "\033[34m"
+#define MAGENTA "\033[35m"
+#define CYAN    "\033[36m"
+#define BOLD    "\033[1m"
+#define RESET   "\033[0m"
+
+// 35. 大屏统一宽度定义
 #define DASHBOARD_WIDTH 72
 #define BAR_WIDTH 24
 

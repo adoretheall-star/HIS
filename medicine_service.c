@@ -515,7 +515,7 @@ void show_low_stock_medicines_with_title(int threshold, int show_title)
     if (show_title)
     {
         printf("\n======================================================\n");
-        printf("                    低库存药品列表\n");
+        printf("                    " YELLOW "低库存药品列表" RESET "\n");
         printf("======================================================\n");
     }
     // 列宽设置（按显示宽度）
@@ -575,7 +575,7 @@ void show_low_stock_medicines_with_title(int threshold, int show_title)
 
     if (!found)
     {
-        printf("当前无低库存药品\n");
+        printf(GREEN "当前无低库存药品" RESET "\n");
     }
 }
 
@@ -610,7 +610,7 @@ void show_expiring_medicines_with_title(const char* today, int days_threshold, i
     if (show_title)
     {
         printf("\n======================================================\n");
-        printf("                    近效期药品列表\n");
+        printf("                    " YELLOW "近效期药品列表" RESET "\n");
         printf("======================================================\n");
     }
     // 列宽设置（按显示宽度）
@@ -685,7 +685,7 @@ void show_expiring_medicines_with_title(const char* today, int days_threshold, i
 
     if (!found)
     {
-        printf("当前无近效期药品\n");
+        printf(GREEN "当前无近效期药品" RESET "\n");
     }
 }
 
@@ -708,7 +708,7 @@ void show_comprehensive_stock_alert(int low_stock_threshold, const char* today, 
     }
 
     // ================ 近效期药品 ================
-    printf("\n============= 近效期药品 ==============\n");
+    printf("\n" YELLOW "============= 近效期药品 ==============" RESET "\n");
 
     // 列宽设置（按显示宽度）
     const int ID_WIDTH = 10;
@@ -778,15 +778,15 @@ void show_comprehensive_stock_alert(int low_stock_threshold, const char* today, 
 
     if (expiring_count == 0)
     {
-        printf("当前无近效期药品\n");
+        printf(GREEN "当前无近效期药品" RESET "\n");
     }
     else
     {
-        printf("\n共找到 %d 个近效期药品\n", expiring_count);
+        printf("\n" YELLOW "共找到 %d 个近效期药品" RESET "\n", expiring_count);
     }
 
     // ================ 低库存药品 ================
-    printf("\n============= 低库存药品 ==============\n");
+    printf("\n" YELLOW "============= 低库存药品 ==============" RESET "\n");
 
     // 打印表头
     print_truncated_col("药品编号", ID_WIDTH);
@@ -837,11 +837,11 @@ void show_comprehensive_stock_alert(int low_stock_threshold, const char* today, 
 
     if (low_stock_count == 0)
     {
-        printf("当前无低库存药品\n");
+        printf(GREEN "当前无低库存药品" RESET "\n");
     }
     else
     {
-        printf("\n共找到 %d 个低库存药品\n", low_stock_count);
+        printf("\n" YELLOW "共找到 %d 个低库存药品" RESET "\n", low_stock_count);
     }
 }
 
