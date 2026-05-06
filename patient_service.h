@@ -1,3 +1,18 @@
+/*
+ * 【代码分工说明】
+ * 模块名称：患者业务模块 patient_service.c / patient_service.h
+ * 主要负责人：周宇轩 55251328
+ * 主要内容：
+ * 1. 实现患者首次来院登记、患者建档和患者档案查询；
+ * 2. 实现患者自助端的病历查询、账单查询、账户充值和缴费；
+ * 3. 实现身份证号核验、黑名单拦截、历史就诊记录查询和投诉评价功能；
+ * 4. 参与患者状态流转和就诊主流程联调。
+ * 参与说明：
+ * 申贞隆 55251318 参与身份证号掩码输入、脱敏显示和身份核验提示；
+ * 胡博畅 55251329 参与患者端界面标题、菜单排版和部分展示优化。
+ */
+
+
 //==========================================
 // 文件名: patient_service.h
 // 作用: 患者相关业务服务层 / 患者数据服务层
@@ -77,6 +92,13 @@ int query_patient_archive_by_id_card(const char* id_card);
  * @return 成功返回1，失败返回0
  */
 int query_patient_archive_by_name(const char* name_keyword);
+
+
+/*
+ * 【功能作者】周宇轩 55251328
+ * 【功能说明】患者自助端黑名单补缴、投诉提交、投诉进度查询和满意度评价功能。
+ */
+
 
 /**
  * @brief 提交患者满意度评价
@@ -165,7 +187,7 @@ int handle_emergency_escape(const char* patient_id);
  * @param patient_id 患者编号
  * @return 成功返回1，失败返回0
  */
-int settle_blacklisted_debt(const char* patient_id);
+int settle_blacklisted_debt(void);
 
 /**
  * @brief 处理患者自助缴费（扣减余额并推进状态）

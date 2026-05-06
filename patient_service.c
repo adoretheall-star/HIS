@@ -660,6 +660,12 @@ PatientNode* register_patient(
     // 将患者节点插入到链表尾部
     insert_patient_tail(g_patient_list, new_patient);
     
+    // 保存到文件
+    save_patient_list(g_patient_list);
+    if (g_appointment_list != NULL) {
+        save_appointment_list(g_appointment_list);
+    }
+    
     // 为直接建档的患者生成挂号记录
     if (g_appointment_list != NULL && strlen(actual_dept) > 0) {
         char appointment_id[MAX_ID_LEN];
@@ -1563,8 +1569,8 @@ int handle_emergency_escape(const char* patient_id_input) {
                 continue;
             }
             
-            // 转换为数字
-            if (sscanf(input, "%lf", &debt_amount) == 1 && debt_amount > 0) {
+            // 转换为数字（严格校验）
+            if (parse_double_strict(input, &debt_amount) && debt_amount > 0) {
                 // 判断是否已在黑名单中
                 if (patient->is_blacklisted >= 1 && patient->emergency_debt > 0) {
                     // 追加欠费
@@ -1600,7 +1606,7 @@ int handle_emergency_escape(const char* patient_id_input) {
  * @param patient_id_input 患者编号输入（可为NULL）
  * @return 成功返回1，失败返回0
  */
-int settle_blacklisted_debt(const char* patient_id_input)
+int settle_blacklisted_debt(void)
 {
     PatientNode* patient = NULL;
     char patient_id[MAX_ID_LEN] = "";
@@ -1700,8 +1706,8 @@ int settle_blacklisted_debt(const char* patient_id_input)
                 continue;
             }
             
-            // 转换为数字
-            if (sscanf(input, "%lf", &actual_payment) == 1 && actual_payment >= 0)
+            // 转换为数字（严格校验）
+            if (parse_double_strict(input, &actual_payment) && actual_payment >= 0)
             {
                 // 比对缴费金额与欠费金额
                 if (actual_payment < patient->emergency_debt)
