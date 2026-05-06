@@ -1,3 +1,15 @@
+/*
+ * 【代码分工说明】
+ * 模块名称：工具函数模块 utils.c / utils.h
+ * 主要负责人：申贞隆 55251318
+ * 主要内容：
+ * 1. 实现安全输入、密码/身份证号掩码输入和身份证脱敏显示；
+ * 2. 实现 B/Q 返回、异常输入拦截和输入防呆；
+ * 3. 实现时间格式化、中文显示宽度计算和表格补齐；
+ * 4. 提供进度条、标题打印和界面辅助函数。
+ * 参与说明：
+ * 胡博畅 55251329 参与中文显示宽度、表格对齐、标题格式和进度条等界面辅助函数。
+ */
 // 文件名: utils.c
 // 作用: 工具函数的具体实现逻辑
 #define _CRT_SECURE_NO_WARNINGS
@@ -99,6 +111,10 @@ static int read_console_line_utf8(char* buffer, int max_len)
     return 1;
 }
 
+/*
+ * 【功能作者】申贞隆 55251318
+ * 【功能说明】敏感输入掩码、身份证号脱敏、B/Q 返回判断和非法输入拦截辅助函数。
+ */
 // 1. 工业级安全整数读取（彻底吃掉残留回车）
 int get_safe_int(const char* prompt) 
 {
@@ -155,6 +171,10 @@ void get_safe_string(const char* prompt, char* buffer, int max_len)
     }
 }
 
+/*
+ * 【功能作者】申贞隆 55251318
+ * 【功能说明】密码掩码显示，支持 Tab 键切换显示/隐藏，Backspace 键删除。
+ */
 void get_password_with_toggle(const char* prompt, char* buffer, int max_len)
 {
     int index = 0;
@@ -279,6 +299,10 @@ void get_password_with_toggle(const char* prompt, char* buffer, int max_len)
     }
 }
 
+/*
+ * 【功能作者】申贞隆 55251318
+ * 【功能说明】身份证号等敏感信息掩码输入，支持 Tab 键切换显示/隐藏。
+ */
 // 5. 获取敏感信息输入（支持Tab切换显示/隐藏，星号掩码）
 void get_sensitive_string_with_toggle(const char* prompt, char* buffer, int max_len)
 {
@@ -286,17 +310,25 @@ void get_sensitive_string_with_toggle(const char* prompt, char* buffer, int max_
     get_password_with_toggle(prompt, buffer, max_len);
 }
 
+/*
+ * 【功能作者】申贞隆 55251318
+ * 【功能说明】密码掩码输入，支持 Tab 键切换显示/隐藏，支持 B/b 返回和 Q/q 退出。
+ */
 // 6.2 密码掩码输入（支持Tab切换显示/隐藏）
-// 返回值: 0=正常输入, 1=B/b返回, 2=Q/q退出
+// 返回值：0=正常输入, 1=B/b返回, 2=Q/q退出
 int read_password_with_toggle(const char* prompt, char* password, int max_len)
 {
     int visible = 0;
     return read_password_with_toggle_ext(prompt, password, max_len, &visible);
 }
 
+/*
+ * 【功能作者】申贞隆 55251318
+ * 【功能说明】密码掩码输入扩展版，支持 Tab 键切换显示/隐藏，支持 B/b 返回和 Q/q 退出。
+ */
 // 6.3 密码掩码输入（支持Tab切换显示/隐藏，带外部可见性状态）
-// 返回值: 0=正常输入, 1=B/b返回, 2=Q/q退出
-// visible: 指向外部可见性状态的指针，Tab键会切换该状态
+// 返回值：0=正常输入, 1=B/b返回, 2=Q/q退出
+// visible：指向外部可见性状态的指针，Tab键会切换该状态
 int read_password_with_toggle_ext(const char* prompt, char* password, int max_len, int* visible)
 {
     if (password == NULL || max_len <= 0 || visible == NULL)
@@ -427,6 +459,10 @@ int read_password_with_toggle_ext(const char* prompt, char* password, int max_le
     }
 }
 
+/*
+ * 【功能作者】申贞隆 55251318
+ * 【功能说明】身份证号格式校验，检查长度为18位且最后一位为数字或X。
+ */
 //5.身份证基础格式校验
 int validate_id_card(const char* id_card) 
 {
@@ -480,6 +516,10 @@ void normalize_patient_id(char* patient_id)
     }
 }
 
+/*
+ * 【功能作者】申贞隆 55251318
+ * 【功能说明】身份证号脱敏显示，保留前6位和后4位，中间8位用星号代替。
+ */
 //6.身份证号脱敏
 void mask_id_card(const char* src, char* dest) 
 {
@@ -607,6 +647,10 @@ int is_blank_string(const char* str)
     return 1;
 }
 
+/*
+ * 【功能作者】申贞隆 55251318
+ * 【功能说明】判断是否为 B/b 返回命令。
+ */
 // 辅助函数：判断是否为返回命令 (B/b)
 static int is_back_command(const char* input)
 {
@@ -694,6 +738,10 @@ int is_valid_date_string(const char* date_str)
     return 1;
 }
 
+/*
+ * 【功能作者】申贞隆 55251318
+ * 【功能说明】表单字符串输入，支持输入 B/b 返回上一级。
+ */
 // 8. 表单字符串输入（支持返回上一级，输入B/b）
 int get_form_string(const char* prompt, char* buffer, int max_len)
 {
@@ -712,6 +760,10 @@ int get_form_string(const char* prompt, char* buffer, int max_len)
     return 1; // 返回1表示输入有效
 }
 
+/*
+ * 【功能作者】申贞隆 55251318
+ * 【功能说明】表单整数输入，支持输入 B/b 返回上一级，防止非法输入。
+ */
 // 9. 表单整数输入（支持返回上一级，输入B/b）
 int get_form_int(const char* prompt, int* value, int min, int max, const char* error_msg)
 {
@@ -769,6 +821,10 @@ int get_form_int(const char* prompt, int* value, int min, int max, const char* e
     return 1; // 返回1表示输入有效
 }
 
+/*
+ * 【功能作者】申贞隆 55251318
+ * 【功能说明】表单浮点数输入，支持输入 B/b 返回上一级，防止非法输入。
+ */
 // 10. 表单浮点数输入（支持返回上一级，输入B/b）
 int get_form_double(const char* prompt, double* value, double min, const char* error_msg)
 {
@@ -1278,6 +1334,10 @@ int is_appointment_slot_valid(const char* date_str, const char* slot, char* erro
     return 1;
 }
 
+/* 
+ * 【功能作者】胡博畅 55251329 
+ * 【功能说明】控制台界面排版辅助函数，用于中英文混排宽度计算、动态补空格、标题显示和进度条绘制。
+ */
 // 21. 计算字符串的显示宽度（中文算2个宽度）
 int get_display_width(const char* str)
 {
@@ -1318,6 +1378,10 @@ int get_display_width(const char* str)
     return width;
 }
 
+/* 
+ * 【功能作者】胡博畅 55251329 
+ * 【功能说明】控制台界面排版辅助函数，用于中英文混排宽度计算、动态补空格、标题显示和进度条绘制。
+ */
 // 22. 按指定宽度打印文本并补空格
 void print_padded_text(const char* str, int target_width)
 {
@@ -1337,6 +1401,10 @@ void print_padded_text(const char* str, int target_width)
     }
 }
 
+/* 
+ * 【功能作者】胡博畅 55251329 
+ * 【功能说明】控制台界面排版辅助函数，用于中英文混排宽度计算、动态补空格、标题显示和进度条绘制。
+ */
 // 23. 打印指定长度的分隔线
 void print_line_separator(int length)
 {
@@ -1347,6 +1415,10 @@ void print_line_separator(int length)
     printf("\n");
 }
 
+/*
+ * 【功能作者】申贞隆 55251318
+ * 【功能说明】通用菜单选择输入，支持输入 B 返回上一级，Q 退出系统，防止非法输入。
+ */
 // 27. 通用菜单选择输入（支持 B 返回上一级，Q 退出系统）
 // 返回值：-1=返回上一级，-2=退出系统，其他值=有效选择
 int inputChoice(int min, int max)
@@ -1409,6 +1481,10 @@ int inputChoice(int min, int max)
     }
 }
 
+/* 
+ * 【功能作者】胡博畅 55251329 
+ * 【功能说明】控制台界面排版辅助函数，用于中英文混排宽度计算、动态补空格、标题显示和进度条绘制。
+ */
 // 28. 按显示宽度截断字符串（带省略号），然后对齐打印
 void print_truncated_col(const char* str, int max_width)
 {
@@ -1652,6 +1728,10 @@ int contains_ignore_case(const char* text, const char* keyword)
     return 0;
 }
 
+/* 
+ * 【功能作者】胡博畅 55251329 
+ * 【功能说明】控制台界面排版辅助函数，用于中英文混排宽度计算、动态补空格、标题显示和进度条绘制。
+ */
 // 35. 打印大屏主标题
 void print_dashboard_title(const char* title)
 {
@@ -1667,6 +1747,10 @@ void print_dashboard_title(const char* title)
     print_dashboard_line('=', DASHBOARD_WIDTH);
 }
 
+/* 
+ * 【功能作者】胡博畅 55251329 
+ * 【功能说明】控制台界面排版辅助函数，用于中英文混排宽度计算、动态补空格、标题显示和进度条绘制。
+ */
 // 36. 打印大屏分区标题
 void print_section_title(const char* title)
 {
@@ -1680,6 +1764,10 @@ void print_section_title(const char* title)
     printf("\n");
 }
 
+/* 
+ * 【功能作者】胡博畅 55251329 
+ * 【功能说明】控制台界面排版辅助函数，用于中英文混排宽度计算、动态补空格、标题显示和进度条绘制。
+ */
 // 37. 打印指定字符的横线
 void print_dashboard_line(char ch, int width)
 {
@@ -1690,12 +1778,20 @@ void print_dashboard_line(char ch, int width)
     printf("\n");
 }
 
+/* 
+ * 【功能作者】胡博畅 55251329 
+ * 【功能说明】控制台界面排版辅助函数，用于中英文混排宽度计算、动态补空格、标题显示和进度条绘制。
+ */
 // 38. 按显示宽度对齐打印字符串
 void print_pad_right(const char* s, int width)
 {
     print_padded_text(s, width);
 }
 
+/* 
+ * 【功能作者】胡博畅 55251329 
+ * 【功能说明】控制台界面排版辅助函数，用于中英文混排宽度计算、动态补空格、标题显示和进度条绘制。
+ */
 // 39. 打印三列键值对
 void print_kv_3cols(const char* k1, const char* v1, const char* k2, const char* v2, const char* k3, const char* v3)
 {
@@ -1734,6 +1830,10 @@ void print_kv_3cols(const char* k1, const char* v1, const char* k2, const char* 
     printf("\n");
 }
 
+/* 
+ * 【功能作者】胡博畅 55251329 
+ * 【功能说明】控制台界面排版辅助函数，用于中英文混排宽度计算、动态补空格、标题显示和进度条绘制。
+ */
 // 40. 打印进度条（标签宽度固定，进度条长度固定）
 void print_progress_bar_ex(const char* label, int current, int total, int bar_width)
 {
@@ -1759,6 +1859,10 @@ void print_progress_bar_ex(const char* label, int current, int total, int bar_wi
     printf("] %d/%d (%.1f%%)\n", current, total, (double)current / total * 100);
 }
 
+/* 
+ * 【功能作者】胡博畅 55251329 
+ * 【功能说明】控制台界面排版辅助函数，用于中英文混排宽度计算、动态补空格、标题显示和进度条绘制。
+ */
 // 41. 打印单列进度条（标签按显示宽度对齐）
 void print_progress_bar_single(const char* label, int current, int total)
 {
@@ -1782,6 +1886,10 @@ int contains_space(const char* str)
     return 0;
 }
 
+/* 
+ * 【功能作者】胡博畅 55251329 
+ * 【功能说明】控制台界面排版辅助函数，用于中英文混排宽度计算、动态补空格、标题显示和进度条绘制。
+ */
 // 42. 打印医生候诊队列（动态列宽）
 void print_doctor_queue(void)
 {
@@ -1830,4 +1938,67 @@ void print_doctor_queue(void)
     {
         printf("\n");
     }
+}
+
+/*
+ * 【功能作者】申贞隆 55251318
+ * 【功能说明】严格整数解析，只允许纯数字，不允许字母或特殊字符，防止非法输入。
+ */
+// 严格整数解析函数（只允许纯数字，不允许字母或特殊字符）
+int parse_int_strict(const char* str, int* out)
+{
+    int i = 0;
+    long value = 0;
+
+    if (str == NULL || out == NULL)
+    {
+        return 0;
+    }
+
+    while (str[i] == ' ' || str[i] == '\t')
+    {
+        i++;
+    }
+
+    if (str[i] == '\0')
+    {
+        return 0;
+    }
+
+    for (; str[i] != '\0'; i++)
+    {
+        if (str[i] == '\n' || str[i] == '\r')
+        {
+            break;
+        }
+
+        if (str[i] < '0' || str[i] > '9')
+        {
+            return 0;
+        }
+
+        value = value * 10 + (str[i] - '0');
+
+        if (value > 1000000)
+        {
+            return 0;
+        }
+    }
+
+    *out = (int)value;
+    return 1;
+}
+
+/* 
+ * 【功能作者】胡博畅 55251329 
+ * 【功能说明】控制台界面排版辅助函数，用于中英文混排宽度计算、动态补空格、标题显示和进度条绘制。
+ */
+// 打印统一的页面标题
+void print_page_header(const char* title)
+{
+    system("cls");
+    printf("\n============================================================\n");
+    printf("                        %s\n", title);
+    printf("============================================================\n");
+    printf("提示：输入 B 返回上一步，输入 Q 返回菜单页\n\n");
 }

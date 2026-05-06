@@ -34,6 +34,9 @@ typedef enum //权限管理
 
 typedef enum //就医状态
 {
+#ifdef STATUS_PENDING
+#undef STATUS_PENDING
+#endif
     STATUS_PENDING = 1,     // 待诊
     STATUS_EXAMINING = 2,    // 检查中
     STATUS_RECHECK_PENDING = 3, // 检查后待复诊
