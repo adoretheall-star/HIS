@@ -1152,7 +1152,7 @@ void admin_alert_menu()
     {
         system("cls");
         printf("\n======================================================\n");
-        printf("                ⚠️  预警管理\n");
+        printf("                [WARN]  预警管理\n");
         printf("======================================================\n");
         printf("  [1] 查看事件预警（恶意挂号、爽约、急诊）\n");
         printf("  [2] 查看药品预警（低库存、临期药）\n");
@@ -1188,7 +1188,7 @@ void admin_alert_menu()
                 running = 0;
                 break;
             default:
-                printf("\n⚠️ 无效的选项，请重新输入！\n");
+                printf("\n[WARN] 无效的选项，请重新输入！\n");
                 system("pause");
                 break;
         }
@@ -1363,15 +1363,15 @@ void show_bed_resource_alerts(void)
     // 输出床位资源状态
     if (free_beds == 0)
     {
-        printf("\n床位资源状态：" RED "⚠️ 所有床位已满，请及时协调床位资源。" RESET "\n");
+        printf("\n床位资源状态：" RED "[WARN] 所有床位已满，请及时协调床位资源。" RESET "\n");
     }
     else if (free_beds < 5)
     {
-        printf("\n床位资源状态：" RED "⚠️ 床位资源紧张，仅剩 %d 张空闲床位。" RESET "\n", free_beds);
+        printf("\n床位资源状态：" RED "[WARN] 床位资源紧张，仅剩 %d 张空闲床位。" RESET "\n", free_beds);
     }
     else if (occupancy_rate >= 80)
     {
-        printf("\n床位资源状态：" RED "⚠️ 床位使用率较高，请关注住院收治压力。" RESET "\n");
+        printf("\n床位资源状态：" RED "[WARN] 床位使用率较高，请关注住院收治压力。" RESET "\n");
     }
     else
     {
@@ -1602,7 +1602,7 @@ void show_inpatient_alerts(void)
         }
         else
         {
-            printf("✅ 当前无欠费相关预警。\n");
+            printf("[OK] 当前无欠费相关预警。\n");
         }
     }
 
@@ -1821,7 +1821,7 @@ void show_system_alerts(void)
         }
         else
         {
-            printf("✅ 当前无欠费相关预警。\n");
+            printf("[OK] 当前无欠费相关预警。\n");
         }
     }
     printf("------------------------------------------------------\n");
@@ -1829,11 +1829,11 @@ void show_system_alerts(void)
     printf("======================================================\n");
     if (!has_alerts)
     {
-        printf("✅ 当前无预警，系统运行正常\n");
+        printf("[OK] 当前无预警，系统运行正常\n");
     }
     else
     {
-        printf("" RED "⚠️ 发现预警信息，请及时处理" RESET "\n");
+        printf("" RED "[WARN] 发现预警信息，请及时处理" RESET "\n");
     }
     printf("======================================================\n");
 }
@@ -1868,7 +1868,7 @@ void admin_recycle_bin_menu(void)
                 running = 0;
                 break;
             default:
-                printf("\n⚠️ 无效的选项，请重新输入！\n");
+                printf("\n[WARN] 无效的选项，请重新输入！\n");
                 system("pause");
                 break;
         }
@@ -1947,7 +1947,7 @@ void handle_restore_from_recycle(void)
 
         if (is_blank_string(input_buf))
         {
-            printf("⚠️ 回收站编号不能为空，请重新输入\n");
+            printf("[WARN] 回收站编号不能为空，请重新输入\n");
             continue;
         }
 
@@ -1959,14 +1959,14 @@ void handle_restore_from_recycle(void)
     target = find_recycle_by_id(g_recycle_list, recycle_id);
     if (target == NULL)
     {
-        printf("⚠️ 未找到对应的回收站记录，请检查编号是否正确。\n");
+        printf("[WARN] 未找到对应的回收站记录，请检查编号是否正确。\n");
         return;
     }
 
     // 检查是否已恢复
     if (target->is_restored == 1)
     {
-        printf("⚠️ 该记录已经恢复过，不能重复恢复。\n");
+        printf("[WARN] 该记录已经恢复过，不能重复恢复。\n");
         return;
     }
 
@@ -1998,7 +1998,7 @@ void handle_restore_from_recycle(void)
             // 检查原编号是否已存在
             if (find_medicine_by_id(g_medicine_list, target->source_id) != NULL)
             {
-                printf("⚠️ 该药品编号已存在，不能恢复。\n");
+                printf("[WARN] 该药品编号已存在，不能恢复。\n");
                 printf("请先删除现有药品或使用不同的编号。\n");
                 return;
             }
@@ -2028,7 +2028,7 @@ void handle_restore_from_recycle(void)
             // 检查原编号是否已存在
             if (find_check_item_by_id(g_check_item_list, target->source_id) != NULL)
             {
-                printf("⚠️ 该检查项目编号已存在，不能恢复。\n");
+                printf("[WARN] 该检查项目编号已存在，不能恢复。\n");
                 printf("请先删除现有检查项目或使用不同的编号。\n");
                 return;
             }
@@ -2053,7 +2053,7 @@ void handle_restore_from_recycle(void)
             // 检查原编号是否已存在
             if (find_ward_by_id(g_ward_list, target->source_id) != NULL)
             {
-                printf("⚠️ 该床位编号已存在，不能恢复。\n");
+                printf("[WARN] 该床位编号已存在，不能恢复。\n");
                 printf("请先删除现有床位或使用不同的编号。\n");
                 return;
             }
@@ -2083,7 +2083,7 @@ void handle_restore_from_recycle(void)
             // 检查原编号是否已存在
             if (find_account_by_username(g_account_list, target->source_id) != NULL)
             {
-                printf("⚠️ 该账号用户名已存在，不能恢复。\n");
+                printf("[WARN] 该账号用户名已存在，不能恢复。\n");
                 printf("请先删除现有账号或使用不同的用户名。\n");
                 return;
             }
@@ -2122,11 +2122,11 @@ void handle_restore_from_recycle(void)
         }
 
         default:
-            printf("⚠️ 未知的数据类型，无法恢复。\n");
+            printf("[WARN] 未知的数据类型，无法恢复。\n");
             return;
     }
 
-    printf("\n✅ %s恢复成功！\n", type_name);
+    printf("\n[OK] %s恢复成功！\n", type_name);
     if (target->type == RECYCLE_WARD)
     {
         printf("提示：床位已恢复为空闲状态。\n");
@@ -2163,7 +2163,7 @@ void admin_complaint_menu()
     {
         system("cls");
         printf("\n======================================================\n");
-        printf("               📝 投诉管理\n");
+        printf("               [NOTE] 投诉管理\n");
         printf("======================================================\n");
         printf("  [1] 查看已处理投诉\n");
         printf("  [2] 处理投诉\n");
@@ -2198,7 +2198,7 @@ void admin_complaint_menu()
                 running = 0;
                 break;
             default:
-                printf("\n⚠️ 无效的选项，请重新输入！\n");
+                printf("\n[WARN] 无效的选项，请重新输入！\n");
                 system("pause");
                 break;
         }
@@ -2210,7 +2210,7 @@ void show_all_complaints()
 {
     if (g_complaint_list == NULL || g_complaint_list->next == NULL)
     {
-        printf("\n⚠️ 当前暂无投诉记录！\n");
+        printf("\n[WARN] 当前暂无投诉记录！\n");
         return;
     }
     
@@ -2253,7 +2253,7 @@ void show_all_complaints()
     
     if (!has_processed)
     {
-        printf("\n⚠️ 当前没有已处理的投诉！\n");
+        printf("\n[WARN] 当前没有已处理的投诉！\n");
     }
     
     printf("======================================================\n");
@@ -2264,7 +2264,7 @@ void handle_complaint_response()
 {
     if (g_complaint_list == NULL || g_complaint_list->next == NULL)
     {
-        printf("\n⚠️ 当前暂无投诉记录！\n");
+        printf("\n[WARN] 当前暂无投诉记录！\n");
         return;
     }
 
@@ -2307,7 +2307,7 @@ void handle_complaint_response()
 
         if (!has_pending)
         {
-            printf("\n✅ 当前没有待处理的投诉！\n");
+            printf("\n[OK] 当前没有待处理的投诉！\n");
             return;
         }
 
@@ -2319,7 +2319,7 @@ void handle_complaint_response()
 
             if (is_blank_string(complaint_id))
             {
-                printf("⚠️ 输入不能为空或纯空格，请重新输入！\n");
+                printf("[WARN] 输入不能为空或纯空格，请重新输入！\n");
                 continue;
             }
 
@@ -2353,13 +2353,13 @@ void handle_complaint_response()
 
         if (target_complaint == NULL)
         {
-            printf("\n⚠️ 未找到该投诉工单！\n");
+            printf("\n[WARN] 未找到该投诉工单！\n");
             continue;
         }
 
         if (target_complaint->status != 0)
         {
-            printf("\n⚠️ 该投诉工单已经处理过了！\n");
+            printf("\n[WARN] 该投诉工单已经处理过了！\n");
             continue;
         }
 
@@ -2369,7 +2369,7 @@ void handle_complaint_response()
 
             if (is_blank_string(response))
             {
-                printf("⚠️ 输入不能为空或纯空格，请重新输入！\n");
+                printf("[WARN] 输入不能为空或纯空格，请重新输入！\n");
                 continue;
             }
 
@@ -2388,7 +2388,7 @@ void handle_complaint_response()
             strncpy(target_complaint->response, response, MAX_RECORD_LEN - 1);
             target_complaint->response[MAX_RECORD_LEN - 1] = '\0';
 
-            printf("\n✅ 投诉处理成功！\n");
+            printf("\n[OK] 投诉处理成功！\n");
             printf("工单编号：%s\n", target_complaint->complaint_id);
             printf("处理意见：%s\n", target_complaint->response);
             return;
@@ -2435,13 +2435,13 @@ void query_complaint_by_id()
 
     if (is_blank_string(complaint_id))
     {
-        printf("\n⚠️ 投诉编号不能为空！\n");
+        printf("\n[WARN] 投诉编号不能为空！\n");
         return;
     }
 
     if (g_complaint_list == NULL || g_complaint_list->next == NULL)
     {
-        printf("\n⚠️ 当前暂无投诉记录！\n");
+        printf("\n[WARN] 当前暂无投诉记录！\n");
         return;
     }
     
@@ -2461,7 +2461,7 @@ void query_complaint_by_id()
     
     if (target_complaint == NULL)
     {
-        printf("\n⚠️ 未找到该投诉工单！\n");
+        printf("\n[WARN] 未找到该投诉工单！\n");
         return;
     }
     
@@ -2536,7 +2536,7 @@ void admin_evaluation_menu()
                 running = 0;
                 break;
             default:
-                printf("\n⚠️ 无效的选项，请重新输入！\n");
+                printf("\n[WARN] 无效的选项，请重新输入！\n");
                 system("pause");
                 break;
         }
@@ -2548,7 +2548,7 @@ void show_all_evaluations()
 {
     if (g_consult_record_list == NULL || g_consult_record_list->next == NULL)
     {
-        printf("\n⚠️ 当前暂无评价记录！\n");
+        printf("\n[WARN] 当前暂无评价记录！\n");
         return;
     }
     
@@ -2598,7 +2598,7 @@ void show_all_evaluations()
     
     if (evaluation_count == 0)
     {
-        printf("\n⚠️ 当前暂无评价记录！\n");
+        printf("\n[WARN] 当前暂无评价记录！\n");
     }
     else
     {
@@ -2612,7 +2612,7 @@ void show_evaluation_statistics()
 {
     if (g_consult_record_list == NULL)
     {
-        printf("\n⚠️ 接诊记录链表尚未初始化！\n");
+        printf("\n[WARN] 接诊记录链表尚未初始化！\n");
         return;
     }
     
@@ -2675,7 +2675,7 @@ void show_evaluation_statistics()
     }
     else
     {
-        printf("\n⚠️ 当前暂无评价记录！\n");
+        printf("\n[WARN] 当前暂无评价记录！\n");
     }
     
     printf("======================================================\n");
@@ -3255,12 +3255,12 @@ static void show_arrears_warning(void)
     printf("\n");
     if (emergency_debt_total > 0 || deposit_insufficient_count > 0 || unpaid_count > 0)
     {
-        printf("⚠️ 存在费用相关待处理事项，请管理员及时核查。\n");
+        printf("[WARN] 存在费用相关待处理事项，请管理员及时核查。\n");
         has_any_alerts = 1;
     }
     else
     {
-        printf("✅ 费用状态正常。\n");
+        printf("[OK] 费用状态正常。\n");
     }
     printf("======================================================\n");
 
@@ -3340,7 +3340,7 @@ static void show_arrears_warning(void)
 
     if (!has_any_alerts)
     {
-        printf("\n✅ 当前未发现明显欠费或缴费异常。\n");
+        printf("\n[OK] 当前未发现明显欠费或缴费异常。\n");
     }
 
     printf("======================================================\n");
@@ -4066,7 +4066,7 @@ void handle_medicine_low_stock(void)
     int threshold = atoi(threshold_str);
     if (threshold <= 0)
     {
-        printf("⚠️ 输入无效：库存阈值必须大于 0！\n");
+        printf("[WARN] 输入无效：库存阈值必须大于 0！\n");
         system("pause");
         return;
     }
@@ -4123,7 +4123,7 @@ void handle_medicine_dispense(void)
         }
         else
         {
-            printf("⚠️ 患者编号格式不合法，正确格式为 P-1001，请重新输入！\n");
+            printf("[WARN] 患者编号格式不合法，正确格式为 P-1001，请重新输入！\n");
             printf("提示：输入 '0' 可以回退上一步，输入 '00' 可以退出操作\n");
         }
     }
@@ -4696,7 +4696,7 @@ void handle_check_item_register(void)
                         if (strstr(curr->item_name, item_name) != NULL ||
                             strstr(item_name, curr->item_name) != NULL)
                         {
-                            printf("⚠️ 拦截：系统中已存在相似项目【%s %s】，请勿重复添加！\n\n", curr->item_id, curr->item_name);
+                            printf("[WARN] 拦截：系统中已存在相似项目【%s %s】，请勿重复添加！\n\n", curr->item_id, curr->item_name);
                             memset(item_name, 0, sizeof(item_name));
                             break;
                         }
@@ -4730,7 +4730,7 @@ void handle_check_item_register(void)
                 }
                 if (!department_exists(input_buf))
                 {
-                    printf("⚠️ 错误：系统中不存在科室【%s】！请核对后重新输入。\n\n", input_buf);
+                    printf("[WARN] 错误：系统中不存在科室【%s】！请核对后重新输入。\n\n", input_buf);
                     continue;
                 }
                 strncpy(dept, input_buf, MAX_NAME_LEN - 1);
@@ -4937,7 +4937,7 @@ void handle_check_item_update(void)
 
     if (has_modified == 1)
     {
-        printf("\n✅ 检查项目信息修改成功！\n");
+        printf("\n[OK] 检查项目信息修改成功！\n");
     }
     else
     {
@@ -4968,7 +4968,7 @@ void handle_check_item_remove(void)
         }
         if (is_blank_string(input_buf))
         {
-            printf("⚠️ 输入不能为空或纯空格，请重新输入！\n");
+            printf("[WARN] 输入不能为空或纯空格，请重新输入！\n");
             system("pause");
             continue;
         }
@@ -5349,7 +5349,7 @@ static void print_progress_bar_cyan(const char* label, int value, int total, int
          /* ===== 输出界面 ===== */
          printf("\n");
          printf("==============================================================\n");
-         printf("         📊 社区智慧医疗管理系统 - 医疗大屏（公共版）\n");
+         printf("         [STAT] 社区智慧医疗管理系统 - 医疗大屏（公共版）\n");
          printf("==============================================================\n");
 
          /* ---- 门诊候诊概况 ---- */
@@ -5786,7 +5786,7 @@ static void print_progress_bar_cyan(const char* label, int value, int total, int
         /* ===== 输出界面 ===== */
         printf("\n");
         printf("==============================================================\n");
-        printf("             📊 社区智慧医疗管理系统 - 医疗大屏\n");
+        printf("             [STAT] 社区智慧医疗管理系统 - 医疗大屏\n");
         printf("==============================================================\n");
 
         printf("  系统状态：");
@@ -5807,14 +5807,14 @@ static void print_progress_bar_cyan(const char* label, int value, int total, int
             int has_risk = has_red_risk || has_yellow_risk;
 
             printf("\n");
-            printf("┌──────────────────────────────────────────────────────────────┐\n");
-            printf("│                      ⚠️  风险汇总                            │\n");
-            printf("├──────────────────────────────────────────────────────────────┤\n");
+            printf("+------------------------------------------------------------+\n");
+            printf("│                      [WARN]  风险汇总                            │\n");
+            printf("+------------------------------------------------------------+\n");
 
             if (!has_risk)
             {
                 printf("│  ");
-                print_green("✅ 当前无明显风险，系统运行正常");
+                print_green("[OK] 当前无明显风险，系统运行正常");
                 printf("                                      │\n");
             }
             else
@@ -5822,13 +5822,13 @@ static void print_progress_bar_cyan(const char* label, int value, int total, int
                 if (has_red_risk)
                 {
                     printf("│  ");
-                    print_red("⚠️ 当前存在以下高风险：");
+                    print_red("[WARN] 当前存在以下高风险：");
                     printf("                                    │\n");
                 }
                 else
                 {
                     printf("│  ");
-                    print_yellow("⚠️ 当前存在以下风险：");
+                    print_yellow("[WARN] 当前存在以下风险：");
                     printf("                                      │\n");
                 }
 
@@ -5915,7 +5915,7 @@ static void print_progress_bar_cyan(const char* label, int value, int total, int
                 }
             }
 
-            printf("└──────────────────────────────────────────────────────────────┘\n");
+            printf("+------------------------------------------------------------+\n");
         }
 
         /* ===== 输出：门诊运行 ===== */
@@ -6073,7 +6073,7 @@ static void print_progress_bar_cyan(const char* label, int value, int total, int
         }
         else
         {
-            printf("\n❌ 无效输入，请重新输入。\n");
+            printf("\n[ERROR] 无效输入，请重新输入。\n");
             system("pause");
         }
     }
@@ -6223,7 +6223,7 @@ static int export_patient_report(void)
     FILE* fp = fopen(filename, "w");
     if (fp == NULL)
     {
-        printf("❌ 报表导出失败，请检查 report 目录权限或文件是否被占用。\n");
+        printf("[ERROR] 报表导出失败，请检查 report 目录权限或文件是否被占用。\n");
         return 0;
     }
     write_utf8_bom(fp);
@@ -6341,7 +6341,7 @@ static int export_patient_report(void)
     fprintf(fp, "------------------------------------------------------------\n");
     fclose(fp);
     
-    printf("✅ 报表导出成功：%s\n", filename);
+    printf("[OK] 报表导出成功：%s\n", filename);
     return 1;
 }
 
@@ -6354,7 +6354,7 @@ static int export_appointment_report(void)
     FILE* fp = fopen(filename, "w");
     if (fp == NULL)
     {
-        printf("❌ 报表导出失败，请检查 report 目录权限或文件是否被占用。\n");
+        printf("[ERROR] 报表导出失败，请检查 report 目录权限或文件是否被占用。\n");
         return 0;
     }
     write_utf8_bom(fp);
@@ -6457,7 +6457,7 @@ static int export_appointment_report(void)
     fprintf(fp, "----------------------------------------------------------------------------------------------------\n");
     fclose(fp);
     
-    printf("✅ 报表导出成功：%s\n", filename);
+    printf("[OK] 报表导出成功：%s\n", filename);
     return 1;
 }
 
@@ -6470,7 +6470,7 @@ static int export_medicine_report(void)
     FILE* fp = fopen(filename, "w");
     if (fp == NULL)
     {
-        printf("❌ 报表导出失败，请检查 report 目录权限或文件是否被占用。\n");
+        printf("[ERROR] 报表导出失败，请检查 report 目录权限或文件是否被占用。\n");
         return 0;
     }
     write_utf8_bom(fp);
@@ -6604,7 +6604,7 @@ static int export_medicine_report(void)
     fprintf(fp, "------------------------------------------------------------\n");
     fclose(fp);
     
-    printf("✅ 报表导出成功：%s\n", filename);
+    printf("[OK] 报表导出成功：%s\n", filename);
     return 1;
 }
 
@@ -6617,7 +6617,7 @@ static int export_ward_inpatient_report(void)
     FILE* fp = fopen(filename, "w");
     if (fp == NULL)
     {
-        printf("❌ 报表导出失败，请检查 report 目录权限或文件是否被占用。\n");
+        printf("[ERROR] 报表导出失败，请检查 report 目录权限或文件是否被占用。\n");
         return 0;
     }
     write_utf8_bom(fp);
@@ -6758,7 +6758,7 @@ static int export_ward_inpatient_report(void)
     fprintf(fp, "------------------------------------------------------------\n");
     fclose(fp);
     
-    printf("✅ 报表导出成功：%s\n", filename);
+    printf("[OK] 报表导出成功：%s\n", filename);
     return 1;
 }
 
@@ -6771,7 +6771,7 @@ static int export_service_report(void)
     FILE* fp = fopen(filename, "w");
     if (fp == NULL)
     {
-        printf("❌ 报表导出失败，请检查 report 目录权限或文件是否被占用。\n");
+        printf("[ERROR] 报表导出失败，请检查 report 目录权限或文件是否被占用。\n");
         return 0;
     }
     write_utf8_bom(fp);
@@ -6832,7 +6832,7 @@ static int export_service_report(void)
     
     fclose(fp);
     
-    printf("✅ 投诉服务处理报表导出成功：%s\n", filename);
+    printf("[OK] 投诉服务处理报表导出成功：%s\n", filename);
     return 1;
 }
 
@@ -6845,7 +6845,7 @@ static int export_finance_report(void)
     FILE* fp = fopen(filename, "w");
     if (fp == NULL)
     {
-        printf("❌ 收费财务统计报表导出失败，请检查 report 目录权限或文件是否被占用。\n");
+        printf("[ERROR] 收费财务统计报表导出失败，请检查 report 目录权限或文件是否被占用。\n");
         return 0;
     }
     write_utf8_bom(fp);
@@ -7044,7 +7044,7 @@ static int export_finance_report(void)
     
     fclose(fp);
     
-    printf("✅ 收费财务统计报表导出成功：%s\n", filename);
+    printf("[OK] 收费财务统计报表导出成功：%s\n", filename);
     return 1;
 }
 
@@ -7057,7 +7057,7 @@ static int export_log_report(void)
     FILE* fp = fopen(filename, "w");
     if (fp == NULL)
     {
-        printf("❌ 报表导出失败，请检查 report 目录权限或文件是否被占用。\n");
+        printf("[ERROR] 报表导出失败，请检查 report 目录权限或文件是否被占用。\n");
         return 0;
     }
     write_utf8_bom(fp);
@@ -7114,7 +7114,7 @@ static int export_log_report(void)
     
     fclose(fp);
     
-    printf("✅ 报表导出成功：%s\n", filename);
+    printf("[OK] 报表导出成功：%s\n", filename);
     return 1;
 }
 
@@ -7249,7 +7249,7 @@ void admin_report_menu(void)
                 running = 0;
                 break;
             default:
-                printf("\n⚠️ 无效选项，请重新输入\n");
+                printf("\n[WARN] 无效选项，请重新输入\n");
                 system("pause");
                 break;
         }
@@ -7369,8 +7369,8 @@ void check_system_data_integrity(void)
     #define CHECK_THRESHOLD(current, threshold, label) \
     do { \
         printf("%s：%d / %d    ", label, current, threshold); \
-        if (current >= threshold) { printf("✅ 达标\n"); } \
-        else { printf("⚠️ 不达标，建议补充测试数据。\n"); all_ok = 0; } \
+        if (current >= threshold) { printf("[OK] 达标\n"); } \
+        else { printf("[WARN] 不达标，建议补充测试数据。\n"); all_ok = 0; } \
     } while(0)
 
     CHECK_THRESHOLD(patient_count, 100, "患者数量");
@@ -7396,10 +7396,10 @@ void check_system_data_integrity(void)
     }
     printf("预约患者引用异常：%d 条 ", appt_patient_orphan);
     if (appt_patient_orphan > 0) {
-        printf("⚠️ 存在 %d 条异常，请检查 data 文件。\n", appt_patient_orphan);
+        printf("[WARN] 存在 %d 条异常，请检查 data 文件。\n", appt_patient_orphan);
         all_ok = 0;
     } else {
-        printf("✅\n");
+        printf("[OK]\n");
     }
 
     if (g_inpatient_list && g_patient_list) {
@@ -7414,10 +7414,10 @@ void check_system_data_integrity(void)
     }
     printf("住院患者引用异常：%d 条 ", inpatient_patient_orphan);
     if (inpatient_patient_orphan > 0) {
-        printf("⚠️ 存在 %d 条异常，请检查 data 文件。\n", inpatient_patient_orphan);
+        printf("[WARN] 存在 %d 条异常，请检查 data 文件。\n", inpatient_patient_orphan);
         all_ok = 0;
     } else {
-        printf("✅\n");
+        printf("[OK]\n");
     }
 
     if (g_check_record_list && g_patient_list) {
@@ -7432,10 +7432,10 @@ void check_system_data_integrity(void)
     }
     printf("检查患者引用异常：%d 条 ", checkrecord_patient_orphan);
     if (checkrecord_patient_orphan > 0) {
-        printf("⚠️ 存在 %d 条异常，请检查 data 文件。\n", checkrecord_patient_orphan);
+        printf("[WARN] 存在 %d 条异常，请检查 data 文件。\n", checkrecord_patient_orphan);
         all_ok = 0;
     } else {
-        printf("✅\n");
+        printf("[OK]\n");
     }
 
     if (g_check_record_list && g_check_item_list) {
@@ -7450,10 +7450,10 @@ void check_system_data_integrity(void)
     }
     printf("检查项目引用异常：%d 条 ", checkrecord_item_orphan);
     if (checkrecord_item_orphan > 0) {
-        printf("⚠️ 存在 %d 条异常，请检查 data 文件。\n", checkrecord_item_orphan);
+        printf("[WARN] 存在 %d 条异常，请检查 data 文件。\n", checkrecord_item_orphan);
         all_ok = 0;
     } else {
-        printf("✅\n");
+        printf("[OK]\n");
     }
 
     if (g_patient_list && g_medicine_list) {
@@ -7472,10 +7472,10 @@ void check_system_data_integrity(void)
     }
     printf("处方药品引用异常：%d 条 ", script_med_orphan);
     if (script_med_orphan > 0) {
-        printf("⚠️ 存在 %d 条异常，请检查 data 文件。\n", script_med_orphan);
+        printf("[WARN] 存在 %d 条异常，请检查 data 文件。\n", script_med_orphan);
         all_ok = 0;
     } else {
-        printf("✅\n");
+        printf("[OK]\n");
     }
 
     if (g_ward_list && g_patient_list) {
@@ -7490,10 +7490,10 @@ void check_system_data_integrity(void)
     }
     printf("床位占用引用异常：%d 条 ", ward_occ_patient_orphan);
     if (ward_occ_patient_orphan > 0) {
-        printf("⚠️ 存在 %d 条异常，请检查 data 文件。\n", ward_occ_patient_orphan);
+        printf("[WARN] 存在 %d 条异常，请检查 data 文件。\n", ward_occ_patient_orphan);
         all_ok = 0;
     } else {
-        printf("✅\n");
+        printf("[OK]\n");
     }
 
     printf("======================================================\n");
@@ -7505,9 +7505,9 @@ void check_system_data_integrity(void)
     printf("======================================================\n");
 
     if (all_ok) {
-        printf("\n✅ 系统数据检查通过，当前测试数据适合答辩演示。\n");
+        printf("\n[OK] 系统数据检查通过，当前测试数据适合答辩演示。\n");
     } else {
-        printf("\n⚠️ 系统数据检查发现异常，建议答辩前修复 data 文件或补充测试数据。\n");
+        printf("\n[WARN] 系统数据检查发现异常，建议答辩前修复 data 文件或补充测试数据。\n");
     }
     printf("======================================================\n");
 }
@@ -7563,7 +7563,7 @@ static void change_password(AccountNode* account)
     
     if (strcmp(old_password, account->password) != 0)
     {
-        printf("\n❌ 旧密码错误，修改失败。\n");
+        printf("\n[ERROR] 旧密码错误，修改失败。\n");
         return;
     }
     
@@ -7571,7 +7571,7 @@ static void change_password(AccountNode* account)
     
     if (strlen(new_password) == 0)
     {
-        printf("\n❌ 新密码不能为空。\n");
+        printf("\n[ERROR] 新密码不能为空。\n");
         return;
     }
     
@@ -7579,7 +7579,7 @@ static void change_password(AccountNode* account)
     
     if (strcmp(new_password, confirm_password) != 0)
     {
-        printf("\n❌ 两次输入的新密码不一致，修改失败。\n");
+        printf("\n[ERROR] 两次输入的新密码不一致，修改失败。\n");
         return;
     }
     
@@ -7587,7 +7587,7 @@ static void change_password(AccountNode* account)
     
     save_account_list(g_account_list);
     
-    printf("\n✅ 密码修改成功，请牢记新密码。\n");
+    printf("\n[OK] 密码修改成功，请牢记新密码。\n");
 }
 
 static void show_duty_status(AccountNode* account)
@@ -7617,7 +7617,7 @@ void user_profile_menu(AccountNode* current_account)
 {
     if (current_account == NULL)
     {
-        printf("⚠️ 未找到当前登录账号信息！\n");
+        printf("[WARN] 未找到当前登录账号信息！\n");
         system("pause");
         return;
     }
@@ -7656,7 +7656,7 @@ void user_profile_menu(AccountNode* current_account)
                 running = 0;
                 break;
             default:
-                printf("\n⚠️ 无效选项，请重新输入\n");
+                printf("\n[WARN] 无效选项，请重新输入\n");
                 system("pause");
                 break;
         }

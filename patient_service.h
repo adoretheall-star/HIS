@@ -234,4 +234,12 @@ int can_patient_walk_in_register(
     const char* appoint_dept
 );
 
+/**
+ * @brief 患者自助账户充值
+ * @param patient_id 患者编号
+ * @param amount 充值金额（必须 > 0）
+ * @return 成功返回1，失败返回0
+ */
+int patient_recharge_balance(const char* patient_id, double amount);
+
 #endif

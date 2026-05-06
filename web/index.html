@@ -1,0 +1,2035 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>社区智慧医疗信息管理系统 HIS</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:"Microsoft YaHei","SimHei",sans-serif;font-size:16px;background:#f0f4f8;color:#1a2a3a;display:flex;min-height:100vh;}
+#sidebar{width:240px;min-width:240px;background:#1a3a5c;color:#fff;overflow-y:auto;padding-bottom:20px;}
+#sidebar h2{font-size:18px;text-align:center;padding:18px 10px;background:#0f2440;border-bottom:2px solid #2a6090;letter-spacing:1px;}
+#sidebar .menu-group{margin-top:8px;}
+#sidebar .menu-group-title{font-size:13px;color:#8ab4d8;padding:8px 16px 4px;text-transform:uppercase;letter-spacing:1px;}
+#sidebar .menu-item{display:block;width:100%;text-align:left;padding:10px 20px;font-size:15px;background:none;border:none;color:#c8dce8;cursor:pointer;transition:background 0.15s;}
+#sidebar .menu-item:hover{background:#1e4a78;color:#fff;}
+#sidebar .menu-item.active{background:#2a7ab5;color:#fff;font-weight:bold;}
+#main{flex:1;overflow-y:auto;padding:24px 28px;}
+.page{display:none;}
+.page.active{display:block;}
+h2.page-title{font-size:22px;color:#1a3a5c;border-bottom:2px solid #2a7ab5;padding-bottom:10px;margin-bottom:18px;}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:center;}
+.toolbar input,.toolbar select{padding:7px 12px;font-size:15px;border:1px solid #b8ccdd;border-radius:4px;outline:none;}
+.toolbar input:focus,.toolbar select:focus{border-color:#2a7ab5;}
+.btn{padding:7px 16px;font-size:15px;border:none;border-radius:4px;cursor:pointer;font-weight:bold;transition:background 0.15s,opacity 0.15s;}
+.btn:hover{opacity:0.88;}.btn:active{opacity:0.7;}
+.btn-primary{background:#2a7ab5;color:#fff;}.btn-success{background:#27a844;color:#fff;}
+.btn-danger{background:#d9304e;color:#fff;}.btn-warning{background:#e8900c;color:#fff;}
+.btn-info{background:#0f7b8a;color:#fff;}.btn-sm{padding:4px 10px;font-size:13px;}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:4px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.06);font-size:14px;margin-top:4px;}
+th,td{padding:9px 10px;border-bottom:1px solid #e0e7ef;text-align:left;}
+th{background:#e8f0f8;font-weight:bold;color:#1a3a5c;white-space:nowrap;}
+tr:hover{background:#f5f8fc;}
+.modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.4);z-index:1000;justify-content:center;align-items:center;}
+.modal-overlay.show{display:flex;}
+.modal{background:#fff;border-radius:6px;padding:24px;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.2);}
+.modal h3{font-size:18px;margin-bottom:16px;color:#1a3a5c;}
+.modal .form-row{margin-bottom:12px;display:flex;align-items:center;gap:10px;}
+.modal .form-row label{width:100px;text-align:right;font-weight:bold;font-size:14px;color:#3a5a7a;}
+.modal .form-row input,.modal .form-row select,.modal .form-row textarea{flex:1;padding:7px 10px;font-size:14px;border:1px solid #b8ccdd;border-radius:4px;}
+.modal .form-row textarea{min-height:60px;resize:vertical;}
+.modal .form-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:16px;}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:18px;}
+.stat-card{background:#fff;padding:14px 16px;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,0.06);border-left:4px solid #2a7ab5;}
+.stat-card .stat-num{font-size:28px;font-weight:bold;color:#1a3a5c;}
+.stat-card .stat-label{font-size:13px;color:#6a8a9a;margin-top:2px;}
+.log-list{background:#fff;border-radius:4px;padding:12px;box-shadow:0 1px 4px rgba(0,0,0,0.06);max-height:300px;overflow-y:auto;font-size:13px;}
+.log-list .log-item{padding:4px 0;border-bottom:1px solid #eef2f6;font-family:Consolas,"Courier New",monospace;}
+.ll-viz{background:#fff;padding:16px;border-radius:4px;font-family:Consolas,"Courier New",monospace;font-size:14px;text-align:center;overflow-x:auto;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.06);}
+.ll-viz .node{display:inline-block;border:2px solid #2a7ab5;border-radius:4px;padding:6px 12px;margin:0 4px;background:#e8f4fc;font-weight:bold;}
+.ll-viz .arrow{display:inline-block;margin:0 2px;color:#2a7ab5;font-size:18px;}
+.toast{position:fixed;top:20px;right:20px;background:#27a844;color:#fff;padding:10px 20px;border-radius:4px;font-size:15px;z-index:2000;box-shadow:0 4px 12px rgba(0,0,0,0.2);}
+.toast.error{background:#d9304e;}
+/* 登录页 */
+.login-container{display:flex;justify-content:center;align-items:center;min-height:80vh;}
+.login-box{background:#fff;border-radius:8px;box-shadow:0 4px 24px rgba(0,0,0,0.12);padding:36px 40px;width:420px;max-width:95%;}
+.login-box h2{text-align:center;color:#1a3a5c;margin-bottom:8px;font-size:24px;}
+.login-box .subtitle{text-align:center;color:#6a8a9a;margin-bottom:24px;font-size:14px;}
+.login-box .tab-row{display:flex;margin-bottom:20px;border-bottom:2px solid #e0e7ef;}
+.login-box .tab-btn{flex:1;padding:10px;border:none;background:none;font-size:15px;cursor:pointer;color:#6a8a9a;transition:all 0.2s;}
+.login-box .tab-btn.active{border-bottom:2px solid #2a7ab5;color:#2a7ab5;font-weight:bold;margin-bottom:-2px;}
+.login-box .field{margin-bottom:14px;}
+.login-box .field label{display:block;font-weight:bold;margin-bottom:4px;color:#3a5a7a;font-size:14px;}
+.login-box .field input,.login-box .field select{width:100%;padding:9px 12px;font-size:15px;border:1px solid #b8ccdd;border-radius:4px;}
+.login-box .field input:focus{border-color:#2a7ab5;outline:none;}
+.login-box .btn-login{width:100%;padding:12px;font-size:17px;font-weight:bold;background:#2a7ab5;color:#fff;border:none;border-radius:4px;cursor:pointer;margin-top:8px;}
+.login-box .btn-login:hover{background:#1e5c8a;}
+.login-box .error-msg{color:#d9304e;text-align:center;margin-top:8px;font-size:14px;min-height:20px;}
+/* 用户顶栏 */
+#userbar{background:#fff;border-bottom:2px solid #d0dce8;padding:8px 24px;display:flex;align-items:center;justify-content:space-between;font-size:14px;color:#3a5a7a;}
+#userbar .user-info{display:flex;align-items:center;gap:16px;}
+#userbar .role-badge{padding:4px 10px;border-radius:12px;font-size:12px;font-weight:bold;color:#fff;}
+#userbar .role-badge.admin{background:#d9304e;}
+#userbar .role-badge.doctor{background:#2a7ab5;}
+#userbar .role-badge.nurse{background:#27a844;}
+#userbar .role-badge.pharmacist{background:#e8900c;}
+#userbar .role-badge.patient{background:#6f42c1;}
+#userbar .btn-logout{padding:5px 14px;font-size:13px;background:#e8f0f8;border:1px solid #b8ccdd;border-radius:4px;cursor:pointer;}
+#userbar .btn-logout:hover{background:#d9304e;color:#fff;border-color:#d9304e;}
+/* 占位页面 */
+.placeholder-page{text-align:center;padding:60px 20px;color:#6a8a9a;}
+.placeholder-page .ph-icon{font-size:48px;margin-bottom:16px;}
+.placeholder-page h3{font-size:20px;color:#1a3a5c;margin-bottom:8px;}
+.placeholder-page p{font-size:15px;line-height:1.8;}
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+<h2>🏥 HIS 系统</h2>
+<div id="sidebar-menu"></div>
+</div>
+
+<div id="userbar" style="display:none;"></div>
+<div id="main"></div>
+<div id="modal-overlay" class="modal-overlay"><div class="modal" id="modal-box"></div></div>
+<div id="toast" class="toast" style="display:none;"></div>
+
+<script>
+// ==================== 数据层 ====================
+var DATA_KEYS=[
+  'his_patients','his_doctors','his_departments','his_medicines',
+  'his_registrations','his_appointments','his_waitqueue','his_prescriptions',
+  'his_inpatients','his_billings','his_logs','his_consultrecords',
+  'his_checkitems','his_checkrecords','his_accounts','his_wards',
+  'his_alerts','his_complaints'
+];
+
+function loadData(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):[];}catch(e){return[];}}
+function saveData(k,d){localStorage.setItem(k,JSON.stringify(d));}
+
+function AP(){return loadData('his_patients');}
+function AD(){return loadData('his_doctors');}
+function AE(){return loadData('his_departments');}
+function AM(){return loadData('his_medicines');}
+function AR(){return loadData('his_registrations');}
+function AA(){return loadData('his_appointments');}
+function AW(){return loadData('his_waitqueue');}
+function AX(){return loadData('his_prescriptions');}
+function AI(){return loadData('his_inpatients');}
+function AB(){return loadData('his_billings');}
+function AL(){return loadData('his_logs');}
+function AC(){return loadData('his_consultrecords');}
+
+function SP(d){saveData('his_patients',d);}function SD(d){saveData('his_doctors',d);}
+function SE(d){saveData('his_departments',d);}function SM(d){saveData('his_medicines',d);}
+function SR(d){saveData('his_registrations',d);}function SA(d){saveData('his_appointments',d);}
+function SW(d){saveData('his_waitqueue',d);}function SX(d){saveData('his_prescriptions',d);}
+function SI(d){saveData('his_inpatients',d);}function SB(d){saveData('his_billings',d);}
+function SL(d){saveData('his_logs',d);}function SC(d){saveData('his_consultrecords',d);}
+
+function nextId(list,prefix){
+  var max=0;list.forEach(function(x){var n=parseInt(x.id.replace(prefix,''))||0;if(n>max)max=n;});
+  return prefix+String(max+1).padStart(3,'0');
+}
+function nowStr(){
+  var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0');
+}
+function addLog(op,target,desc){
+  var logs=AL();logs.push({time:nowStr(),operation:op,target:target,description:desc});SL(logs);
+}
+
+// ==================== Toast ====================
+function toast(msg,isErr){
+  var t=document.getElementById('toast');t.textContent=msg;t.className='toast'+(isErr?' error':'');
+  t.style.display='block';clearTimeout(t._tid);t._tid=setTimeout(function(){t.style.display='none';},2000);
+}
+
+// ==================== 通用表格 ====================
+// cols: [{h:显示名,k:属性键}] 或 [显示名1,显示名2...]（此时键=显示名）
+// rows: 数据对象数组
+// actions: function(row)返回操作按钮HTML，或null
+function makeTable(cols, rows, actions){
+  var colDefs=[];
+  if(cols.length>0 && typeof cols[0]==='object'){colDefs=cols;}
+  else{colDefs=cols.map(function(h){return{h:h,k:h};});}
+  var h='<table><thead><tr>';
+  colDefs.forEach(function(c){h+='<th>'+c.h+'</th>';});
+  if(actions)h+='<th>操作</th>';
+  h+='</tr></thead><tbody>';
+  if(!rows||rows.length===0){h+='<tr><td colspan="'+(colDefs.length+(actions?1:0))+'" style="text-align:center;color:#999;">暂无数据</td></tr>';}
+  else{rows.forEach(function(r){h+='<tr>';
+    colDefs.forEach(function(c){h+='<td>'+(r[c.k]!==undefined?r[c.k]:'')+'</td>';});
+    if(actions){h+='<td>'+actions(r)+'</td>';}
+    h+='</tr>';});}
+  h+='</tbody></table>';
+  return h;
+}
+
+// helper: build colDefs from headers[] and keys[]
+function coldef(headers,keys){
+  return headers.map(function(h,i){return{h:h,k:keys[i]};});
+}
+
+// ==================== 弹窗 ====================
+function modal(title,bodyHtml,onSave){
+  var overlay=document.getElementById('modal-overlay');
+  var box=document.getElementById('modal-box');
+  box.innerHTML='<h3>'+title+'</h3>'+bodyHtml+'<div class="form-actions"><button class="btn" id="modal-cancel">取消</button><button class="btn btn-primary" id="modal-save">保存</button></div>';
+  overlay.classList.add('show');
+  document.getElementById('modal-cancel').onclick=function(){overlay.classList.remove('show');};
+  document.getElementById('modal-save').onclick=function(){
+    var inputs=box.querySelectorAll('input,select,textarea');
+    var data={};inputs.forEach(function(inp){data[inp.name]=inp.value;});
+    var err=onSave(data);
+    if(!err){overlay.classList.remove('show');}
+  };
+}
+
+// ==================== 患者数据标准化 ====================
+function normalizePatients(){
+  var list = AP();
+  var changed = false;
+  list.forEach(function(p){
+    if(!p.id && p.patientId) p.id = p.patientId;
+    if(!p.id && p.patient_id) p.id = p.patient_id;
+    if(!p.id && p.number) p.id = p.number;
+    if(!p.id && p.code) p.id = p.code;
+    if(!p.name && p.patientName) p.name = p.patientName;
+    if(!p.name && p.realName) p.name = p.realName;
+    if(!p.gender && p.sex) p.gender = p.sex;
+    if(!p.phone && p.tel) p.phone = p.tel;
+    if(!p.phone && p.telephone) p.phone = p.telephone;
+    if(!p.idCard && p.idcard) { p.idCard = p.idcard; delete p.idcard; changed = true; }
+    if(!p.idCard && p.idNumber) p.idCard = p.idNumber;
+    if(!p.idCard && p.identityCard) p.idCard = p.identityCard;
+    if(!p.idCard && p.cardId) p.idCard = p.cardId;
+    if(!p.address && p.addr) p.address = p.addr;
+    if(!p.complaint && p.symptom) { p.complaint = p.symptom; delete p.symptom; changed = true; }
+    if(!p.complaint && p.symptoms) p.complaint = p.symptoms;
+    if(!p.complaint && p.description) p.complaint = p.description;
+    if(!p.status && p.visitStatus) p.status = p.visitStatus;
+    if(!p.status && p.patientStatus) p.status = p.patientStatus;
+  });
+  if(changed) SP(list);
+}
+
+// ==================== 初始化真实数据（从 data/ 文件夹解析） ====================
+function initDemoData(){
+  var ps=[
+    {id:'P-1001',name:'李逃单',gender:'男',age:21,phone:'',idCard:'110105199001011234',address:'',complaint:'感冒发热',status:'住院中',balance:10000.0,emergency:1,blacklist:1},
+    {id:'P-1002',name:'王爽约',gender:'男',age:22,phone:'',idCard:'110105199002021235',address:'',complaint:'胃痛',status:'住院中',balance:10000.0,emergency:1,blacklist:1},
+    {id:'P-1003',name:'张即将解禁',gender:'男',age:23,phone:'',idCard:'110105199003031236',address:'',complaint:'头痛',status:'住院中',balance:10000.0,emergency:1,blacklist:1},
+    {id:'P-1004',name:'张伟',gender:'男',age:24,phone:'',idCard:'110105199004041237',address:'',complaint:'感冒发热',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1005',name:'张伟',gender:'女',age:25,phone:'',idCard:'110105199005051238',address:'',complaint:'胃痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1006',name:'王娜',gender:'女',age:26,phone:'',idCard:'110105199006061239',address:'',complaint:'头痛',status:'待诊',balance:10000.0,emergency:1,blacklist:0},
+    {id:'P-1007',name:'李强',gender:'男',age:27,phone:'',idCard:'110105199007071230',address:'',complaint:'感冒发热',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1008',name:'张敏',gender:'女',age:28,phone:'',idCard:'110105199008081231',address:'',complaint:'胃痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1009',name:'刘静',gender:'女',age:29,phone:'',idCard:'110105199009091232',address:'',complaint:'头痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1010',name:'陈磊',gender:'男',age:30,phone:'',idCard:'110105199010101233',address:'',complaint:'感冒发热',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1011',name:'杨军',gender:'男',age:31,phone:'',idCard:'110105199011111234',address:'',complaint:'胃痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1012',name:'黄洋',gender:'男',age:32,phone:'',idCard:'110105199012121235',address:'',complaint:'头痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1013',name:'赵勇',gender:'男',age:33,phone:'',idCard:'110105199101131236',address:'',complaint:'感冒发热',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1014',name:'周建国',gender:'男',age:34,phone:'',idCard:'110105199102141237',address:'',complaint:'胃痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1015',name:'吴欣怡',gender:'女',age:35,phone:'',idCard:'110105199103151238',address:'',complaint:'头痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1016',name:'郑浩然',gender:'男',age:36,phone:'',idCard:'110105199104161239',address:'',complaint:'感冒发热',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1017',name:'王雨桐',gender:'女',age:37,phone:'',idCard:'110105199105171230',address:'',complaint:'胃痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1018',name:'冯子轩',gender:'男',age:38,phone:'',idCard:'110105199106181231',address:'',complaint:'头痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1019',name:'陈梓涵',gender:'女',age:39,phone:'',idCard:'110105199107191232',address:'',complaint:'感冒发热',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1020',name:'蒋诗涵',gender:'女',age:40,phone:'',idCard:'110105199108201233',address:'',complaint:'胃痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1021',name:'沈雨泽',gender:'男',age:41,phone:'',idCard:'110105199109211234',address:'',complaint:'头痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1022',name:'韩宇轩',gender:'男',age:42,phone:'',idCard:'110105199110221235',address:'',complaint:'感冒发热',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1023',name:'杨雨晨',gender:'女',age:43,phone:'',idCard:'110105199111231236',address:'',complaint:'胃痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1024',name:'朱佳琪',gender:'女',age:44,phone:'',idCard:'110105199112241237',address:'',complaint:'头痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1025',name:'秦子豪',gender:'男',age:45,phone:'',idCard:'110105199201251238',address:'',complaint:'感冒发热',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1026',name:'许雨欣',gender:'女',age:46,phone:'',idCard:'110105199202261239',address:'',complaint:'胃痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1027',name:'何一诺',gender:'女',age:47,phone:'',idCard:'110105199203271230',address:'',complaint:'头痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1028',name:'吕艺馨',gender:'女',age:48,phone:'',idCard:'110105199204281231',address:'',complaint:'感冒发热',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1029',name:'施思远',gender:'男',age:49,phone:'',idCard:'110105199205291232',address:'',complaint:'胃痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1030',name:'张语桐',gender:'女',age:50,phone:'',idCard:'110105199206301233',address:'',complaint:'头痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1031',name:'王雨萌',gender:'女',age:51,phone:'',idCard:'110105199207011234',address:'',complaint:'感冒发热',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1032',name:'刘伟',gender:'男',age:52,phone:'',idCard:'110105199208021235',address:'',complaint:'胃痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1033',name:'杨娜',gender:'女',age:53,phone:'',idCard:'110105199209031236',address:'',complaint:'头痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1034',name:'赵静',gender:'女',age:54,phone:'',idCard:'110105199210041237',address:'',complaint:'感冒发热',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1035',name:'吴军',gender:'男',age:55,phone:'',idCard:'110105199211051238',address:'',complaint:'胃痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1036',name:'王勇',gender:'男',age:56,phone:'',idCard:'110105199212061239',address:'',complaint:'头痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1037',name:'陈欣怡',gender:'女',age:57,phone:'',idCard:'110105199301071230',address:'',complaint:'感冒发热',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1038',name:'沈雨桐',gender:'女',age:58,phone:'',idCard:'110105199302081231',address:'',complaint:'胃痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1039',name:'杨梓涵',gender:'女',age:59,phone:'',idCard:'110105199303091232',address:'',complaint:'头痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1040',name:'秦雨泽',gender:'男',age:60,phone:'',idCard:'110105199304101233',address:'',complaint:'感冒发热',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1041',name:'张梓涵',gender:'女',age:61,phone:'',idCard:'110105199305111234',address:'',complaint:'胃痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1042',name:'王雨泽',gender:'男',age:62,phone:'',idCard:'110105199306121235',address:'',complaint:'头痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1043',name:'杨雨晨',gender:'女',age:63,phone:'',idCard:'110105199307131236',address:'',complaint:'感冒发热',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1044',name:'赵子豪',gender:'男',age:64,phone:'',idCard:'110105199308141237',address:'',complaint:'胃痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1045',name:'吴一诺',gender:'女',age:65,phone:'',idCard:'110105199309151238',address:'',complaint:'头痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1046',name:'郑伟',gender:'男',age:66,phone:'',idCard:'110105199310161239',address:'',complaint:'感冒发热',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1047',name:'周芳',gender:'女',age:67,phone:'',idCard:'110105199311171230',address:'',complaint:'胃痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1048',name:'刘强',gender:'男',age:68,phone:'',idCard:'110105199312181231',address:'',complaint:'头痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1049',name:'陈敏',gender:'女',age:69,phone:'',idCard:'110105199401191232',address:'',complaint:'感冒发热',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1050',name:'赵芳',gender:'女',age:70,phone:'',idCard:'110105199402201233',address:'',complaint:'胃痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1051',name:'周勇',gender:'男',age:71,phone:'',idCard:'110105199403211234',address:'',complaint:'头痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1052',name:'吴芳',gender:'女',age:72,phone:'',idCard:'110105199404221235',address:'',complaint:'感冒发热',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1053',name:'郑芳',gender:'女',age:73,phone:'',idCard:'110105199405231236',address:'',complaint:'胃痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1054',name:'王芳',gender:'女',age:74,phone:'',idCard:'110105199406241237',address:'',complaint:'头痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1055',name:'李芳',gender:'女',age:75,phone:'',idCard:'110105199407251238',address:'',complaint:'感冒发热',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1056',name:'张芳',gender:'女',age:76,phone:'',idCard:'110105199408261239',address:'',complaint:'胃痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1057',name:'刘芳',gender:'女',age:77,phone:'',idCard:'110105199409271230',address:'',complaint:'头痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1058',name:'陈芳',gender:'女',age:78,phone:'',idCard:'110105199410281231',address:'',complaint:'感冒发热',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1059',name:'赵芳',gender:'女',age:79,phone:'',idCard:'110105199411291232',address:'',complaint:'胃痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1060',name:'周芳',gender:'女',age:80,phone:'',idCard:'110105199412301233',address:'',complaint:'头痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1061',name:'吴芳',gender:'女',age:81,phone:'',idCard:'110105199501311234',address:'',complaint:'感冒发热',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1062',name:'郑芳',gender:'女',age:82,phone:'',idCard:'110105199502011235',address:'',complaint:'胃痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1063',name:'王芳',gender:'女',age:83,phone:'',idCard:'110105199503021236',address:'',complaint:'头痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1064',name:'李芳',gender:'女',age:84,phone:'',idCard:'110105199504031237',address:'',complaint:'感冒发热',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1065',name:'张芳',gender:'女',age:85,phone:'',idCard:'110105199505041238',address:'',complaint:'胃痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1066',name:'刘芳',gender:'女',age:86,phone:'',idCard:'110105199506051239',address:'',complaint:'头痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1067',name:'陈芳',gender:'女',age:87,phone:'',idCard:'110105199507061230',address:'',complaint:'感冒发热',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1068',name:'赵芳',gender:'女',age:88,phone:'',idCard:'110105199508071231',address:'',complaint:'胃痛',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1069',name:'周芳',gender:'女',age:89,phone:'',idCard:'110105199509081232',address:'',complaint:'头痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1070',name:'吴芳',gender:'女',age:90,phone:'',idCard:'110105199510091233',address:'',complaint:'感冒发热',status:'住院中',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1071',name:'郑芳',gender:'女',age:91,phone:'',idCard:'110105199511101234',address:'',complaint:'胃痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1072',name:'王芳',gender:'女',age:92,phone:'',idCard:'110105199512111235',address:'',complaint:'头痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1073',name:'李芳',gender:'女',age:93,phone:'',idCard:'110105199601121236',address:'',complaint:'感冒发热',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1074',name:'张芳',gender:'女',age:94,phone:'',idCard:'110105199602131237',address:'',complaint:'胃痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1075',name:'刘芳',gender:'女',age:95,phone:'',idCard:'110105199603141238',address:'',complaint:'头痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1076',name:'陈芳',gender:'女',age:96,phone:'',idCard:'110105199604151239',address:'',complaint:'感冒发热',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1077',name:'赵芳',gender:'女',age:97,phone:'',idCard:'110105199605161230',address:'',complaint:'胃痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1078',name:'周芳',gender:'女',age:98,phone:'',idCard:'110105199606171231',address:'',complaint:'头痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1079',name:'吴芳',gender:'女',age:99,phone:'',idCard:'110105199607181232',address:'',complaint:'感冒发热',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1080',name:'郑芳',gender:'女',age:100,phone:'',idCard:'110105199608191233',address:'',complaint:'胃痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1081',name:'王芳',gender:'女',age:101,phone:'',idCard:'110105199609201234',address:'',complaint:'头痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1082',name:'李芳',gender:'女',age:102,phone:'',idCard:'110105199610211235',address:'',complaint:'感冒发热',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1083',name:'张芳',gender:'女',age:103,phone:'',idCard:'110105199611221236',address:'',complaint:'胃痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1084',name:'刘芳',gender:'女',age:104,phone:'',idCard:'110105199612231237',address:'',complaint:'头痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1085',name:'陈芳',gender:'女',age:105,phone:'',idCard:'110105199701241238',address:'',complaint:'感冒发热',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1086',name:'赵芳',gender:'女',age:106,phone:'',idCard:'110105199702251239',address:'',complaint:'胃痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1087',name:'周芳',gender:'女',age:107,phone:'',idCard:'110105199703261230',address:'',complaint:'头痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1088',name:'吴芳',gender:'女',age:108,phone:'',idCard:'110105199704271231',address:'',complaint:'感冒发热',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1089',name:'郑芳',gender:'女',age:109,phone:'',idCard:'110105199705281232',address:'',complaint:'胃痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1090',name:'王芳',gender:'女',age:110,phone:'',idCard:'110105199706291233',address:'',complaint:'头痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1091',name:'李芳',gender:'女',age:111,phone:'',idCard:'110105199707301234',address:'',complaint:'感冒发热',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1092',name:'张芳',gender:'女',age:112,phone:'',idCard:'110105199708311235',address:'',complaint:'胃痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1093',name:'刘芳',gender:'女',age:113,phone:'',idCard:'110105199709011236',address:'',complaint:'头痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1094',name:'陈芳',gender:'女',age:114,phone:'',idCard:'110105199710021237',address:'',complaint:'感冒发热',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1095',name:'赵芳',gender:'女',age:115,phone:'',idCard:'110105199711031238',address:'',complaint:'胃痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1096',name:'文娜',gender:'女',age:116,phone:'',idCard:'110105199712061239',address:'',complaint:'头痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1097',name:'宋静',gender:'女',age:117,phone:'',idCard:'110105199801071230',address:'',complaint:'感冒发热',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1098',name:'唐军',gender:'男',age:118,phone:'',idCard:'110105199802081231',address:'',complaint:'胃痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1099',name:'韩伟',gender:'男',age:119,phone:'',idCard:'110105199803091232',address:'',complaint:'头痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1100',name:'冯娜',gender:'女',age:120,phone:'',idCard:'110105199804101233',address:'',complaint:'感冒发热',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1101',name:'陈明',gender:'男',age:25,phone:'',idCard:'110105199901011234',address:'',complaint:'头痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1102',name:'王丽',gender:'女',age:28,phone:'',idCard:'110105199902021235',address:'',complaint:'感冒发热',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1103',name:'张伟',gender:'男',age:30,phone:'',idCard:'110105199903031236',address:'',complaint:'胃痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1104',name:'刘洋',gender:'男',age:32,phone:'',idCard:'110105199904041237',address:'',complaint:'咳嗽',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1105',name:'陈静',gender:'女',age:35,phone:'',idCard:'110105199905051238',address:'',complaint:'发热',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1106',name:'王强',gender:'男',age:38,phone:'',idCard:'110105199906061239',address:'',complaint:'腹痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1107',name:'李娜',gender:'女',age:40,phone:'',idCard:'110105199907071230',address:'',complaint:'胸痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1108',name:'张明',gender:'男',age:42,phone:'',idCard:'110105199908081231',address:'',complaint:'头痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1109',name:'刘芳',gender:'女',age:45,phone:'',idCard:'110105199909091232',address:'',complaint:'咳嗽',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1110',name:'陈军',gender:'男',age:48,phone:'',idCard:'110105199910101233',address:'',complaint:'发热',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1111',name:'王敏',gender:'女',age:50,phone:'',idCard:'110105199911111234',address:'',complaint:'腹痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1112',name:'李刚',gender:'男',age:52,phone:'',idCard:'110105199912121235',address:'',complaint:'胸痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1113',name:'张芳',gender:'女',age:55,phone:'',idCard:'110105200001131236',address:'',complaint:'头痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1114',name:'刘军',gender:'男',age:58,phone:'',idCard:'110105200002141237',address:'',complaint:'咳嗽',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1115',name:'陈敏',gender:'女',age:60,phone:'',idCard:'110105200003151238',address:'',complaint:'发热',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1116',name:'王芳',gender:'女',age:62,phone:'',idCard:'110105200004161239',address:'',complaint:'腹痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1117',name:'李芳',gender:'女',age:65,phone:'',idCard:'110105200005171230',address:'',complaint:'胸痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1118',name:'张军',gender:'男',age:68,phone:'',idCard:'110105200006181231',address:'',complaint:'头痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1119',name:'刘刚',gender:'男',age:70,phone:'',idCard:'110105200007191232',address:'',complaint:'咳嗽',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1120',name:'陈刚',gender:'男',age:72,phone:'',idCard:'110105200008201233',address:'',complaint:'发热',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1121',name:'王强',gender:'男',age:75,phone:'',idCard:'110105200009211234',address:'',complaint:'腹痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1122',name:'李刚',gender:'男',age:78,phone:'',idCard:'110105200010221235',address:'',complaint:'胸痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1123',name:'张刚',gender:'男',age:80,phone:'',idCard:'110105200011231236',address:'',complaint:'头痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1124',name:'刘芳',gender:'女',age:82,phone:'',idCard:'110105200012241237',address:'',complaint:'咳嗽',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1125',name:'陈芳',gender:'女',age:85,phone:'',idCard:'110105200101251238',address:'',complaint:'发热',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1126',name:'王芳',gender:'女',age:88,phone:'',idCard:'110105200102261239',address:'',complaint:'腹痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1127',name:'李芳',gender:'女',age:90,phone:'',idCard:'110105200103271230',address:'',complaint:'胸痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1128',name:'张芳',gender:'女',age:92,phone:'',idCard:'110105200104281231',address:'',complaint:'头痛',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1129',name:'刘芳',gender:'女',age:95,phone:'',idCard:'110105200105291232',address:'',complaint:'咳嗽',status:'待诊',balance:10000.0,emergency:0,blacklist:0},
+    {id:'P-1130',name:'陈芳',gender:'女',age:98,phone:'',idCard:'110105200106301233',address:'',complaint:'发热',status:'待诊',balance:10000.0,emergency:0,blacklist:0}
+  ];
+  SP(ps);
+  normalizePatients();
+  var ds=[
+    {id:'D-2001',name:'李建国',gender:'男',dept:'内科',title:'主治医师',onDuty:1,regFee:30,remainSlots:20},
+    {id:'D-2040',name:'李建国',gender:'男',dept:'外科',title:'主治医师',onDuty:0,regFee:30,remainSlots:20},
+    {id:'D-2002',name:'张伟',gender:'男',dept:'外科',title:'主治医师',onDuty:1,regFee:30,remainSlots:20},
+    {id:'D-2003',name:'王芳',gender:'女',dept:'内科',title:'主治医师',onDuty:0,regFee:30,remainSlots:20},
+    {id:'D-2004',name:'刘静',gender:'女',dept:'外科',title:'主治医师',onDuty:1,regFee:30,remainSlots:20},
+    {id:'D-2005',name:'陈强',gender:'男',dept:'外科',title:'主治医师',onDuty:0,regFee:30,remainSlots:20},
+    {id:'D-2006',name:'王娜',gender:'女',dept:'妇产科',title:'主治医师',onDuty:1,regFee:30,remainSlots:20},
+    {id:'D-2007',name:'李敏',gender:'女',dept:'妇产科',title:'主治医师',onDuty:0,regFee:30,remainSlots:20},
+    {id:'D-2008',name:'赵军',gender:'男',dept:'妇产科',title:'主治医师',onDuty:1,regFee:30,remainSlots:20},
+    {id:'D-2009',name:'周洋',gender:'男',dept:'儿科',title:'主治医师',onDuty:0,regFee:30,remainSlots:20},
+    {id:'D-2010',name:'吴静',gender:'女',dept:'儿科',title:'主治医师',onDuty:1,regFee:30,remainSlots:20},
+    {id:'D-2011',name:'郑浩',gender:'男',dept:'儿科',title:'主治医师',onDuty:0,regFee:30,remainSlots:20},
+    {id:'D-2012',name:'孙磊',gender:'男',dept:'骨科',title:'主治医师',onDuty:1,regFee:30,remainSlots:20},
+    {id:'D-2013',name:'刘芳',gender:'女',dept:'骨科',title:'主治医师',onDuty:0,regFee:30,remainSlots:20},
+    {id:'D-2014',name:'杨勇',gender:'男',dept:'骨科',title:'主治医师',onDuty:1,regFee:30,remainSlots:20},
+    {id:'D-2015',name:'黄伟',gender:'男',dept:'心血管内科',title:'主治医师',onDuty:0,regFee:30,remainSlots:20},
+    {id:'D-2016',name:'徐娜',gender:'女',dept:'心血管内科',title:'主治医师',onDuty:1,regFee:30,remainSlots:20},
+    {id:'D-2017',name:'马强',gender:'男',dept:'心血管内科',title:'主治医师',onDuty:0,regFee:30,remainSlots:20},
+    {id:'D-2018',name:'胡芳',gender:'女',dept:'心血管内科',title:'主治医师',onDuty:1,regFee:30,remainSlots:20},
+    {id:'D-2019',name:'郭敏',gender:'女',dept:'神经内科',title:'主治医师',onDuty:0,regFee:30,remainSlots:20},
+    {id:'D-2020',name:'林强',gender:'男',dept:'神经内科',title:'主治医师',onDuty:1,regFee:30,remainSlots:20},
+    {id:'D-2021',name:'何静',gender:'女',dept:'神经内科',title:'主治医师',onDuty:0,regFee:30,remainSlots:20},
+    {id:'D-2022',name:'高军',gender:'男',dept:'普外科',title:'主治医师',onDuty:1,regFee:30,remainSlots:20},
+    {id:'D-2023',name:'罗勇',gender:'男',dept:'普外科',title:'主治医师',onDuty:0,regFee:30,remainSlots:20},
+    {id:'D-2024',name:'郑浩',gender:'男',dept:'普外科',title:'主治医师',onDuty:1,regFee:30,remainSlots:20},
+    {id:'D-2025',name:'梁敏',gender:'女',dept:'泌尿外科',title:'主治医师',onDuty:0,regFee:30,remainSlots:20},
+    {id:'D-2026',name:'谢强',gender:'男',dept:'泌尿外科',title:'主治医师',onDuty:1,regFee:30,remainSlots:20},
+    {id:'D-2027',name:'宋静',gender:'女',dept:'泌尿外科',title:'主治医师',onDuty:0,regFee:30,remainSlots:20},
+    {id:'D-2028',name:'唐伟',gender:'男',dept:'胸外科',title:'主治医师',onDuty:1,regFee:30,remainSlots:20},
+    {id:'D-2029',name:'许芳',gender:'女',dept:'胸外科',title:'主治医师',onDuty:0,regFee:30,remainSlots:20},
+    {id:'D-2030',name:'韩强',gender:'男',dept:'胸外科',title:'主治医师',onDuty:1,regFee:30,remainSlots:20},
+    {id:'D-2031',name:'冯敏',gender:'女',dept:'神经外科',title:'主治医师',onDuty:0,regFee:30,remainSlots:20},
+    {id:'D-2032',name:'邓军',gender:'男',dept:'神经外科',title:'主治医师',onDuty:1,regFee:30,remainSlots:20},
+    {id:'D-2033',name:'曹芳',gender:'女',dept:'神经外科',title:'主治医师',onDuty:0,regFee:30,remainSlots:20},
+    {id:'D-2034',name:'彭勇',gender:'男',dept:'眼科',title:'主治医师',onDuty:1,regFee:30,remainSlots:20},
+    {id:'D-2035',name:'曾敏',gender:'女',dept:'眼科',title:'主治医师',onDuty:0,regFee:30,remainSlots:20},
+    {id:'D-2036',name:'肖强',gender:'男',dept:'眼科',title:'主治医师',onDuty:1,regFee:30,remainSlots:20},
+    {id:'D-2037',name:'田芳',gender:'女',dept:'耳鼻喉科',title:'主治医师',onDuty:0,regFee:30,remainSlots:20},
+    {id:'D-2038',name:'董军',gender:'男',dept:'耳鼻喉科',title:'主治医师',onDuty:1,regFee:30,remainSlots:20},
+    {id:'D-2039',name:'袁敏',gender:'女',dept:'皮肤科',title:'主治医师',onDuty:0,regFee:30,remainSlots:20},
+    {id:'D-2048',name:'高峰',gender:'男',dept:'急诊科',title:'主治医师',onDuty:1,regFee:30,remainSlots:20},
+    {id:'D-2049',name:'杨雪',gender:'女',dept:'急诊科',title:'主治医师',onDuty:0,regFee:30,remainSlots:20},
+    {id:'D-2050',name:'周峰',gender:'男',dept:'急诊科',title:'主治医师',onDuty:1,regFee:30,remainSlots:20},
+    {id:'D-2044',name:'张医生',gender:'男',dept:'影像科',title:'主治医师',onDuty:1,regFee:30,remainSlots:20},
+    {id:'D-2045',name:'李医生',gender:'女',dept:'放射科',title:'主治医师',onDuty:1,regFee:30,remainSlots:20},
+    {id:'D-2046',name:'王医生',gender:'男',dept:'超声科',title:'主治医师',onDuty:1,regFee:30,remainSlots:20},
+    {id:'D-2047',name:'刘医生',gender:'女',dept:'心电图室',title:'主治医师',onDuty:1,regFee:30,remainSlots:20}
+  ];
+  SD(ds);
+  var deps=[
+    {id:'DEPT01',name:'儿科',location:'',head:'',desc:''},
+    {id:'DEPT02',name:'内科',location:'',head:'',desc:''},
+    {id:'DEPT03',name:'外科',location:'',head:'',desc:''},
+    {id:'DEPT04',name:'妇产科',location:'',head:'',desc:''},
+    {id:'DEPT05',name:'影像科',location:'',head:'',desc:''},
+    {id:'DEPT06',name:'心电图室',location:'',head:'',desc:''},
+    {id:'DEPT07',name:'心血管内科',location:'',head:'',desc:''},
+    {id:'DEPT08',name:'急诊科',location:'',head:'',desc:''},
+    {id:'DEPT09',name:'感染科',location:'',head:'',desc:''},
+    {id:'DEPT10',name:'放射科',location:'',head:'',desc:''},
+    {id:'DEPT11',name:'普外科',location:'',head:'',desc:''},
+    {id:'DEPT12',name:'泌尿外科',location:'',head:'',desc:''},
+    {id:'DEPT13',name:'皮肤科',location:'',head:'',desc:''},
+    {id:'DEPT14',name:'眼科',location:'',head:'',desc:''},
+    {id:'DEPT15',name:'神经内科',location:'',head:'',desc:''},
+    {id:'DEPT16',name:'神经外科',location:'',head:'',desc:''},
+    {id:'DEPT17',name:'综合',location:'',head:'',desc:''},
+    {id:'DEPT18',name:'综合重症',location:'',head:'',desc:''},
+    {id:'DEPT19',name:'耳鼻喉科',location:'',head:'',desc:''},
+    {id:'DEPT20',name:'胸外科',location:'',head:'',desc:''},
+    {id:'DEPT21',name:'超声科',location:'',head:'',desc:''},
+    {id:'DEPT22',name:'骨科',location:'',head:'',desc:''}
+  ];
+  SE(deps);
+  var ms=[
+    {id:'M-001',name:'阿莫西林',category:'阿莫西林胶囊',price:15.5,stock:100,manufacturer:'',expiry:'2027-04-01'},
+    {id:'M-002',name:'小儿氨酚黄那敏颗粒',category:'[儿科专属]缓解儿童普通感冒及流行性感冒引起的重度发热',price:22.5,stock:4,manufacturer:'',expiry:'2026-10-01'},
+    {id:'M-003',name:'硝苯地平缓释片(II)',category:'[心血管内科专属]高血压及心绞痛长效靶向控制缓释制剂',price:35.8,stock:800,manufacturer:'',expiry:'2026-05-01'},
+    {id:'M-004',name:'奥美拉唑肠溶胶囊',category:'[消化内科专属]胃溃疡及十二指肠溃疡重度粘膜修复特效药',price:45.0,stock:600,manufacturer:'',expiry:'2026-12-31'},
+    {id:'M-005',name:'布地奈德福莫特罗粉',category:'[呼吸内科专属]支气管哮喘及重度慢性阻塞性肺疾病控制剂',price:128.5,stock:200,manufacturer:'',expiry:'2027-08-20'},
+    {id:'M-006',name:'塞来昔布胶囊',category:'[骨科专属]骨关节炎及类风湿关节炎急性期抗炎镇痛靶向药',price:55.0,stock:400,manufacturer:'',expiry:'2026-09-09'},
+    {id:'M-007',name:'盐酸二甲双胍片',category:'[内分泌科专属]2型糖尿病一线首选控制血糖药物',price:18.5,stock:1000,manufacturer:'',expiry:'2028-01-01'},
+    {id:'M-008',name:'甲钴胺片',category:'[神经内科专属]周围神经病变及维生素B12缺乏症修复药',price:32.0,stock:500,manufacturer:'',expiry:'2027-03-12'},
+    {id:'M-009',name:'炉甘石洗剂',category:'[皮肤科专属]急性瘙痒性皮肤病及荨麻疹外用收敛止痒药',price:9.9,stock:300,manufacturer:'',expiry:'2026-06-30'},
+    {id:'M-010',name:'玻璃酸钠滴眼液',category:'[眼科专属]干眼症及角膜上皮机械性损伤修复润滑剂',price:28.5,stock:450,manufacturer:'',expiry:'2026-11-11'},
+    {id:'M-011',name:'黄体酮胶囊',category:'[妇产科专属]先兆流产及黄体功能不足补充治疗药',price:42.0,stock:250,manufacturer:'',expiry:'2027-02-28'},
+    {id:'M-012',name:'阿卡波糖片',category:'配合饮食控制用于2型糖尿病降低餐后血糖',price:65.0,stock:600,manufacturer:'',expiry:'2027-07-01'},
+    {id:'M-013',name:'瑞舒伐他汀钙片',category:'原发性高胆固醇血症及混合型脂质异常血症靶向药',price:48.5,stock:400,manufacturer:'',expiry:'2028-05-20'},
+    {id:'M-014',name:'多潘立酮片',category:'缓解由胃排空延缓引起的消化不良和恶心呕吐症状',price:25.0,stock:800,manufacturer:'',expiry:'2027-09-15'},
+    {id:'M-015',name:'盐酸氨溴索口服溶液',category:'适用于伴有痰液分泌不正常及排痰功能不良的急性呼吸道疾病',price:38.0,stock:500,manufacturer:'',expiry:'2026-12-01'},
+    {id:'M-016',name:'双氯芬酸钠缓释胶囊',category:'缓解各种急慢性关节炎症及软组织风湿病引起的疼痛',price:29.8,stock:350,manufacturer:'',expiry:'2027-04-30'},
+    {id:'M-017',name:'普瑞巴林胶囊',category:'用于治疗带状疱疹后神经痛及纤维肌痛综合征',price:88.0,stock:150,manufacturer:'',expiry:'2027-10-10'},
+    {id:'M-018',name:'莫匹罗星软膏',category:'革兰阳性球菌引起的皮肤感染如脓疱病及毛囊炎',price:22.0,stock:400,manufacturer:'',expiry:'2026-08-15'},
+    {id:'M-019',name:'妥布霉素滴眼液',category:'敏感细菌引起的眼部及眼附属器局部感染',price:35.5,stock:200,manufacturer:'',expiry:'2027-01-20'},
+    {id:'M-020',name:'头孢克肟分散片',category:'对链球菌等敏感菌引起的急性呼吸道和泌尿道感染有效',price:45.0,stock:600,manufacturer:'',expiry:'2028-02-28'},
+    {id:'M-021',name:'阿奇霉素肠溶片',category:'化脓性链球菌引起的急性咽炎及敏感细菌引起的下呼吸道感染',price:52.0,stock:500,manufacturer:'',expiry:'2027-06-18'},
+    {id:'M-022',name:'左氧氟沙星片',category:'成年人由敏感细菌引起的轻至中度感染如急性细菌性鼻窦炎',price:40.0,stock:450,manufacturer:'',expiry:'2028-03-15'},
+    {id:'M-023',name:'布洛芬缓释胶囊',category:'缓解轻至中度疼痛如头痛关节痛偏头痛牙痛肌肉痛神经痛',price:18.0,stock:1200,manufacturer:'',expiry:'2027-11-11'},
+    {id:'M-024',name:'对乙酰氨基酚片',category:'普通感冒或流行性感冒引起的发热及轻至中度疼痛',price:15.0,stock:1500,manufacturer:'',expiry:'2028-08-08'},
+    {id:'M-025',name:'氯雷他定片',category:'缓解过敏性鼻炎有关的症状如打喷嚏流鼻涕鼻痒鼻塞',price:28.0,stock:800,manufacturer:'',expiry:'2027-05-05'},
+    {id:'M-026',name:'碳酸钙D3片',category:'用于妊娠和哺乳期妇女更年期妇女老年人等的钙补充剂',price:36.0,stock:600,manufacturer:'',expiry:'2028-10-01'},
+    {id:'M-027',name:'铝碳酸镁咀嚼片',category:'急慢性胃炎反流性食管炎及与胃酸有关的胃部不适',price:32.5,stock:550,manufacturer:'',expiry:'2027-09-09'},
+    {id:'M-028',name:'孟鲁司特钠咀嚼片',category:'适用于成人和儿童哮喘的预防和长期治疗',price:68.0,stock:300,manufacturer:'',expiry:'2027-12-20'},
+    {id:'M-029',name:'美托洛尔缓释片',category:'倍他乐克',price:45.8,stock:400,manufacturer:'',expiry:'2028-04-10'},
+    {id:'M-030',name:'维生素C泡腾片',category:'增强机体抵抗力用于预防和治疗各种急慢性传染性疾病',price:25.0,stock:1000,manufacturer:'',expiry:'2027-08-08'}
+  ];
+  SM(ms);
+  var apts=[
+    {id:'A-001',patientId:'P-1001',patientName:'李逃单',dept:'内科',doctorId:'D-2001',doctorName:'李建国',apptDate:'2026-04-30',apptSlot:'下午',fee:10.0,status:'已到诊'},
+    {id:'A-002',patientId:'P-1002',patientName:'王爽约',dept:'外科',doctorId:'D-2002',doctorName:'张伟',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-003',patientId:'P-1003',patientName:'张即将解禁',dept:'儿科',doctorId:'D-2010',doctorName:'吴静',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-004',patientId:'P-1004',patientName:'张伟',dept:'内科',doctorId:'D-2001',doctorName:'李建国',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-005',patientId:'P-1005',patientName:'张伟',dept:'妇产科',doctorId:'D-2007',doctorName:'李敏',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-006',patientId:'P-1006',patientName:'王娜',dept:'外科',doctorId:'D-2002',doctorName:'张伟',apptDate:'2026-04-30',apptSlot:'下午',fee:10.0,status:'已到诊'},
+    {id:'A-007',patientId:'P-1007',patientName:'李强',dept:'外科',doctorId:'D-2002',doctorName:'张伟',apptDate:'2026-04-30',apptSlot:'下午',fee:10.0,status:'已到诊'},
+    {id:'A-008',patientId:'P-1008',patientName:'张敏',dept:'儿科',doctorId:'D-2010',doctorName:'吴静',apptDate:'2026-04-30',apptSlot:'下午',fee:10.0,status:'已到诊'},
+    {id:'A-009',patientId:'P-1009',patientName:'刘静',dept:'骨科',doctorId:'D-2014',doctorName:'杨勇',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-010',patientId:'P-1010',patientName:'陈磊',dept:'骨科',doctorId:'D-2014',doctorName:'杨勇',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-011',patientId:'P-1011',patientName:'杨军',dept:'内科',doctorId:'D-2001',doctorName:'李建国',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-012',patientId:'P-1012',patientName:'黄洋',dept:'妇产科',doctorId:'D-2008',doctorName:'赵军',apptDate:'2026-04-30',apptSlot:'下午',fee:30.0,status:'已到诊'},
+    {id:'A-013',patientId:'P-1013',patientName:'赵勇',dept:'儿科',doctorId:'D-2010',doctorName:'吴静',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-014',patientId:'P-1014',patientName:'周建国',dept:'外科',doctorId:'D-2002',doctorName:'张伟',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-015',patientId:'P-1015',patientName:'吴欣怡',dept:'妇产科',doctorId:'D-2007',doctorName:'李敏',apptDate:'2026-04-30',apptSlot:'下午',fee:30.0,status:'已到诊'},
+    {id:'A-016',patientId:'P-1016',patientName:'郑浩然',dept:'内科',doctorId:'D-2001',doctorName:'李建国',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-017',patientId:'P-1017',patientName:'王雨桐',dept:'外科',doctorId:'D-2002',doctorName:'张伟',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-018',patientId:'P-1018',patientName:'冯子轩',dept:'儿科',doctorId:'D-2010',doctorName:'吴静',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-019',patientId:'P-1019',patientName:'陈梓涵',dept:'骨科',doctorId:'D-2014',doctorName:'杨勇',apptDate:'2026-04-30',apptSlot:'下午',fee:10.0,status:'已到诊'},
+    {id:'A-020',patientId:'P-1020',patientName:'蒋诗涵',dept:'骨科',doctorId:'D-2014',doctorName:'杨勇',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-021',patientId:'P-1021',patientName:'沈雨泽',dept:'内科',doctorId:'D-2001',doctorName:'李建国',apptDate:'2026-04-30',apptSlot:'下午',fee:10.0,status:'已到诊'},
+    {id:'A-022',patientId:'P-1022',patientName:'韩宇轩',dept:'妇产科',doctorId:'D-2008',doctorName:'赵军',apptDate:'2026-04-30',apptSlot:'下午',fee:30.0,status:'已到诊'},
+    {id:'A-023',patientId:'P-1023',patientName:'杨雨晨',dept:'儿科',doctorId:'D-2010',doctorName:'吴静',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-024',patientId:'P-1024',patientName:'朱佳琪',dept:'内科',doctorId:'D-2001',doctorName:'李建国',apptDate:'2026-04-30',apptSlot:'下午',fee:10.0,status:'已到诊'},
+    {id:'A-025',patientId:'P-1025',patientName:'秦子豪',dept:'妇产科',doctorId:'D-2007',doctorName:'李敏',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-026',patientId:'P-1026',patientName:'许雨欣',dept:'外科',doctorId:'D-2002',doctorName:'张伟',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-027',patientId:'P-1027',patientName:'何一诺',dept:'外科',doctorId:'D-2002',doctorName:'张伟',apptDate:'2026-04-30',apptSlot:'下午',fee:30.0,status:'已到诊'},
+    {id:'A-028',patientId:'P-1028',patientName:'吕艺馨',dept:'儿科',doctorId:'D-2010',doctorName:'吴静',apptDate:'2026-04-30',apptSlot:'下午',fee:10.0,status:'已到诊'},
+    {id:'A-029',patientId:'P-1029',patientName:'施思远',dept:'骨科',doctorId:'D-2014',doctorName:'杨勇',apptDate:'2026-04-30',apptSlot:'下午',fee:10.0,status:'已到诊'},
+    {id:'A-030',patientId:'P-1030',patientName:'张语桐',dept:'骨科',doctorId:'D-2014',doctorName:'杨勇',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-031',patientId:'P-1031',patientName:'王雨萌',dept:'内科',doctorId:'D-2001',doctorName:'李建国',apptDate:'2026-04-30',apptSlot:'下午',fee:30.0,status:'已到诊'},
+    {id:'A-032',patientId:'P-1032',patientName:'刘伟',dept:'妇产科',doctorId:'D-2008',doctorName:'赵军',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-033',patientId:'P-1033',patientName:'杨娜',dept:'儿科',doctorId:'D-2010',doctorName:'吴静',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-034',patientId:'P-1034',patientName:'赵静',dept:'外科',doctorId:'D-2004',doctorName:'刘静',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-035',patientId:'P-1035',patientName:'吴军',dept:'妇产科',doctorId:'D-2007',doctorName:'李敏',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-036',patientId:'P-1036',patientName:'王勇',dept:'外科',doctorId:'D-2002',doctorName:'张伟',apptDate:'2026-04-30',apptSlot:'下午',fee:30.0,status:'已到诊'},
+    {id:'A-037',patientId:'P-1037',patientName:'陈欣怡',dept:'外科',doctorId:'D-2002',doctorName:'张伟',apptDate:'2026-04-30',apptSlot:'下午',fee:30.0,status:'已到诊'},
+    {id:'A-038',patientId:'P-1038',patientName:'沈雨桐',dept:'儿科',doctorId:'D-2010',doctorName:'吴静',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-039',patientId:'P-1039',patientName:'杨梓涵',dept:'骨科',doctorId:'D-2014',doctorName:'杨勇',apptDate:'2026-04-30',apptSlot:'下午',fee:30.0,status:'已到诊'},
+    {id:'A-040',patientId:'P-1040',patientName:'秦雨泽',dept:'骨科',doctorId:'D-2014',doctorName:'杨勇',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-041',patientId:'P-1041',patientName:'张梓涵',dept:'内科',doctorId:'D-2001',doctorName:'李建国',apptDate:'2026-04-30',apptSlot:'下午',fee:10.0,status:'已到诊'},
+    {id:'A-042',patientId:'P-1042',patientName:'王雨泽',dept:'妇产科',doctorId:'D-2008',doctorName:'赵军',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-043',patientId:'P-1043',patientName:'杨雨晨',dept:'儿科',doctorId:'D-2010',doctorName:'吴静',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-044',patientId:'P-1044',patientName:'赵子豪',dept:'骨科',doctorId:'D-2014',doctorName:'杨勇',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-045',patientId:'P-1045',patientName:'吴一诺',dept:'妇产科',doctorId:'D-2007',doctorName:'李敏',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-046',patientId:'P-1046',patientName:'郑伟',dept:'外科',doctorId:'D-2002',doctorName:'张伟',apptDate:'2026-04-30',apptSlot:'下午',fee:30.0,status:'已到诊'},
+    {id:'A-047',patientId:'P-1047',patientName:'周芳',dept:'外科',doctorId:'D-2002',doctorName:'张伟',apptDate:'2026-04-30',apptSlot:'下午',fee:30.0,status:'已到诊'},
+    {id:'A-048',patientId:'P-1048',patientName:'刘强',dept:'儿科',doctorId:'D-2010',doctorName:'吴静',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-049',patientId:'P-1049',patientName:'陈敏',dept:'骨科',doctorId:'D-2014',doctorName:'杨勇',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-050',patientId:'P-1050',patientName:'赵芳',dept:'骨科',doctorId:'D-2014',doctorName:'杨勇',apptDate:'2026-04-30',apptSlot:'下午',fee:10.0,status:'已到诊'},
+    {id:'A-051',patientId:'P-1051',patientName:'周勇',dept:'内科',doctorId:'D-2001',doctorName:'李建国',apptDate:'2026-04-30',apptSlot:'下午',fee:10.0,status:'已到诊'},
+    {id:'A-052',patientId:'P-1052',patientName:'吴芳',dept:'妇产科',doctorId:'D-2008',doctorName:'赵军',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-053',patientId:'P-1053',patientName:'郑芳',dept:'儿科',doctorId:'D-2010',doctorName:'吴静',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-054',patientId:'P-1054',patientName:'王芳',dept:'骨科',doctorId:'D-2014',doctorName:'杨勇',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-055',patientId:'P-1055',patientName:'李芳',dept:'妇产科',doctorId:'D-2007',doctorName:'李敏',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-056',patientId:'P-1056',patientName:'张芳',dept:'外科',doctorId:'D-2002',doctorName:'张伟',apptDate:'2026-04-30',apptSlot:'下午',fee:10.0,status:'已到诊'},
+    {id:'A-057',patientId:'P-1057',patientName:'刘芳',dept:'外科',doctorId:'D-2002',doctorName:'张伟',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-058',patientId:'P-1058',patientName:'陈芳',dept:'儿科',doctorId:'D-2010',doctorName:'吴静',apptDate:'2026-04-30',apptSlot:'下午',fee:30.0,status:'已到诊'},
+    {id:'A-059',patientId:'P-1059',patientName:'赵芳',dept:'骨科',doctorId:'D-2014',doctorName:'杨勇',apptDate:'2026-04-30',apptSlot:'下午',fee:10.0,status:'已到诊'},
+    {id:'A-060',patientId:'P-1060',patientName:'周芳',dept:'骨科',doctorId:'D-2014',doctorName:'杨勇',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-061',patientId:'P-1061',patientName:'吴芳',dept:'内科',doctorId:'D-2001',doctorName:'李建国',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-062',patientId:'P-1062',patientName:'郑芳',dept:'妇产科',doctorId:'D-2008',doctorName:'赵军',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-063',patientId:'P-1063',patientName:'王芳',dept:'儿科',doctorId:'D-2010',doctorName:'吴静',apptDate:'2026-04-30',apptSlot:'下午',fee:10.0,status:'已到诊'},
+    {id:'A-064',patientId:'P-1064',patientName:'李芳',dept:'骨科',doctorId:'D-2014',doctorName:'杨勇',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-065',patientId:'P-1065',patientName:'张芳',dept:'妇产科',doctorId:'D-2007',doctorName:'李敏',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-066',patientId:'P-1066',patientName:'刘芳',dept:'内科',doctorId:'D-2001',doctorName:'李建国',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-067',patientId:'P-1067',patientName:'陈芳',dept:'外科',doctorId:'D-2002',doctorName:'张伟',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-068',patientId:'P-1068',patientName:'赵芳',dept:'儿科',doctorId:'D-2010',doctorName:'吴静',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-069',patientId:'P-1069',patientName:'周芳',dept:'骨科',doctorId:'D-2014',doctorName:'杨勇',apptDate:'2026-04-30',apptSlot:'下午',fee:10.0,status:'已到诊'},
+    {id:'A-070',patientId:'P-1070',patientName:'吴芳',dept:'妇产科',doctorId:'D-2007',doctorName:'李敏',apptDate:'2026-04-30',apptSlot:'下午',fee:10.0,status:'已到诊'},
+    {id:'A-071',patientId:'P-1071',patientName:'郑芳',dept:'内科',doctorId:'D-2001',doctorName:'李建国',apptDate:'2026-04-30',apptSlot:'下午',fee:10.0,status:'已到诊'},
+    {id:'A-072',patientId:'P-1072',patientName:'王芳',dept:'外科',doctorId:'D-2002',doctorName:'张伟',apptDate:'2026-04-30',apptSlot:'下午',fee:10.0,status:'已到诊'},
+    {id:'A-073',patientId:'P-1073',patientName:'李芳',dept:'儿科',doctorId:'D-2010',doctorName:'吴静',apptDate:'2026-04-30',apptSlot:'下午',fee:10.0,status:'已到诊'},
+    {id:'A-074',patientId:'P-1074',patientName:'张芳',dept:'骨科',doctorId:'D-2014',doctorName:'杨勇',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-075',patientId:'P-1075',patientName:'刘芳',dept:'妇产科',doctorId:'D-2007',doctorName:'李敏',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-076',patientId:'P-1076',patientName:'陈芳',dept:'内科',doctorId:'D-2001',doctorName:'李建国',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-077',patientId:'P-1077',patientName:'赵芳',dept:'外科',doctorId:'D-2002',doctorName:'张伟',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-078',patientId:'P-1078',patientName:'周芳',dept:'儿科',doctorId:'D-2010',doctorName:'吴静',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-079',patientId:'P-1079',patientName:'吴芳',dept:'骨科',doctorId:'D-2014',doctorName:'杨勇',apptDate:'2026-04-30',apptSlot:'下午',fee:30.0,status:'已到诊'},
+    {id:'A-080',patientId:'P-1080',patientName:'郑芳',dept:'妇产科',doctorId:'D-2008',doctorName:'赵军',apptDate:'2026-04-30',apptSlot:'下午',fee:30.0,status:'已到诊'},
+    {id:'A-081',patientId:'P-1081',patientName:'王芳',dept:'内科',doctorId:'D-2001',doctorName:'李建国',apptDate:'2026-04-30',apptSlot:'下午',fee:30.0,status:'已到诊'},
+    {id:'A-082',patientId:'P-1082',patientName:'李芳',dept:'外科',doctorId:'D-2002',doctorName:'张伟',apptDate:'2026-04-30',apptSlot:'下午',fee:30.0,status:'已到诊'},
+    {id:'A-083',patientId:'P-1083',patientName:'张芳',dept:'儿科',doctorId:'D-2010',doctorName:'吴静',apptDate:'2026-04-30',apptSlot:'下午',fee:30.0,status:'已到诊'},
+    {id:'A-084',patientId:'P-1084',patientName:'刘芳',dept:'骨科',doctorId:'D-2014',doctorName:'杨勇',apptDate:'2026-04-30',apptSlot:'下午',fee:10.0,status:'已到诊'},
+    {id:'A-085',patientId:'P-1085',patientName:'陈芳',dept:'妇产科',doctorId:'D-2008',doctorName:'赵军',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-086',patientId:'P-1086',patientName:'赵芳',dept:'内科',doctorId:'D-2001',doctorName:'李建国',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-087',patientId:'P-1087',patientName:'周芳',dept:'外科',doctorId:'D-2002',doctorName:'张伟',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-088',patientId:'P-1088',patientName:'吴芳',dept:'儿科',doctorId:'D-2010',doctorName:'吴静',apptDate:'2026-04-30',apptSlot:'下午',fee:30.0,status:'已到诊'},
+    {id:'A-089',patientId:'P-1089',patientName:'郑芳',dept:'骨科',doctorId:'D-2014',doctorName:'杨勇',apptDate:'2026-04-30',apptSlot:'下午',fee:30.0,status:'已到诊'},
+    {id:'A-090',patientId:'P-1090',patientName:'王芳',dept:'妇产科',doctorId:'D-2008',doctorName:'赵军',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-091',patientId:'P-1091',patientName:'李芳',dept:'内科',doctorId:'D-2001',doctorName:'李建国',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-092',patientId:'P-1092',patientName:'张芳',dept:'外科',doctorId:'D-2002',doctorName:'张伟',apptDate:'2026-04-30',apptSlot:'下午',fee:10.0,status:'已到诊'},
+    {id:'A-093',patientId:'P-1093',patientName:'刘芳',dept:'儿科',doctorId:'D-2010',doctorName:'吴静',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-094',patientId:'P-1094',patientName:'陈芳',dept:'骨科',doctorId:'D-2014',doctorName:'杨勇',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-095',patientId:'P-1095',patientName:'赵芳',dept:'妇产科',doctorId:'D-2008',doctorName:'赵军',apptDate:'2026-04-30',apptSlot:'下午',fee:10.0,status:'已到诊'},
+    {id:'A-096',patientId:'P-1096',patientName:'文娜',dept:'内科',doctorId:'D-2001',doctorName:'李建国',apptDate:'2026-04-30',apptSlot:'下午',fee:30.0,status:'已到诊'},
+    {id:'A-097',patientId:'P-1097',patientName:'宋静',dept:'外科',doctorId:'D-2002',doctorName:'张伟',apptDate:'2026-04-30',apptSlot:'下午',fee:30.0,status:'已到诊'},
+    {id:'A-098',patientId:'P-1098',patientName:'唐军',dept:'儿科',doctorId:'D-2010',doctorName:'吴静',apptDate:'2026-04-30',apptSlot:'下午',fee:10.0,status:'已到诊'},
+    {id:'A-099',patientId:'P-1099',patientName:'韩伟',dept:'骨科',doctorId:'D-2014',doctorName:'杨勇',apptDate:'2026-04-30',apptSlot:'下午',fee:30.0,status:'已到诊'},
+    {id:'A-100',patientId:'P-1100',patientName:'冯娜',dept:'妇产科',doctorId:'D-2008',doctorName:'赵军',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-101',patientId:'P-1101',patientName:'陈明',dept:'内科',doctorId:'D-2001',doctorName:'李建国',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-102',patientId:'P-1102',patientName:'王丽',dept:'外科',doctorId:'D-2002',doctorName:'张伟',apptDate:'2026-04-30',apptSlot:'下午',fee:10.0,status:'已到诊'},
+    {id:'A-103',patientId:'P-1103',patientName:'张伟',dept:'儿科',doctorId:'D-2010',doctorName:'吴静',apptDate:'2026-04-30',apptSlot:'下午',fee:30.0,status:'已到诊'},
+    {id:'A-104',patientId:'P-1104',patientName:'刘洋',dept:'骨科',doctorId:'D-2014',doctorName:'杨勇',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-105',patientId:'P-1105',patientName:'陈静',dept:'妇产科',doctorId:'D-2008',doctorName:'赵军',apptDate:'2026-04-30',apptSlot:'下午',fee:30.0,status:'已到诊'},
+    {id:'A-106',patientId:'P-1106',patientName:'王强',dept:'内科',doctorId:'D-2001',doctorName:'李建国',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-107',patientId:'P-1107',patientName:'李娜',dept:'外科',doctorId:'D-2002',doctorName:'张伟',apptDate:'2026-04-30',apptSlot:'下午',fee:30.0,status:'已到诊'},
+    {id:'A-108',patientId:'P-1108',patientName:'张明',dept:'儿科',doctorId:'D-2010',doctorName:'吴静',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-109',patientId:'P-1109',patientName:'刘芳',dept:'骨科',doctorId:'D-2014',doctorName:'杨勇',apptDate:'2026-04-30',apptSlot:'下午',fee:10.0,status:'已到诊'},
+    {id:'A-110',patientId:'P-1110',patientName:'陈军',dept:'妇产科',doctorId:'D-2008',doctorName:'赵军',apptDate:'2026-04-30',apptSlot:'下午',fee:10.0,status:'已到诊'},
+    {id:'A-111',patientId:'P-1111',patientName:'王敏',dept:'内科',doctorId:'D-2001',doctorName:'李建国',apptDate:'2026-04-30',apptSlot:'下午',fee:10.0,status:'已到诊'},
+    {id:'A-112',patientId:'P-1112',patientName:'李刚',dept:'外科',doctorId:'D-2002',doctorName:'张伟',apptDate:'2026-04-30',apptSlot:'下午',fee:30.0,status:'已到诊'},
+    {id:'A-113',patientId:'P-1113',patientName:'张芳',dept:'儿科',doctorId:'D-2010',doctorName:'吴静',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-114',patientId:'P-1114',patientName:'刘军',dept:'骨科',doctorId:'D-2014',doctorName:'杨勇',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-115',patientId:'P-1115',patientName:'陈敏',dept:'妇产科',doctorId:'D-2008',doctorName:'赵军',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-116',patientId:'P-1116',patientName:'王芳',dept:'内科',doctorId:'D-2001',doctorName:'李建国',apptDate:'2026-04-30',apptSlot:'下午',fee:30.0,status:'已到诊'},
+    {id:'A-117',patientId:'P-1117',patientName:'李芳',dept:'外科',doctorId:'D-2002',doctorName:'张伟',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-118',patientId:'P-1118',patientName:'张军',dept:'儿科',doctorId:'D-2010',doctorName:'吴静',apptDate:'2026-04-30',apptSlot:'下午',fee:10.0,status:'已到诊'},
+    {id:'A-119',patientId:'P-1119',patientName:'刘刚',dept:'骨科',doctorId:'D-2014',doctorName:'杨勇',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-120',patientId:'P-1120',patientName:'陈刚',dept:'妇产科',doctorId:'D-2008',doctorName:'赵军',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-121',patientId:'P-1121',patientName:'王强',dept:'内科',doctorId:'D-2001',doctorName:'李建国',apptDate:'2026-04-30',apptSlot:'下午',fee:30.0,status:'已到诊'},
+    {id:'A-122',patientId:'P-1122',patientName:'李刚',dept:'外科',doctorId:'D-2002',doctorName:'张伟',apptDate:'2026-04-30',apptSlot:'下午',fee:30.0,status:'已到诊'},
+    {id:'A-123',patientId:'P-1123',patientName:'张刚',dept:'儿科',doctorId:'D-2010',doctorName:'吴静',apptDate:'2026-04-30',apptSlot:'下午',fee:30.0,status:'已到诊'},
+    {id:'A-124',patientId:'P-1124',patientName:'刘芳',dept:'骨科',doctorId:'D-2014',doctorName:'杨勇',apptDate:'2026-04-30',apptSlot:'上午',fee:10.0,status:'已到诊'},
+    {id:'A-125',patientId:'P-1125',patientName:'陈芳',dept:'妇产科',doctorId:'D-2008',doctorName:'赵军',apptDate:'2026-04-30',apptSlot:'下午',fee:30.0,status:'已到诊'},
+    {id:'A-126',patientId:'P-1126',patientName:'王芳',dept:'内科',doctorId:'D-2001',doctorName:'李建国',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-127',patientId:'P-1127',patientName:'李芳',dept:'外科',doctorId:'D-2002',doctorName:'张伟',apptDate:'2026-04-30',apptSlot:'下午',fee:30.0,status:'已到诊'},
+    {id:'A-128',patientId:'P-1128',patientName:'张芳',dept:'儿科',doctorId:'D-2010',doctorName:'吴静',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-129',patientId:'P-1129',patientName:'刘芳',dept:'骨科',doctorId:'D-2014',doctorName:'杨勇',apptDate:'2026-04-30',apptSlot:'上午',fee:30.0,status:'已到诊'},
+    {id:'A-130',patientId:'P-1130',patientName:'陈芳',dept:'妇产科',doctorId:'D-2008',doctorName:'赵军',apptDate:'2026-04-30',apptSlot:'下午',fee:10.0,status:'已到诊'}
+  ];
+  SA(apts);
+  var regs=[],wq=[];
+  apts.forEach(function(a,idx){
+    if(a.status==="已到诊"){
+      var rid="REG"+String(regs.length+1).padStart(3,"0");
+      var qno=1;wq.forEach(function(w){if(w.doctorName===a.doctorName)qno++;});
+      regs.push({id:rid,patientId:a.patientId,patientName:a.patientName,dept:a.dept,doctorId:a.doctorId,doctorName:a.doctorName,fee:a.fee,time:"2026-05-05 08:00:00",status:"候诊中",regType:a.isWalkIn?"现场号":"预约转挂号",queueNo:qno});
+      wq.push({queueId:"Q"+String(wq.length+1).padStart(3,"0"),regId:rid,patientId:a.patientId,patientName:a.patientName,dept:a.dept,doctorName:a.doctorName,queueNo:qno,status:"候诊中"});
+    }
+  });
+  SR(regs);SW(wq);
+  var ips=[
+    {id:'I-001',patientId:'P-1001',patientName:'李逃单',dept:'内科',doctorName:'李建国',ward:'101-1',bed:'101-1',admitTime:'2026-04-25 14:44:55',dischargeTime:'',status:'住院中',fee:0,deposit:-344.5},
+    {id:'I-002',patientId:'P-1002',patientName:'王爽约',dept:'外科',doctorName:'张伟',ward:'201-1',bed:'201-1',admitTime:'2026-04-25 14:44:55',dischargeTime:'',status:'住院中',fee:0,deposit:-480.0},
+    {id:'I-003',patientId:'P-1003',patientName:'张即将解禁',dept:'儿科',doctorName:'吴静',ward:'301-1',bed:'301-1',admitTime:'2026-04-25 14:44:55',dischargeTime:'',status:'住院中',fee:0,deposit:3500.0},
+    {id:'I-004',patientId:'P-1004',patientName:'张伟',dept:'内科',doctorName:'李建国',ward:'401-1',bed:'401-1',admitTime:'2026-04-25 14:44:55',dischargeTime:'',status:'住院中',fee:0,deposit:4100.0},
+    {id:'I-005',patientId:'P-1005',patientName:'张伟',dept:'妇产科',doctorName:'李敏',ward:'501-1',bed:'501-1',admitTime:'2026-04-25 14:44:55',dischargeTime:'',status:'住院中',fee:0,deposit:3800.0},
+    {id:'I-006',patientId:'P-1006',patientName:'王娜',dept:'外科',doctorName:'张伟',ward:'102-1',bed:'102-1',admitTime:'2026-04-25 14:44:55',dischargeTime:'',status:'住院中',fee:0,deposit:4640.0},
+    {id:'I-007',patientId:'P-1007',patientName:'李强',dept:'外科',doctorName:'张伟',ward:'202-1',bed:'202-1',admitTime:'2026-04-25 14:44:55',dischargeTime:'',status:'住院中',fee:0,deposit:4640.0},
+    {id:'I-008',patientId:'P-1008',patientName:'张敏',dept:'儿科',doctorName:'吴静',ward:'302-1',bed:'302-1',admitTime:'2026-04-25 14:44:55',dischargeTime:'',status:'住院中',fee:0,deposit:3500.0},
+    {id:'I-009',patientId:'P-1009',patientName:'刘静',dept:'骨科',doctorName:'杨勇',ward:'402-1',bed:'402-1',admitTime:'2026-04-25 14:44:55',dischargeTime:'',status:'住院中',fee:0,deposit:4100.0},
+    {id:'I-010',patientId:'P-1010',patientName:'陈磊',dept:'骨科',doctorName:'杨勇',ward:'502-1',bed:'502-1',admitTime:'2026-04-25 14:44:55',dischargeTime:'',status:'住院中',fee:0,deposit:3800.0},
+    {id:'I-011',patientId:'P-1011',patientName:'杨军',dept:'内科',doctorName:'李建国',ward:'103-1',bed:'103-1',admitTime:'2026-04-25 14:44:55',dischargeTime:'',status:'住院中',fee:0,deposit:4640.0},
+    {id:'I-012',patientId:'P-1012',patientName:'黄洋',dept:'妇产科',doctorName:'赵军',ward:'203-1',bed:'203-1',admitTime:'2026-04-25 14:44:55',dischargeTime:'',status:'住院中',fee:0,deposit:4640.0},
+    {id:'I-013',patientId:'P-1013',patientName:'赵勇',dept:'儿科',doctorName:'吴静',ward:'303-1',bed:'303-1',admitTime:'2026-04-25 14:44:55',dischargeTime:'',status:'住院中',fee:0,deposit:3500.0},
+    {id:'I-014',patientId:'P-1014',patientName:'周建国',dept:'外科',doctorName:'张伟',ward:'403-1',bed:'403-1',admitTime:'2026-04-25 14:44:55',dischargeTime:'',status:'住院中',fee:0,deposit:4100.0},
+    {id:'I-015',patientId:'P-1015',patientName:'吴欣怡',dept:'妇产科',doctorName:'李敏',ward:'503-1',bed:'503-1',admitTime:'2026-04-25 14:44:55',dischargeTime:'',status:'住院中',fee:0,deposit:3800.0},
+    {id:'I-016',patientId:'P-1016',patientName:'郑浩然',dept:'内科',doctorName:'李建国',ward:'104-1',bed:'104-1',admitTime:'2026-04-25 14:44:55',dischargeTime:'',status:'住院中',fee:0,deposit:4640.0},
+    {id:'I-017',patientId:'P-1017',patientName:'王雨桐',dept:'外科',doctorName:'张伟',ward:'204-1',bed:'204-1',admitTime:'2026-04-25 14:44:55',dischargeTime:'',status:'住院中',fee:0,deposit:4640.0},
+    {id:'I-018',patientId:'P-1018',patientName:'冯子轩',dept:'儿科',doctorName:'吴静',ward:'304-1',bed:'304-1',admitTime:'2026-04-25 14:44:55',dischargeTime:'',status:'住院中',fee:0,deposit:3500.0},
+    {id:'I-019',patientId:'P-1019',patientName:'陈梓涵',dept:'骨科',doctorName:'杨勇',ward:'404-1',bed:'404-1',admitTime:'2026-04-25 14:44:55',dischargeTime:'',status:'住院中',fee:0,deposit:4100.0},
+    {id:'I-020',patientId:'P-1020',patientName:'蒋诗涵',dept:'骨科',doctorName:'杨勇',ward:'504-1',bed:'504-1',admitTime:'2026-04-25 14:44:55',dischargeTime:'',status:'住院中',fee:0,deposit:3800.0},
+    {id:'I-021',patientId:'P-1021',patientName:'沈雨泽',dept:'内科',doctorName:'李建国',ward:'105-1',bed:'105-1',admitTime:'2026-04-25 14:44:55',dischargeTime:'',status:'住院中',fee:0,deposit:4640.0},
+    {id:'I-022',patientId:'P-1022',patientName:'韩宇轩',dept:'妇产科',doctorName:'赵军',ward:'205-1',bed:'205-1',admitTime:'2026-04-25 14:44:55',dischargeTime:'',status:'住院中',fee:0,deposit:4640.0},
+    {id:'I-023',patientId:'P-1023',patientName:'杨雨晨',dept:'儿科',doctorName:'吴静',ward:'305-1',bed:'305-1',admitTime:'2026-04-25 14:44:55',dischargeTime:'',status:'住院中',fee:0,deposit:3500.0},
+    {id:'I-024',patientId:'P-1024',patientName:'朱佳琪',dept:'内科',doctorName:'李建国',ward:'405-1',bed:'405-1',admitTime:'2026-04-25 14:44:55',dischargeTime:'',status:'住院中',fee:0,deposit:4100.0},
+    {id:'I-025',patientId:'P-1025',patientName:'秦子豪',dept:'妇产科',doctorName:'李敏',ward:'505-1',bed:'505-1',admitTime:'2026-04-25 14:44:55',dischargeTime:'',status:'住院中',fee:0,deposit:3800.0},
+    {id:'I-026',patientId:'P-1026',patientName:'许雨欣',dept:'外科',doctorName:'张伟',ward:'106-1',bed:'106-1',admitTime:'2026-04-25 14:44:55',dischargeTime:'',status:'住院中',fee:0,deposit:4640.0},
+    {id:'I-027',patientId:'P-1027',patientName:'何一诺',dept:'外科',doctorName:'张伟',ward:'206-1',bed:'206-1',admitTime:'2026-04-25 14:44:55',dischargeTime:'',status:'住院中',fee:0,deposit:4640.0},
+    {id:'I-028',patientId:'P-1028',patientName:'吕艺馨',dept:'儿科',doctorName:'吴静',ward:'306-1',bed:'306-1',admitTime:'2026-04-25 14:44:55',dischargeTime:'',status:'住院中',fee:0,deposit:3500.0},
+    {id:'I-029',patientId:'P-1029',patientName:'施思远',dept:'骨科',doctorName:'杨勇',ward:'406-1',bed:'406-1',admitTime:'2026-04-25 14:44:55',dischargeTime:'',status:'住院中',fee:0,deposit:4100.0},
+    {id:'I-030',patientId:'P-1030',patientName:'张语桐',dept:'骨科',doctorName:'杨勇',ward:'506-1',bed:'506-1',admitTime:'2026-04-25 14:44:55',dischargeTime:'',status:'住院中',fee:0,deposit:3800.0}
+  ];
+  SI(ips);
+  var rxs=[];
+  rxs.push({id:'RX001',regId:'',patientId:'P-1006',patientName:'王娜',doctorName:'张伟',medicines:[{medId:'M-001',medName:'阿莫西林',qty:2,price:15.5}],total:31.00,time:'2026-04-15 09:00:00',status:'已发药'});
+  rxs.push({id:'RX002',regId:'',patientId:'P-1007',patientName:'李强',doctorName:'张伟',medicines:[{medId:'M-001',medName:'阿莫西林',qty:2,price:15.5}],total:31.00,time:'2026-04-15 09:00:00',status:'已发药'});
+  rxs.push({id:'RX003',regId:'',patientId:'P-1049',patientName:'陈敏',doctorName:'杨勇',medicines:[{medId:'M-001',medName:'阿莫西林',qty:2,price:15.5}],total:31.00,time:'2026-04-15 09:00:00',status:'已发药'});
+  SX(rxs);
+  var bills=[];
+  rxs.forEach(function(rx){bills.push({id:"BILL"+String(bills.length+1).padStart(3,"0"),type:"药品费",patientId:rx.patientId,patientName:rx.patientName,amount:rx.total,time:rx.time,status:"已收费",refId:rx.id});});
+  ips.forEach(function(ip){if(ip.deposit>0){bills.push({id:"BILL"+String(bills.length+1).padStart(3,"0"),type:"住院押金",patientId:ip.patientId,patientName:ip.patientName,amount:ip.deposit,time:ip.admitTime,status:"已收费",refId:ip.id});}});
+  SB(bills);
+  var crs=[
+    {recordId:'R-001',patientId:'P-1004',patientName:'张伟',doctorName:'李建国',diagnosis:'急性上呼吸道感染',advice:'口服药物治疗，多喝水',time:'2026-04-15 09:00:00'},
+    {recordId:'R-002',patientId:'P-1006',patientName:'王娜',doctorName:'张伟',diagnosis:'急性阑尾炎',advice:'建议手术治疗',time:'2026-04-15 10:00:00'},
+    {recordId:'R-003',patientId:'P-1008',patientName:'张敏',doctorName:'吴静',diagnosis:'支气管肺炎',advice:'雾化治疗，注意保暖',time:'2026-04-15 11:00:00'},
+    {recordId:'R-004',patientId:'P-1010',patientName:'陈磊',doctorName:'杨勇',diagnosis:'腰椎间盘突出',advice:'理疗康复，建议卧床',time:'2026-04-15 14:00:00'},
+    {recordId:'R-005',patientId:'P-1012',patientName:'黄洋',doctorName:'赵军',diagnosis:'内分泌失调',advice:'中药调理，定期复查',time:'2026-04-16 09:00:00'},
+    {recordId:'R-006',patientId:'P-1014',patientName:'周建国',doctorName:'张伟',diagnosis:'高血压',advice:'降压药物治疗，低盐饮食',time:'2026-04-16 10:00:00'},
+    {recordId:'R-007',patientId:'P-1016',patientName:'郑浩然',doctorName:'王娜',diagnosis:'慢性胃炎',advice:'护胃治疗，清淡饮食',time:'2026-04-16 11:00:00'},
+    {recordId:'R-008',patientId:'P-1018',patientName:'冯子轩',doctorName:'吴静',diagnosis:'过敏性皮炎',advice:'抗过敏治疗，避免接触过敏原',time:'2026-04-16 14:00:00'},
+    {recordId:'R-009',patientId:'P-1020',patientName:'蒋诗涵',doctorName:'杨勇',diagnosis:'膝关节骨关节炎',advice:'消炎镇痛，物理治疗',time:'2026-04-17 09:00:00'},
+    {recordId:'R-010',patientId:'P-1022',patientName:'韩宇轩',doctorName:'赵军',diagnosis:'先兆流产',advice:'保胎治疗，卧床休息',time:'2026-04-17 10:00:00'},
+    {recordId:'R-011',patientId:'P-1024',patientName:'朱佳琪',doctorName:'李建国',diagnosis:'急性胃肠炎',advice:'抗感染治疗，补液',time:'2026-04-17 11:00:00'},
+    {recordId:'R-012',patientId:'P-1026',patientName:'许雨欣',doctorName:'张伟',diagnosis:'胆囊结石',advice:'建议择期手术',time:'2026-04-17 14:00:00'},
+    {recordId:'R-013',patientId:'P-1028',patientName:'吕艺馨',doctorName:'吴静',diagnosis:'小儿肺炎',advice:'输液抗感染治疗',time:'2026-04-18 09:00:00'},
+    {recordId:'R-014',patientId:'P-1030',patientName:'张语桐',doctorName:'杨勇',diagnosis:'颈椎病',advice:'牵引治疗，功能锻炼',time:'2026-04-18 10:00:00'},
+    {recordId:'R-015',patientId:'P-1032',patientName:'刘伟',doctorName:'赵军',diagnosis:'甲状腺结节',advice:'定期复查，密切观察',time:'2026-04-18 11:00:00'},
+    {recordId:'R-016',patientId:'P-1034',patientName:'赵静',doctorName:'刘静',diagnosis:'缺铁性贫血',advice:'补铁治疗，食补',time:'2026-04-18 14:00:00'},
+    {recordId:'R-017',patientId:'P-1036',patientName:'王勇',doctorName:'张伟',diagnosis:'急性结膜炎',advice:'滴眼液治疗',time:'2026-04-19 09:00:00'},
+    {recordId:'R-018',patientId:'P-1038',patientName:'沈雨桐',doctorName:'吴静',diagnosis:'神经性耳鸣',advice:'营养神经治疗',time:'2026-04-19 10:00:00'},
+    {recordId:'R-019',patientId:'P-1040',patientName:'秦雨泽',doctorName:'杨勇',diagnosis:'支气管哮喘',advice:'吸入剂控制，定期复查',time:'2026-04-19 11:00:00'},
+    {recordId:'R-020',patientId:'P-1042',patientName:'王雨泽',doctorName:'赵军',diagnosis:'妊娠期高血压',advice:'降压治疗，密切监测',time:'2026-04-19 14:00:00'},
+    {recordId:'R-021',patientId:'P-1044',patientName:'赵子豪',doctorName:'李建国',diagnosis:'急性扁桃体炎',advice:'抗感染治疗',time:'2026-04-20 09:00:00'},
+    {recordId:'R-022',patientId:'P-1046',patientName:'郑伟',doctorName:'张伟',diagnosis:'乳腺增生',advice:'定期复查，保持心情愉快',time:'2026-04-20 10:00:00'},
+    {recordId:'R-023',patientId:'P-1048',patientName:'刘强',doctorName:'吴静',diagnosis:'小儿腹泻',advice:'补液治疗，调整饮食',time:'2026-04-20 11:00:00'},
+    {recordId:'R-024',patientId:'P-1050',patientName:'赵芳',doctorName:'杨勇',diagnosis:'痛风',advice:'降尿酸治疗，低嘌呤饮食',time:'2026-04-20 14:00:00'},
+    {recordId:'R-025',patientId:'P-1052',patientName:'吴芳',doctorName:'赵军',diagnosis:'子宫肌瘤',advice:'定期复查，必要时手术',time:'2026-04-21 09:00:00'},
+    {recordId:'R-026',patientId:'P-1054',patientName:'王芳',doctorName:'张伟',diagnosis:'冠心病',advice:'抗凝治疗，限制活动',time:'2026-04-21 10:00:00'},
+    {recordId:'R-027',patientId:'P-1056',patientName:'张芳',doctorName:'王娜',diagnosis:'阑尾周围脓肿',advice:'抗感染治疗，择期手术',time:'2026-04-21 11:00:00'},
+    {recordId:'R-028',patientId:'P-1058',patientName:'陈芳',doctorName:'吴静',diagnosis:'小儿急性支气管炎',advice:'雾化治疗，口服药',time:'2026-04-21 14:00:00'},
+    {recordId:'R-029',patientId:'P-1060',patientName:'周芳',doctorName:'杨勇',diagnosis:'骨质疏松',advice:'补钙治疗，多晒太阳',time:'2026-04-21 15:00:00'},
+    {recordId:'R-030',patientId:'P-1062',patientName:'郑芳',doctorName:'赵军',diagnosis:'高危妊娠',advice:'严密监测，必要时终止妊娠',time:'2026-04-21 16:00:00'},
+    {recordId:'R-033',patientId:'P-1004',patientName:'张伟',doctorName:'王娜',diagnosis:'胃炎',advice:'护胃治疗，饮食调理',time:'2026-01-05 14:00:00'},
+    {recordId:'R-032',patientId:'P-1004',patientName:'张伟',doctorName:'李建国',diagnosis:'过敏性鼻炎',advice:'抗过敏治疗，避免过敏原',time:'2026-02-10 10:00:00'},
+    {recordId:'R-031',patientId:'P-1004',patientName:'张伟',doctorName:'张伟',diagnosis:'慢性咽炎',advice:'中药调理，多喝水',time:'2026-03-15 09:00:00'},
+    {recordId:'R-035',patientId:'P-1005',patientName:'张伟',doctorName:'李敏',diagnosis:'普通感冒',advice:'口服药物治疗，多休息',time:'2026-04-24 10:00:00'}
+  ];
+  SC(crs);
+  var cis=[
+    {id:'C-001',name:'血常规检查',dept:'内科',price:25.0,mType:1},
+    {id:'C-002',name:'尿常规检查',dept:'内科',price:15.0,mType:1},
+    {id:'C-003',name:'肝功能检查',dept:'内科',price:80.0,mType:1},
+    {id:'C-004',name:'肾功能检查',dept:'肾内科',price:60.0,mType:1},
+    {id:'C-005',name:'血脂检查',dept:'内分泌科',price:45.0,mType:2},
+    {id:'C-006',name:'血糖检查',dept:'内分泌科',price:10.0,mType:1},
+    {id:'C-007',name:'心电图检查',dept:'心电图室',price:30.0,mType:1},
+    {id:'C-008',name:'胸部X光检查',dept:'放射科',price:60.0,mType:1},
+    {id:'C-009',name:'腹部B超检查',dept:'超声科',price:80.0,mType:1},
+    {id:'C-010',name:'头部CT检查',dept:'影像科',price:280.0,mType:2},
+    {id:'C-011',name:'核磁共振检查',dept:'影像科',price:580.0,mType:2},
+    {id:'C-012',name:'胃镜检查',dept:'消化内科',price:320.0,mType:2},
+    {id:'C-013',name:'肠镜检查',dept:'消化内科',price:380.0,mType:2},
+    {id:'C-014',name:'骨密度检查',dept:'骨科',price:120.0,mType:2},
+    {id:'C-015',name:'肺功能检查',dept:'呼吸内科',price:90.0,mType:1},
+    {id:'C-016',name:'甲状腺功能检查',dept:'内分泌科',price:150.0,mType:1},
+    {id:'C-017',name:'肿瘤标志物检查',dept:'肿瘤科',price:280.0,mType:2},
+    {id:'C-018',name:'凝血功能检查',dept:'内科',price:110.0,mType:1},
+    {id:'C-019',name:'C反应蛋白检查',dept:'内科',price:45.0,mType:1},
+    {id:'C-020',name:'血沉检查',dept:'内科',price:20.0,mType:1},
+    {id:'C-021',name:'过敏原检测',dept:'皮肤科',price:200.0,mType:2},
+    {id:'C-022',name:'免疫功能检查',dept:'内科',price:300.0,mType:2},
+    {id:'C-023',name:'甲状腺B超',dept:'超声科',price:100.0,mType:1},
+    {id:'C-024',name:'乳腺B超',dept:'妇产科',price:120.0,mType:1},
+    {id:'C-025',name:'前列腺B超',dept:'泌尿外科',price:100.0,mType:1},
+    {id:'C-026',name:'动态心电图',dept:'心电图室',price:200.0,mType:1},
+    {id:'C-027',name:'运动平板试验',dept:'心血管内科',price:150.0,mType:1},
+    {id:'C-028',name:'支气管镜检查',dept:'呼吸内科',price:400.0,mType:2},
+    {id:'C-029',name:'纤维结肠镜检查',dept:'消化内科',price:350.0,mType:2},
+    {id:'C-030',name:'计算机断层扫描',dept:'影像科',price:250.0,mType:1}
+  ];
+  localStorage.setItem("his_checkitems",JSON.stringify(cis));
+  var chkrecs=[
+    {recordId:'CR-001',patientId:'P-1004',itemId:'C-001',itemName:'血常规检查',dept:'内科',checkTime:'2026-04-15 10:00:00',result:'白细胞轻度升高',isCompleted:1,isPaid:1},
+    {recordId:'CR-002',patientId:'P-1006',itemId:'C-007',itemName:'心电图检查',dept:'心电图室',checkTime:'2025-04-21 10:30:00',result:'窦性心律，大致正常',isCompleted:1,isPaid:1},
+    {recordId:'CR-003',patientId:'P-1007',itemId:'C-003',itemName:'肝功能检查',dept:'内科',checkTime:'2025-04-21 11:00:00',result:'ALT轻度升高',isCompleted:1,isPaid:1},
+    {recordId:'CR-004',patientId:'P-1008',itemId:'C-009',itemName:'腹部B超检查',dept:'超声科',checkTime:'2025-04-21 11:30:00',result:'肝胆脾胰未见异常',isCompleted:1,isPaid:1},
+    {recordId:'CR-005',patientId:'P-1009',itemId:'C-008',itemName:'胸部X光检查',dept:'放射科',checkTime:'2025-04-21 12:00:00',result:'双肺纹理增粗',isCompleted:1,isPaid:1},
+    {recordId:'CR-006',patientId:'P-1010',itemId:'C-002',itemName:'尿常规检查',dept:'内科',checkTime:'2025-04-21 14:00:00',result:'WBC+-',isCompleted:1,isPaid:1},
+    {recordId:'CR-007',patientId:'P-1011',itemId:'C-006',itemName:'血糖检查',dept:'内分泌科',checkTime:'2025-04-21 14:30:00',result:'空腹血糖偏高',isCompleted:1,isPaid:1},
+    {recordId:'CR-008',patientId:'P-1012',itemId:'C-010',itemName:'头部CT检查',dept:'影像科',checkTime:'2025-04-21 15:00:00',result:'颅内未见出血灶',isCompleted:1,isPaid:1},
+    {recordId:'CR-009',patientId:'P-1013',itemId:'C-011',itemName:'核磁共振检查',dept:'影像科',checkTime:'2025-04-21 15:30:00',result:'膝关节半月板损伤',isCompleted:1,isPaid:1},
+    {recordId:'CR-010',patientId:'P-1014',itemId:'C-012',itemName:'胃镜检查',dept:'消化内科',checkTime:'2025-04-21 16:00:00',result:'慢性浅表性胃炎',isCompleted:1,isPaid:1},
+    {recordId:'CR-011',patientId:'P-1015',itemId:'C-013',itemName:'肠镜检查',dept:'消化内科',checkTime:'2025-04-21 16:30:00',result:'结直肠未见异常',isCompleted:1,isPaid:1},
+    {recordId:'CR-012',patientId:'P-1016',itemId:'C-014',itemName:'骨密度检查',dept:'骨科',checkTime:'2025-04-21 17:00:00',result:'骨量减少',isCompleted:1,isPaid:1},
+    {recordId:'CR-013',patientId:'P-1017',itemId:'C-015',itemName:'肺功能检查',dept:'呼吸内科',checkTime:'2025-04-21 17:30:00',result:'FEV1轻度下降',isCompleted:1,isPaid:1},
+    {recordId:'CR-014',patientId:'P-1018',itemId:'C-016',itemName:'甲状腺功能检查',dept:'内分泌科',checkTime:'2025-04-21 18:00:00',result:'T3、T4正常',isCompleted:1,isPaid:1},
+    {recordId:'CR-015',patientId:'P-1019',itemId:'C-017',itemName:'肿瘤标志物检查',dept:'肿瘤科',checkTime:'2025-04-21 18:30:00',result:'CEA正常',isCompleted:1,isPaid:1},
+    {recordId:'CR-016',patientId:'P-1020',itemId:'C-018',itemName:'凝血功能检查',dept:'内科',checkTime:'2025-04-21 19:00:00',result:'PT、APTT正常',isCompleted:1,isPaid:1},
+    {recordId:'CR-017',patientId:'P-1021',itemId:'C-019',itemName:'C反应蛋白检查',dept:'内科',checkTime:'2025-04-21 19:30:00',result:'CRP升高',isCompleted:1,isPaid:1},
+    {recordId:'CR-018',patientId:'P-1022',itemId:'C-020',itemName:'血沉检查',dept:'内科',checkTime:'2025-04-21 20:00:00',result:'ESR正常',isCompleted:1,isPaid:1},
+    {recordId:'CR-019',patientId:'P-1023',itemId:'C-005',itemName:'血脂检查',dept:'内分泌科',checkTime:'2025-04-21 20:30:00',result:'总胆固醇偏高',isCompleted:1,isPaid:1},
+    {recordId:'CR-020',patientId:'P-1007',itemId:'C-004',itemName:'肾功能检查',dept:'内科',checkTime:'2026-04-23 09:00:00',result:'肾功能正常',isCompleted:1,isPaid:0},
+    {recordId:'CR-021',patientId:'P-1024',itemId:'C-023',itemName:'甲状腺B超',dept:'超声科',checkTime:'2025-04-21 21:00:00',result:'甲状腺结节',isCompleted:1,isPaid:1},
+    {recordId:'CR-022',patientId:'P-1025',itemId:'C-024',itemName:'乳腺B超',dept:'妇产科',checkTime:'2025-04-21 21:30:00',result:'双侧乳腺未见明显异常',isCompleted:1,isPaid:1},
+    {recordId:'CR-023',patientId:'P-1026',itemId:'C-025',itemName:'前列腺B超',dept:'泌尿外科',checkTime:'2025-04-21 22:00:00',result:'前列腺增生',isCompleted:1,isPaid:1},
+    {recordId:'CR-024',patientId:'P-1027',itemId:'C-026',itemName:'动态心电图',dept:'心电图室',checkTime:'2025-04-21 22:30:00',result:'偶发室性早搏',isCompleted:1,isPaid:1},
+    {recordId:'CR-025',patientId:'P-1028',itemId:'C-027',itemName:'运动平板试验',dept:'心血管内科',checkTime:'2025-04-21 23:00:00',result:'运动试验阴性',isCompleted:1,isPaid:1},
+    {recordId:'CR-026',patientId:'P-1029',itemId:'C-028',itemName:'支气管镜检查',dept:'呼吸内科',checkTime:'2025-04-21 23:30:00',result:'支气管炎症',isCompleted:1,isPaid:1},
+    {recordId:'CR-027',patientId:'P-1030',itemId:'C-029',itemName:'纤维结肠镜检查',dept:'消化内科',checkTime:'2025-04-22 09:00:00',result:'回盲部溃疡',isCompleted:1,isPaid:1},
+    {recordId:'CR-028',patientId:'P-1031',itemId:'C-030',itemName:'计算机断层扫描',dept:'影像科',checkTime:'2025-04-22 09:30:00',result:'等待检查',isCompleted:0,isPaid:1},
+    {recordId:'CR-029',patientId:'P-1032',itemId:'C-004',itemName:'肾功能检查',dept:'肾内科',checkTime:'2025-04-22 10:00:00',result:'Urea、Cr正常',isCompleted:1,isPaid:0},
+    {recordId:'CR-030',patientId:'P-1033',itemId:'C-021',itemName:'过敏原检测',dept:'皮肤科',checkTime:'2025-04-22 10:30:00',result:'尘螨过敏',isCompleted:1,isPaid:1},
+    {recordId:'CR-031',patientId:'P-1034',itemId:'C-022',itemName:'免疫功能检查',dept:'内科',checkTime:'2025-04-22 11:00:00',result:'IgG偏低',isCompleted:1,isPaid:1},
+    {recordId:'CR-032',patientId:'P-1006',itemId:'C-002',itemName:'尿常规检查',dept:'内科',checkTime:'2026-04-15 10:30:00',result:'WBC+-',isCompleted:1,isPaid:1},
+    {recordId:'CR-033',patientId:'P-1008',itemId:'C-003',itemName:'肝功能检查',dept:'内科',checkTime:'2026-04-15 11:30:00',result:'ALT轻度升高',isCompleted:1,isPaid:1},
+    {recordId:'CR-034',patientId:'P-1010',itemId:'C-004',itemName:'肾功能检查',dept:'肾内科',checkTime:'2026-04-15 14:30:00',result:'Urea、Cr正常',isCompleted:1,isPaid:1},
+    {recordId:'CR-035',patientId:'P-1012',itemId:'C-005',itemName:'血脂检查',dept:'内分泌科',checkTime:'2026-04-16 09:30:00',result:'总胆固醇正常',isCompleted:1,isPaid:1},
+    {recordId:'CR-036',patientId:'P-1014',itemId:'C-006',itemName:'血糖检查',dept:'内分泌科',checkTime:'2026-04-16 10:30:00',result:'空腹血糖偏高',isCompleted:1,isPaid:1},
+    {recordId:'CR-037',patientId:'P-1016',itemId:'C-007',itemName:'心电图检查',dept:'心电图室',checkTime:'2026-04-16 11:30:00',result:'窦性心律，大致正常',isCompleted:1,isPaid:1},
+    {recordId:'CR-038',patientId:'P-1018',itemId:'C-008',itemName:'胸部X光检查',dept:'放射科',checkTime:'2026-04-16 14:30:00',result:'双肺纹理增粗',isCompleted:1,isPaid:1},
+    {recordId:'CR-039',patientId:'P-1020',itemId:'C-009',itemName:'腹部B超检查',dept:'超声科',checkTime:'2026-04-17 09:30:00',result:'肝胆脾胰未见异常',isCompleted:1,isPaid:1},
+    {recordId:'CR-040',patientId:'P-1022',itemId:'C-010',itemName:'头部CT检查',dept:'影像科',checkTime:'2026-04-17 10:30:00',result:'颅内未见出血灶',isCompleted:1,isPaid:1},
+    {recordId:'CR-041',patientId:'P-1024',itemId:'C-011',itemName:'核磁共振检查',dept:'影像科',checkTime:'2026-04-17 11:30:00',result:'膝关节半月板损伤',isCompleted:1,isPaid:1},
+    {recordId:'CR-042',patientId:'P-1004',itemId:'C-012',itemName:'胃镜检查',dept:'消化内科',checkTime:'2026-03-15 09:30:00',result:'慢性浅表性胃炎',isCompleted:1,isPaid:1},
+    {recordId:'CR-043',patientId:'P-1004',itemId:'C-013',itemName:'过敏原检测',dept:'皮肤科',checkTime:'2026-02-10 10:30:00',result:'尘螨过敏',isCompleted:1,isPaid:1},
+    {recordId:'CR-044',patientId:'P-1004',itemId:'C-014',itemName:'幽门螺杆菌检测',dept:'消化内科',checkTime:'2026-01-05 14:30:00',result:'幽门螺杆菌阳性',isCompleted:1,isPaid:1}
+  ];
+  localStorage.setItem("his_checkrecords",JSON.stringify(chkrecs));
+  var accs=[
+    {username:'admin',password:'admin123',realName:'超级管理员',gender:'男',role:0,errorCount:0,lockTime:0,isOnDuty:0},
+    {username:'D-2001',password:'123456',realName:'李建国',gender:'男',role:1,errorCount:0,lockTime:0,isOnDuty:1},
+    {username:'D-2040',password:'123456',realName:'李建国',gender:'男',role:1,errorCount:0,lockTime:0,isOnDuty:0},
+    {username:'D-2002',password:'123456',realName:'张伟',gender:'男',role:1,errorCount:0,lockTime:0,isOnDuty:1},
+    {username:'D-2003',password:'123456',realName:'王芳',gender:'女',role:1,errorCount:0,lockTime:0,isOnDuty:0},
+    {username:'D-2004',password:'123456',realName:'刘静',gender:'女',role:1,errorCount:0,lockTime:0,isOnDuty:1},
+    {username:'D-2005',password:'123456',realName:'陈强',gender:'男',role:1,errorCount:0,lockTime:0,isOnDuty:0},
+    {username:'D-2006',password:'123456',realName:'王娜',gender:'女',role:1,errorCount:0,lockTime:0,isOnDuty:1},
+    {username:'D-2007',password:'123456',realName:'李敏',gender:'女',role:1,errorCount:0,lockTime:0,isOnDuty:0},
+    {username:'D-2008',password:'123456',realName:'赵军',gender:'男',role:1,errorCount:0,lockTime:0,isOnDuty:1},
+    {username:'D-2009',password:'123456',realName:'周洋',gender:'男',role:1,errorCount:0,lockTime:0,isOnDuty:0},
+    {username:'D-2010',password:'123456',realName:'吴静',gender:'女',role:1,errorCount:0,lockTime:0,isOnDuty:1},
+    {username:'D-2011',password:'123456',realName:'郑浩',gender:'男',role:1,errorCount:0,lockTime:0,isOnDuty:0},
+    {username:'D-2012',password:'123456',realName:'孙磊',gender:'男',role:1,errorCount:0,lockTime:0,isOnDuty:1},
+    {username:'D-2013',password:'123456',realName:'刘芳',gender:'女',role:1,errorCount:0,lockTime:0,isOnDuty:0},
+    {username:'D-2014',password:'123456',realName:'杨勇',gender:'男',role:1,errorCount:0,lockTime:0,isOnDuty:1},
+    {username:'D-2015',password:'123456',realName:'黄伟',gender:'男',role:1,errorCount:0,lockTime:0,isOnDuty:0},
+    {username:'D-2016',password:'123456',realName:'徐娜',gender:'女',role:1,errorCount:0,lockTime:0,isOnDuty:1},
+    {username:'D-2017',password:'123456',realName:'马强',gender:'男',role:1,errorCount:0,lockTime:0,isOnDuty:0},
+    {username:'D-2018',password:'123456',realName:'胡芳',gender:'女',role:1,errorCount:0,lockTime:0,isOnDuty:1},
+    {username:'D-2019',password:'123456',realName:'郭敏',gender:'女',role:1,errorCount:0,lockTime:0,isOnDuty:0},
+    {username:'D-2020',password:'123456',realName:'林强',gender:'男',role:1,errorCount:0,lockTime:0,isOnDuty:1},
+    {username:'D-2021',password:'123456',realName:'何静',gender:'女',role:1,errorCount:0,lockTime:0,isOnDuty:0},
+    {username:'D-2022',password:'123456',realName:'高军',gender:'男',role:1,errorCount:0,lockTime:0,isOnDuty:1},
+    {username:'D-2023',password:'123456',realName:'罗勇',gender:'男',role:1,errorCount:0,lockTime:0,isOnDuty:0},
+    {username:'D-2024',password:'123456',realName:'郑浩',gender:'男',role:1,errorCount:0,lockTime:0,isOnDuty:1},
+    {username:'D-2025',password:'123456',realName:'梁敏',gender:'女',role:1,errorCount:0,lockTime:0,isOnDuty:0},
+    {username:'D-2026',password:'123456',realName:'谢强',gender:'男',role:1,errorCount:0,lockTime:0,isOnDuty:1},
+    {username:'D-2027',password:'123456',realName:'宋静',gender:'女',role:1,errorCount:0,lockTime:0,isOnDuty:0},
+    {username:'D-2028',password:'123456',realName:'唐伟',gender:'男',role:1,errorCount:0,lockTime:0,isOnDuty:1},
+    {username:'D-2029',password:'123456',realName:'许芳',gender:'女',role:1,errorCount:0,lockTime:0,isOnDuty:0},
+    {username:'D-2030',password:'123456',realName:'韩强',gender:'男',role:1,errorCount:0,lockTime:0,isOnDuty:1},
+    {username:'D-2031',password:'123456',realName:'冯敏',gender:'女',role:1,errorCount:0,lockTime:0,isOnDuty:0},
+    {username:'D-2032',password:'123456',realName:'邓军',gender:'男',role:1,errorCount:0,lockTime:0,isOnDuty:1},
+    {username:'D-2033',password:'123456',realName:'曹芳',gender:'女',role:1,errorCount:0,lockTime:0,isOnDuty:0},
+    {username:'D-2034',password:'123456',realName:'彭勇',gender:'男',role:1,errorCount:0,lockTime:0,isOnDuty:1},
+    {username:'D-2035',password:'123456',realName:'曾敏',gender:'女',role:1,errorCount:0,lockTime:0,isOnDuty:0},
+    {username:'D-2036',password:'123456',realName:'肖强',gender:'男',role:1,errorCount:0,lockTime:0,isOnDuty:1},
+    {username:'D-2037',password:'123456',realName:'田芳',gender:'女',role:1,errorCount:0,lockTime:0,isOnDuty:0},
+    {username:'D-2038',password:'123456',realName:'董军',gender:'男',role:1,errorCount:0,lockTime:0,isOnDuty:1},
+    {username:'D-2039',password:'123456',realName:'袁敏',gender:'女',role:1,errorCount:0,lockTime:0,isOnDuty:0},
+    {username:'D-2044',password:'123456',realName:'张医生',gender:'男',role:1,errorCount:0,lockTime:0,isOnDuty:0},
+    {username:'D-2045',password:'123456',realName:'李医生',gender:'女',role:1,errorCount:0,lockTime:0,isOnDuty:0},
+    {username:'D-2046',password:'123456',realName:'王医生',gender:'男',role:1,errorCount:0,lockTime:0,isOnDuty:0},
+    {username:'D-2047',password:'123456',realName:'刘医生',gender:'女',role:1,errorCount:0,lockTime:0,isOnDuty:0},
+    {username:'N-3001',password:'123456',realName:'护士小陈',gender:'女',role:2,errorCount:0,lockTime:0,isOnDuty:1},
+    {username:'N-3002',password:'123456',realName:'护士小李',gender:'女',role:2,errorCount:0,lockTime:0,isOnDuty:1},
+    {username:'N-3003',password:'123456',realName:'护士小周',gender:'女',role:2,errorCount:0,lockTime:0,isOnDuty:0},
+    {username:'P-4001',password:'123456',realName:'药师老张',gender:'女',role:3,errorCount:0,lockTime:0,isOnDuty:1},
+    {username:'P-4002',password:'123456',realName:'药师老李',gender:'女',role:3,errorCount:0,lockTime:0,isOnDuty:1},
+    {username:'P-4003',password:'123456',realName:'药师老王',gender:'女',role:3,errorCount:0,lockTime:0,isOnDuty:0}
+  ];
+  localStorage.setItem("his_accounts",JSON.stringify(accs));
+  var wardData=[
+    {roomId:'B-101',bedId:'101-1',wardType:1,wardTypeName:'普通病房',dept:'内科',isOccupied:1,patientId:'P-1001'},
+    {roomId:'B-102',bedId:'101-2',wardType:1,wardTypeName:'普通病房',dept:'内科',isOccupied:0,patientId:''},
+    {roomId:'B-103',bedId:'101-3',wardType:1,wardTypeName:'普通病房',dept:'内科',isOccupied:0,patientId:''},
+    {roomId:'B-104',bedId:'102-1',wardType:1,wardTypeName:'普通病房',dept:'内科',isOccupied:1,patientId:'P-1006'},
+    {roomId:'B-105',bedId:'102-2',wardType:1,wardTypeName:'普通病房',dept:'内科',isOccupied:0,patientId:''},
+    {roomId:'B-106',bedId:'102-3',wardType:1,wardTypeName:'普通病房',dept:'内科',isOccupied:1,patientId:'P-1026'},
+    {roomId:'B-107',bedId:'103-1',wardType:1,wardTypeName:'普通病房',dept:'内科',isOccupied:1,patientId:'P-1011'},
+    {roomId:'B-108',bedId:'103-2',wardType:1,wardTypeName:'普通病房',dept:'内科',isOccupied:0,patientId:''},
+    {roomId:'B-109',bedId:'103-3',wardType:1,wardTypeName:'普通病房',dept:'内科',isOccupied:0,patientId:''},
+    {roomId:'B-110',bedId:'104-1',wardType:1,wardTypeName:'普通病房',dept:'内科',isOccupied:1,patientId:'P-1016'},
+    {roomId:'B-111',bedId:'104-2',wardType:1,wardTypeName:'普通病房',dept:'内科',isOccupied:0,patientId:''},
+    {roomId:'B-112',bedId:'104-3',wardType:1,wardTypeName:'普通病房',dept:'内科',isOccupied:0,patientId:''},
+    {roomId:'B-201',bedId:'201-1',wardType:1,wardTypeName:'普通病房',dept:'外科',isOccupied:1,patientId:'P-1002'},
+    {roomId:'B-203',bedId:'201-3',wardType:1,wardTypeName:'普通病房',dept:'外科',isOccupied:0,patientId:''},
+    {roomId:'B-204',bedId:'202-1',wardType:1,wardTypeName:'普通病房',dept:'外科',isOccupied:1,patientId:'P-1007'},
+    {roomId:'B-205',bedId:'202-2',wardType:1,wardTypeName:'普通病房',dept:'外科',isOccupied:1,patientId:'P-1022'},
+    {roomId:'B-206',bedId:'202-3',wardType:1,wardTypeName:'普通病房',dept:'外科',isOccupied:1,patientId:'P-1027'},
+    {roomId:'B-207',bedId:'203-1',wardType:1,wardTypeName:'普通病房',dept:'外科',isOccupied:1,patientId:'P-1012'},
+    {roomId:'B-208',bedId:'203-2',wardType:1,wardTypeName:'普通病房',dept:'外科',isOccupied:0,patientId:''},
+    {roomId:'B-209',bedId:'203-3',wardType:1,wardTypeName:'普通病房',dept:'外科',isOccupied:0,patientId:''},
+    {roomId:'B-210',bedId:'204-1',wardType:1,wardTypeName:'普通病房',dept:'外科',isOccupied:1,patientId:'P-1017'},
+    {roomId:'B-301',bedId:'301-1',wardType:2,wardTypeName:'ICU',dept:'综合重症',isOccupied:1,patientId:'P-1003'},
+    {roomId:'B-302',bedId:'301-2',wardType:2,wardTypeName:'ICU',dept:'综合重症',isOccupied:0,patientId:''},
+    {roomId:'B-303',bedId:'301-3',wardType:2,wardTypeName:'ICU',dept:'综合重症',isOccupied:1,patientId:'P-1013'},
+    {roomId:'B-304',bedId:'302-1',wardType:2,wardTypeName:'ICU',dept:'综合重症',isOccupied:1,patientId:'P-1008'},
+    {roomId:'B-305',bedId:'302-2',wardType:2,wardTypeName:'ICU',dept:'综合重症',isOccupied:1,patientId:'P-1023'},
+    {roomId:'B-306',bedId:'302-3',wardType:2,wardTypeName:'ICU',dept:'综合重症',isOccupied:1,patientId:'P-1028'},
+    {roomId:'B-401',bedId:'401-1',wardType:3,wardTypeName:'隔离病房',dept:'感染科',isOccupied:1,patientId:'P-1004'},
+    {roomId:'B-402',bedId:'401-2',wardType:3,wardTypeName:'隔离病房',dept:'感染科',isOccupied:0,patientId:''},
+    {roomId:'B-403',bedId:'401-3',wardType:3,wardTypeName:'隔离病房',dept:'感染科',isOccupied:1,patientId:'P-1014'},
+    {roomId:'B-404',bedId:'402-1',wardType:3,wardTypeName:'隔离病房',dept:'感染科',isOccupied:1,patientId:'P-1009'},
+    {roomId:'B-405',bedId:'402-2',wardType:3,wardTypeName:'隔离病房',dept:'感染科',isOccupied:1,patientId:'P-1024'},
+    {roomId:'B-406',bedId:'402-3',wardType:3,wardTypeName:'隔离病房',dept:'感染科',isOccupied:1,patientId:'P-1029'},
+    {roomId:'B-501',bedId:'501-1',wardType:4,wardTypeName:'单人病房',dept:'综合',isOccupied:1,patientId:'P-1005'},
+    {roomId:'B-502',bedId:'501-2',wardType:4,wardTypeName:'单人病房',dept:'综合',isOccupied:0,patientId:''},
+    {roomId:'B-503',bedId:'501-3',wardType:4,wardTypeName:'单人病房',dept:'综合',isOccupied:0,patientId:''},
+    {roomId:'B-504',bedId:'502-1',wardType:4,wardTypeName:'单人病房',dept:'综合',isOccupied:1,patientId:'P-1010'},
+    {roomId:'B-505',bedId:'502-2',wardType:4,wardTypeName:'单人病房',dept:'综合',isOccupied:1,patientId:'P-1025'},
+    {roomId:'B-506',bedId:'502-3',wardType:4,wardTypeName:'单人病房',dept:'综合',isOccupied:1,patientId:'P-1030'},
+    {roomId:'B-507',bedId:'503-1',wardType:4,wardTypeName:'单人病房',dept:'综合',isOccupied:1,patientId:'P-1015'},
+    {roomId:'B-508',bedId:'503-2',wardType:4,wardTypeName:'单人病房',dept:'综合',isOccupied:0,patientId:''},
+    {roomId:'B-509',bedId:'503-3',wardType:4,wardTypeName:'单人病房',dept:'综合',isOccupied:0,patientId:''},
+    {roomId:'B-510',bedId:'504-1',wardType:4,wardTypeName:'单人病房',dept:'综合',isOccupied:1,patientId:'P-1020'},
+    {roomId:'B-601',bedId:'601-1',wardType:1,wardTypeName:'普通病房',dept:'',isOccupied:0,patientId:''},
+    {roomId:'B-602',bedId:'601-2',wardType:1,wardTypeName:'普通病房',dept:'',isOccupied:0,patientId:''},
+    {roomId:'B-603',bedId:'601-3',wardType:1,wardTypeName:'普通病房',dept:'',isOccupied:0,patientId:''},
+    {roomId:'B-604',bedId:'602-1',wardType:1,wardTypeName:'普通病房',dept:'',isOccupied:0,patientId:''},
+    {roomId:'B-605',bedId:'602-2',wardType:1,wardTypeName:'普通病房',dept:'',isOccupied:0,patientId:''},
+    {roomId:'B-606',bedId:'602-3',wardType:1,wardTypeName:'普通病房',dept:'',isOccupied:0,patientId:''},
+    {roomId:'B-607',bedId:'603-1',wardType:1,wardTypeName:'普通病房',dept:'',isOccupied:0,patientId:''},
+    {roomId:'B-608',bedId:'603-2',wardType:1,wardTypeName:'普通病房',dept:'',isOccupied:0,patientId:''},
+    {roomId:'B-609',bedId:'603-3',wardType:1,wardTypeName:'普通病房',dept:'',isOccupied:0,patientId:''},
+    {roomId:'B-610',bedId:'604-1',wardType:1,wardTypeName:'普通病房',dept:'',isOccupied:0,patientId:''}
+  ];
+  localStorage.setItem("his_wards",JSON.stringify(wardData));
+  var alertData=[
+    {message:'⛔ 恶意挂号被拦截：患者 李逃单（永久黑名单）试图挂号，已拦截！',time:'2025-04-21 12:42:47'},
+    {message:'⛔ 爽约黑名单拦截：患者 王爽约（爽约3次）在惩罚期内试图挂号，已拦截！',time:'2025-04-21 12:42:48'},
+    {message:'🚨 急诊强制放行：患者 张即将解禁（黑名单人员）突发危重急症，已强制放行，请相关部门跟进！',time:'2025-04-21 12:42:49'},
+    {message:'⚠️ 低库存预警：药品 [M-002] 小儿氨酚黄那敏颗粒 当前库存仅 4 件，低于安全阈值5件，请及时补货！',time:'2025-04-21 12:42:50'},
+    {message:'⚠️ 临期药品预警：药品 [M-003] 硝苯地平缓释片(II) 效期至 2026-05-01，距离过期仅剩 10 天，请优先使用或处理！',time:'2025-04-21 12:42:51'},
+    {message:'⚠️ 住院患者押金不足预警：患者 李逃单 押金余额仅 15.50 元，已接近警戒线！',time:'2025-04-21 12:42:52'},
+    {message:'🚨 住院患者欠费预警：患者 王爽约 押金余额为 -120.00 元，已欠费！',time:'2025-04-21 12:42:53'}
+  ];
+  localStorage.setItem("his_alerts",JSON.stringify(alertData));
+  var complaintData=[
+    {complaintId:'CP-001',patientId:'P-1004',targetType:1,targetId:'D-2001',targetName:'李建国',content:'挂号等待时间太长，建议增加窗口',status:1,response:'已增加挂号窗口，感谢您的反馈',submitTime:'2025-04-15 09:00:00'},
+    {complaintId:'CP-002',patientId:'P-1006',targetType:1,targetId:'D-2005',targetName:'刘静',content:'医生态度不够耐心，解释不清楚',status:1,response:'已与医生沟通，加强沟通技巧培训',submitTime:'2025-04-15 10:30:00'},
+    {complaintId:'CP-003',patientId:'P-1007',targetType:2,targetId:'N-001',targetName:'护士小王',content:'病房环境嘈杂，影响休息',status:1,response:'已协调解决，感谢反馈',submitTime:'2025-04-15 11:00:00'},
+    {complaintId:'CP-004',patientId:'P-1008',targetType:3,targetId:'PH-001',targetName:'药师老王',content:'药房取药排队时间久',status:1,response:'已增加取药窗口，感谢您的反馈',submitTime:'2025-04-15 14:00:00'},
+    {complaintId:'CP-005',patientId:'P-1009',targetType:1,targetId:'D-2009',targetName:'赵军',content:'检查报告出具速度慢',status:0,response:'NULL',submitTime:'2025-04-16 09:30:00'},
+    {complaintId:'CP-006',patientId:'P-1010',targetType:2,targetId:'N-002',targetName:'护士小李',content:'停车困难，建议增加停车位',status:0,response:'NULL',submitTime:'2025-04-16 10:00:00'},
+    {complaintId:'CP-007',patientId:'P-1011',targetType:1,targetId:'D-2002',targetName:'李建国',content:'食堂饭菜口味一般',status:1,response:'已反馈给食堂改进，谢谢您的建议',submitTime:'2025-04-16 11:30:00'},
+    {complaintId:'CP-008',patientId:'P-1012',targetType:2,targetId:'N-003',targetName:'护士小张',content:'护士换药不及时',status:0,response:'NULL',submitTime:'2025-04-16 14:30:00'},
+    {complaintId:'CP-009',patientId:'P-1013',targetType:1,targetId:'D-2013',targetName:'孙磊',content:'门诊指示标识不清晰',status:0,response:'NULL',submitTime:'2025-04-17 09:00:00'},
+    {complaintId:'CP-010',patientId:'P-1014',targetType:3,targetId:'PH-002',targetName:'药师老李',content:'收费处找零速度慢',status:0,response:'NULL',submitTime:'2025-04-17 10:00:00'},
+    {complaintId:'CP-011',patientId:'P-1015',targetType:2,targetId:'N-004',targetName:'护士小赵',content:'病房卫生间卫生状况需要改善',status:1,response:'已加强保洁工作，感谢您的反馈',submitTime:'2025-04-17 11:00:00'},
+    {complaintId:'CP-012',patientId:'P-1016',targetType:1,targetId:'D-2017',targetName:'徐娜',content:'预约挂号系统操作复杂',status:0,response:'NULL',submitTime:'2025-04-17 14:00:00'},
+    {complaintId:'CP-013',patientId:'P-1017',targetType:1,targetId:'D-2018',targetName:'马强',content:'出院手续办理流程繁琐',status:0,response:'NULL',submitTime:'2025-04-18 09:30:00'},
+    {complaintId:'CP-014',patientId:'P-1018',targetType:2,targetId:'N-005',targetName:'护士小刘',content:'儿童病房玩具设施陈旧',status:0,response:'NULL',submitTime:'2025-04-18 10:30:00'},
+    {complaintId:'CP-015',patientId:'P-1019',targetType:1,targetId:'D-2015',targetName:'杨勇',content:'骨科康复指导不够详细',status:0,response:'NULL',submitTime:'2025-04-18 11:00:00'},
+    {complaintId:'CP-016',patientId:'P-1020',targetType:2,targetId:'N-001',targetName:'护士小王',content:'产妇护理服务有待提升',status:1,response:'已加强产科护理培训，感谢您的建议',submitTime:'2025-04-18 14:30:00'},
+    {complaintId:'CP-017',patientId:'P-1021',targetType:1,targetId:'D-2021',targetName:'林静',content:'内科候诊区座椅不够',status:0,response:'NULL',submitTime:'2025-04-19 09:00:00'},
+    {complaintId:'CP-018',patientId:'P-1022',targetType:1,targetId:'D-2022',targetName:'高峰',content:'外科术后镇痛效果不理想',status:0,response:'NULL',submitTime:'2025-04-19 10:00:00'},
+    {complaintId:'CP-019',patientId:'P-1023',targetType:2,targetId:'N-002',targetName:'护士小李',content:'儿科候诊区缺少儿童娱乐设施',status:0,response:'NULL',submitTime:'2025-04-19 11:00:00'},
+    {complaintId:'CP-020',patientId:'P-1024',targetType:1,targetId:'D-2024',targetName:'谢伟',content:'抽血室等待时间过长',status:0,response:'NULL',submitTime:'2025-04-19 14:00:00'},
+    {complaintId:'CP-021',patientId:'P-1025',targetType:3,targetId:'PH-001',targetName:'药师老王',content:'药品价格比外面药店贵',status:0,response:'NULL',submitTime:'2025-04-19 15:00:00'},
+    {complaintId:'CP-022',patientId:'P-1026',targetType:1,targetId:'D-2026',targetName:'苏军',content:'CT检查预约时间太久',status:0,response:'NULL',submitTime:'2025-04-20 09:30:00'},
+    {complaintId:'CP-023',patientId:'P-1027',targetType:2,targetId:'N-003',targetName:'护士小张',content:'病房WiFi信号不好',status:0,response:'NULL',submitTime:'2025-04-20 10:30:00'},
+    {complaintId:'CP-024',patientId:'P-1028',targetType:1,targetId:'D-2028',targetName:'蒋强',content:'内分泌科叫号系统声音太小',status:0,response:'NULL',submitTime:'2025-04-20 11:00:00'},
+    {complaintId:'CP-025',patientId:'P-1029',targetType:1,targetId:'D-2030',targetName:'彭伟',content:'注射室环境有待改善',status:0,response:'NULL',submitTime:'2025-04-20 14:00:00'},
+    {complaintId:'CP-026',patientId:'P-1030',targetType:2,targetId:'N-004',targetName:'护士小赵',content:'产房陪护规定不太人性化',status:0,response:'NULL',submitTime:'2025-04-20 15:00:00'},
+    {complaintId:'CP-027',patientId:'P-1031',targetType:1,targetId:'D-2032',targetName:'宫军',content:'肾内科透析室床位不足',status:0,response:'NULL',submitTime:'2025-04-20 16:00:00'},
+    {complaintId:'CP-028',patientId:'P-1032',targetType:3,targetId:'PH-002',targetName:'药师老李',content:'药房下班太早',status:0,response:'NULL',submitTime:'2025-04-20 17:00:00'},
+    {complaintId:'CP-029',patientId:'P-1033',targetType:1,targetId:'D-2034',targetName:'梁强',content:'泌尿外科手术等待时间过长',status:0,response:'NULL',submitTime:'2025-04-21 09:00:00'},
+    {complaintId:'CP-030',patientId:'P-1034',targetType:2,targetId:'N-005',targetName:'护士小刘',content:'急诊科夜间值班护士太少',status:0,response:'NULL',submitTime:'2025-04-21 10:00:00'}
+  ];
+  localStorage.setItem("his_complaints",JSON.stringify(complaintData));
+  SL([]);
+  addLog("系统初始化","全部模块","从data/目录加载真实数据初始化完成");
+  toast('真实数据初始化成功！患者130 医生47 科室22 药品30 预约130 住院30 接诊记录34 检查项目30 检查记录44 账号51 床位53');
+}
+
+// ==================== 页面路由 ====================
+var currentPage='dashboard';
+// ==================== 角色权限系统 ====================
+var ROLES={ADMIN:0,DOCTOR:1,NURSE:2,PHARMACIST:3,PATIENT:4};
+var ROLE_NAMES={0:'管理员',1:'医生',2:'护士/前台',3:'药师',4:'患者'};
+var CHECK_DEPTS=['影像科','放射科','超声科','心电图室','检验科'];
+var PUBLIC_PAGES=['login','bigscreen','patient_self_service','patient_register','patient_appointment','patient_reglive'];
+var g_user=null;
+
+var MENUS={};
+MENUS[ROLES.ADMIN]=[
+  {title:'系统总览',items:[
+    {id:'dashboard',label:'📊 系统首页'},{id:'logs',label:'📋 系统日志'},
+    {id:'datastruct',label:'🔗 数据结构展示'},{id:'datamgmt',label:'💾 数据管理'}
+  ]},
+  {title:'基础档案',items:[
+    {id:'patients',label:'👤 患者管理'},{id:'doctors',label:'🩺 医生管理'},
+    {id:'departments',label:'🏥 科室管理'},{id:'medicines',label:'💊 药品管理'}
+  ]},
+  {title:'门诊业务',items:[
+    {id:'reglive',label:'🎫 现场挂号'},{id:'regappt',label:'📅 预约挂号'},
+    {id:'waitqueue',label:'👥 候诊队列'},{id:'consult',label:'🩻 医生接诊'},
+    {id:'prescribe',label:'💉 处方发药'},{id:'refund',label:'↩️ 退号管理'}
+  ]},
+  {title:'住院管理',items:[
+    {id:'inpatient',label:'🛏️ 住院管理'},{id:'billing',label:'💰 收费管理'},
+    {id:'ward_mgmt',label:'🛌 床位管理'}
+  ]},
+  {title:'检查管理',items:[
+    {id:'check_items',label:'📋 检查项目管理'},{id:'check_records',label:'📝 检查记录管理'}
+  ]},
+  {title:'药房管理',items:[
+    {id:'medicine_stock',label:'📦 药品库存'},{id:'dispense_pending',label:'💊 待发药'}
+  ]},
+  {title:'人员管理',items:[
+    {id:'accounts',label:'🔑 账号管理'},{id:'doctor_duty',label:'🩺 医生排班'},
+    {id:'nurse_duty',label:'👩‍⚕️ 护士排班'},{id:'pharmacist_duty',label:'💊 药师排班'}
+  ]},
+  {title:'患者服务',items:[
+    {id:'complaints',label:'📝 投诉管理'},{id:'blacklist',label:'🚫 黑名单管理'},
+    {id:'reviews',label:'⭐ 评价管理'}
+  ]},
+  {title:'系统工具',items:[
+    {id:'alerts',label:'🚨 预警中心'},{id:'recycle',label:'🗑️ 回收站'},
+    {id:'reports',label:'📊 统计报表'},{id:'bigscreen',label:'🖥️ 医疗大屏'},
+    {id:'infection_alert',label:'🦠 传染病预警'}
+  ]}
+];
+MENUS[ROLES.DOCTOR]=[
+  {title:'门诊工作',items:[
+    {id:'waitqueue',label:'👥 候诊队列'},{id:'consult',label:'🩻 医生接诊'},
+    {id:'processed_patients',label:'📋 已接诊患者'}
+  ]},
+  {title:'患者管理',items:[{id:'patients',label:'👤 患者查询'}]},
+  {title:'个人中心',items:[{id:'profile',label:'👨‍⚕️ 个人信息'}]}
+];
+MENUS['check_doctor']=[
+  {title:'检查工作',items:[
+    {id:'check_pending',label:'📋 待检查列表'},{id:'check_result',label:'📝 录入检查结果'},
+    {id:'check_records',label:'📋 检查记录'}
+  ]},
+  {title:'个人中心',items:[{id:'profile',label:'👨‍⚕️ 个人信息'}]}
+];
+MENUS[ROLES.NURSE]=[
+  {title:'挂号业务',items:[
+    {id:'reglive',label:'🎫 现场挂号'},{id:'regappt',label:'📅 预约挂号'},
+    {id:'refund',label:'↩️ 退号管理'}
+  ]},
+  {title:'患者服务',items:[
+    {id:'waitqueue',label:'👥 候诊队列'},{id:'patients',label:'👤 患者查询'}
+  ]},
+  {title:'住院管理',items:[
+    {id:'inpatient',label:'🛏️ 住院管理'},{id:'ward_mgmt',label:'🛌 床位管理'}
+  ]},
+  {title:'个人中心',items:[
+    {id:'profile',label:'👩‍⚕️ 个人信息'},{id:'nurse_duty',label:'📅 护士排班'}
+  ]}
+];
+MENUS[ROLES.PHARMACIST]=[
+  {title:'药房工作',items:[
+    {id:'dispense_pending',label:'💊 待发药'},{id:'medicine_stock',label:'📦 药品库存'}
+  ]},
+  {title:'个人中心',items:[{id:'profile',label:'💊 个人信息'},{id:'pharmacist_duty',label:'📅 药师排班'}]}
+];
+MENUS[ROLES.PATIENT]=[
+  {title:'我的首页',items:[
+    {id:'patient_dashboard',label:'🏠 个人首页'},{id:'patient_overview',label:'📋 就诊总览'}
+  ]},
+  {title:'就诊记录',items:[
+    {id:'my_records',label:'📋 历史就诊记录'},{id:'my_check_reports',label:'📝 检查报告'}
+  ]},
+  {title:'费用管理',items:[
+    {id:'my_bills',label:'💰 自助账单缴费'},{id:'my_balance',label:'💳 账户余额与充值'},
+    {id:'pay_blacklist',label:'🔓 补缴黑名单欠费'}
+  ]},
+  {title:'互动服务',items:[
+    {id:'my_complaints',label:'📝 发起投诉'},{id:'my_complaint_status',label:'📋 投诉进度'},
+    {id:'my_reviews',label:'⭐ 就诊评价'}
+  ]},
+  {title:'其他',items:[
+    {id:'my_queue',label:'👥 排队进度'},{id:'bigscreen',label:'🖥️ 医疗大屏'}
+  ]}
+];
+
+function getEffectiveMenu(){
+  if(!g_user)return[];
+  if(g_user.role===ROLES.ADMIN)return MENUS[ROLES.ADMIN];
+  if(g_user.role===ROLES.DOCTOR){
+    if(g_user.dept && CHECK_DEPTS.indexOf(g_user.dept)>=0)return MENUS['check_doctor'];
+    return MENUS[ROLES.DOCTOR];
+  }
+  return MENUS[g_user.role]||[];
+}
+
+function checkPermission(pageId){
+  if(!g_user){
+    if(PUBLIC_PAGES.indexOf(pageId)>=0)return true;
+    return false;
+  }
+  if(g_user.role===ROLES.ADMIN)return true;
+  var menu=getEffectiveMenu();
+  for(var i=0;i<menu.length;i++){
+    for(var j=0;j<menu[i].items.length;j++){
+      if(menu[i].items[j].id===pageId)return true;
+    }
+  }
+  if(PUBLIC_PAGES.indexOf(pageId)>=0)return true;
+  return false;
+}
+
+function refreshSidebar(){
+  var menu=getEffectiveMenu();
+  var sidebar=document.getElementById('sidebar-menu');
+  if(!sidebar)return;
+  var h='';
+  if(!g_user){
+    h+='<div class="menu-group"><div class="menu-group-title">公开访问</div>';
+    h+='<button class="menu-item" data-page="patient_self_service">🤗 患者自助服务</button>';
+    h+='<button class="menu-item" data-page="bigscreen">🖥️ 医疗大屏</button>';
+    h+='</div>';
+  }else{
+    menu.forEach(function(group){
+      h+='<div class="menu-group"><div class="menu-group-title">'+group.title+'</div>';
+      group.items.forEach(function(item){
+        h+='<button class="menu-item" data-page="'+item.id+'">'+item.label+'</button>';
+      });
+      h+='</div>';
+    });
+  }
+  sidebar.innerHTML=h;
+}
+
+function refreshUserbar(){
+  var bar=document.getElementById('userbar');
+  if(!bar)return;
+  if(!g_user){bar.style.display='none';return;}
+  bar.style.display='flex';
+  var roleClass='';switch(g_user.role){case 0:roleClass='admin';break;case 1:roleClass='doctor';break;case 2:roleClass='nurse';break;case 3:roleClass='pharmacist';break;case 4:roleClass='patient';break;}
+  bar.innerHTML='<div class="user-info"><span>👤 <b>'+g_user.name+'</b></span><span class="role-badge '+roleClass+'">'+ROLE_NAMES[g_user.role]+'</span><span style="font-size:12px;color:#999;">登录时间：'+g_user.loginTime+'</span></div><button class="btn-logout" id="btn-logout">退出登录</button>';
+  document.getElementById('btn-logout').onclick=doLogout;
+}
+
+function doInternalLogin(username,password){
+  var accounts=loadData('his_accounts');
+  var acc=null;
+  for(var i=0;i<accounts.length;i++){if(accounts[i].username===username){acc=accounts[i];break;}}
+  if(!acc)return'账号不存在';
+  var now=Math.floor(Date.now()/1000);
+  if(acc.lockTime && now<acc.lockTime)return'账号已锁定，请稍后再试';
+  if(acc.password!==password){
+    acc.errorCount=(acc.errorCount||0)+1;
+    if(acc.errorCount>=3){acc.lockTime=now+60;acc.errorCount=0;}
+    saveData('his_accounts',accounts);
+    if(acc.lockTime)return'密码错误已达3次，账号锁定60秒';
+    return'密码错误，还剩'+(3-acc.errorCount)+'次机会';
+  }
+  acc.errorCount=0;acc.lockTime=0;saveData('his_accounts',accounts);
+  var dept='';
+  if(acc.role===ROLES.DOCTOR){
+    var docs=AD(),d=null;for(var j=0;j<docs.length;j++){if(docs[j].id===acc.username){d=docs[j];break;}}
+    if(d)dept=d.dept||'';
+  }
+  g_user={username:acc.username,name:acc.realName,role:acc.role,gender:acc.gender,dept:dept,loginTime:nowStr()};
+  try{localStorage.setItem('his_session',JSON.stringify(g_user));}catch(e){}
+  refreshSidebar();refreshUserbar();
+  if(g_user.role===ROLES.PATIENT)showPage('patient_dashboard');else showPage('dashboard');
+  addLog('登录系统',acc.username,acc.realName+' ('+ROLE_NAMES[acc.role]+')');
+  return null;
+}
+
+function doPatientLogin(patientId,idCard){
+  var patients=AP();
+  var p=null;
+  for(var i=0;i<patients.length;i++){if(patients[i].id===patientId){p=patients[i];break;}}
+  if(!p)return'患者编号不存在';
+  var card=(p.idCard||'').replace(/\s/g,''),input=(idCard||'').replace(/\s/g,'');
+  if(card!==input)return'身份证号不匹配';
+  g_user={username:p.id,name:p.name,role:ROLES.PATIENT,gender:p.gender,loginTime:nowStr()};
+  try{localStorage.setItem('his_session',JSON.stringify(g_user));}catch(e){}
+  refreshSidebar();refreshUserbar();
+  showPage('patient_dashboard');
+  addLog('患者登录',p.id,p.name);
+  return null;
+}
+
+function doLogout(){
+  addLog('退出系统',g_user?g_user.username:'','');
+  g_user=null;
+  try{localStorage.removeItem('his_session');}catch(e){}
+  refreshSidebar();refreshUserbar();
+  showPage('login');
+}
+
+function showPage(id){
+  currentPage=id;
+  if(!checkPermission(id)){
+    var main=document.getElementById('main');
+    main.innerHTML='<div class="placeholder-page"><div class="ph-icon">🔒</div><h3>当前角色无权访问该功能</h3><p>请切换账号或联系管理员。</p></div>';
+    return;
+  }
+  var main=document.getElementById('main');main.innerHTML='';
+  var fn=renderers[id];
+  if(fn){fn(main);}else{
+    main.innerHTML='<div class="placeholder-page"><div class="ph-icon">🚧</div><h3>待补齐</h3><p>该功能（'+id+'）正在从C后端对齐中，暂未完全实现。</p></div>';
+  }
+  var sidebar=document.getElementById('sidebar-menu');
+  if(sidebar){
+    var items=sidebar.querySelectorAll('.menu-item');
+    for(var i=0;i<items.length;i++){items[i].classList.remove('active');if(items[i].dataset.page===id)items[i].classList.add('active');}
+  }
+}
+
+document.getElementById('sidebar').addEventListener('click',function(e){
+  var btn=e.target.closest('.menu-item');
+  if(btn){showPage(btn.dataset.page);}
+});
+
+// ==================== 页面渲染器 ====================
+var renderers={};
+
+// ---- 登录页面 ----
+renderers.login=function(main){
+  var h='<div class="login-container"><div class="login-box"><h2>🏥 社区智慧医疗 HIS</h2><div class="subtitle">请选择登录方式</div>';
+  h+='<div class="tab-row"><button class="tab-btn active" id="tab-staff">员工登录</button><button class="tab-btn" id="tab-patient">患者自助</button></div>';
+  h+='<div id="login-form-staff"><div class="field"><label>工号 / 用户名</label><input type="text" id="login-username" placeholder="请输入工号"></div>';
+  h+='<div class="field"><label>密码</label><input type="password" id="login-password" placeholder="请输入密码"></div>';
+  h+='<button class="btn-login" id="btn-staff-login">登 录</button></div>';
+  h+='<div id="login-form-patient" style="display:none;"><div class="field"><label>患者编号</label><input type="text" id="login-pid" placeholder="请输入患者编号（如 P-1001）"></div>';
+  h+='<div class="field"><label>身份证号</label><input type="text" id="login-idcard" placeholder="请输入身份证号"></div>';
+  h+='<button class="btn-login" id="btn-patient-login">登 录</button></div>';
+  h+='<div class="error-msg" id="login-error"></div>';
+  h+='<p style="text-align:center;margin-top:16px;font-size:13px;color:#999;">';
+  h+='<a href="javascript:showPage(\'patient_self_service\')" style="color:#2a7ab5;">🤗 患者自助服务</a>（无需登录，可直接建档/挂号/预约）&nbsp;|&nbsp;';
+  h+='<a href="javascript:showPage(\'bigscreen\')" style="color:#2a7ab5;">🏥 医疗大屏</a></p>';
+  h+='</div></div>';
+  main.innerHTML=h;
+
+  document.getElementById('tab-staff').onclick=function(){
+    document.getElementById('tab-staff').classList.add('active');
+    document.getElementById('tab-patient').classList.remove('active');
+    document.getElementById('login-form-staff').style.display='block';
+    document.getElementById('login-form-patient').style.display='none';
+    document.getElementById('login-error').textContent='';
+  };
+  document.getElementById('tab-patient').onclick=function(){
+    document.getElementById('tab-patient').classList.add('active');
+    document.getElementById('tab-staff').classList.remove('active');
+    document.getElementById('login-form-staff').style.display='none';
+    document.getElementById('login-form-patient').style.display='block';
+    document.getElementById('login-error').textContent='';
+  };
+  document.getElementById('btn-staff-login').onclick=function(){
+    var u=document.getElementById('login-username').value.trim();
+    var p=document.getElementById('login-password').value.trim();
+    if(!u||!p){document.getElementById('login-error').textContent='请输入账号和密码';return;}
+    var err=doInternalLogin(u,p);
+    if(err){document.getElementById('login-error').textContent=err;}else{toast('登录成功');}
+  };
+  document.getElementById('btn-patient-login').onclick=function(){
+    var pid=document.getElementById('login-pid').value.trim();
+    var ic=document.getElementById('login-idcard').value.trim();
+    if(!pid||!ic){document.getElementById('login-error').textContent='请输入患者编号和身份证号';return;}
+    var err=doPatientLogin(pid,ic);
+    if(err){document.getElementById('login-error').textContent=err;}else{toast('登录成功，欢迎 '+g_user.name);}
+  };
+  document.getElementById('login-username').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('btn-staff-login').click();});
+  document.getElementById('login-password').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('btn-staff-login').click();});
+  document.getElementById('login-pid').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('btn-patient-login').click();});
+  document.getElementById('login-idcard').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('btn-patient-login').click();});
+};
+
+// ---- 系统首页 ----
+renderers.dashboard=function(main){
+  var ps=AP(),ds=AD(),deps=AE(),ms=AM(),regs=AR(),apts=AA(),wq=AW(),ips=AI(),bills=AB(),logs=AL();
+  var consultTotal=regs.filter(function(r){return r.status==='已接诊';}).length;
+  var waitTotal=wq.filter(function(w){return w.status==='候诊中';}).length;
+  var hospTotal=ips.filter(function(ip){return ip.status==='住院中';}).length;
+  var feeTotal=bills.reduce(function(s,b){return s+b.amount;},0);
+  var aptCount=apts.filter(function(a){return a.status==='已预约';}).length;
+
+  var h='<h2 class="page-title">系统首页 · 社区智慧医疗信息管理系统</h2>';
+  h+='<div class="stat-grid">';
+  h+=scard(ps.length,'患者总数','#2a7ab5');h+=scard(ds.length,'医生总数','#27a844');
+  h+=scard(deps.length,'科室总数','#e8900c');h+=scard(ms.length,'药品总数','#0f7b8a');
+  h+=scard(regs.length,'挂号数','#6f42c1');h+=scard(aptCount,'预约数','#d9304e');
+  h+=scard(waitTotal,'候诊人数','#e8900c');h+=scard(consultTotal,'已接诊数','#27a844');
+  h+=scard(hospTotal,'住院人数','#1a3a5c');h+=scard(feeTotal.toFixed(2),'收费总额(¥)','#d9304e');
+  h+='</div>';
+  h+='<h3 style="margin:16px 0 8px;color:#1a3a5c;">系统运行日志（最近20条）</h3><div class="log-list">';
+  var recent=logs.slice(-20).reverse();
+  if(recent.length===0)h+='<p style="color:#999;">暂无日志</p>';
+  else recent.forEach(function(l){h+='<div class="log-item">['+l.time+'] <b>'+l.operation+'</b> '+l.target+' — '+l.description+'</div>';});
+  h+='</div>';
+  h+='<h3 style="margin:16px 0 8px;color:#1a3a5c;">当前系统状态</h3>';
+  h+=makeTable([{h:'检查项目',k:'item'},{h:'状态',k:'status'},{h:'说明',k:'desc'}],[
+    {item:'数据持久化',status:'正常',desc:'localStorage 正常读写，刷新不丢失'},
+    {item:'患者档案',status:'正常',desc:ps.length+' 条记录'},
+    {item:'医生排班',status:'正常',desc:ds.filter(function(d){return d.onDuty;}).length+' 位医生在岗'},
+    {item:'药品库存',status:'正常',desc:ms.filter(function(m){return m.stock<50;}).length+' 种低库存'},
+    {item:'候诊队列',status:'正常',desc:waitTotal+' 人在候诊'}
+  ]);
+  main.innerHTML=h;
+};
+function scard(num,label,color){return '<div class="stat-card" style="border-left-color:'+color+'"><div class="stat-num">'+num+'</div><div class="stat-label">'+label+'</div></div>';}
+
+// ---- 系统日志 ----
+renderers.logs=function(main){
+  var logs=AL().slice().reverse();
+  var h='<h2 class="page-title">系统日志</h2><div class="log-list" style="max-height:none;">';
+  if(logs.length===0)h+='<p style="color:#999;">暂无日志</p>';
+  else logs.forEach(function(l){h+='<div class="log-item">['+l.time+'] <b>'+l.operation+'</b> '+l.target+' — '+l.description+'</div>';});
+  h+='</div>';main.innerHTML=h;
+};
+
+// ---- 患者管理 ----
+renderers.patients=function(main){
+  main.innerHTML='<h2 class="page-title">患者管理</h2><div class="toolbar"><input id="psearch" placeholder="搜索姓名/编号/身份证..." style="width:220px;"><button class="btn btn-primary" id="padd">新增患者</button></div><div id="ptable"></div>';
+  refreshPT();document.getElementById('psearch').oninput=refreshPT;
+  document.getElementById('padd').onclick=function(){patientForm(null);};
+};
+function refreshPT(){
+  var list=AP(),q=(document.getElementById('psearch')||{}).value||'';
+  if(q)list=list.filter(function(p){return p.id.indexOf(q)>=0||p.name.indexOf(q)>=0||(p.idCard||'').indexOf(q)>=0;});
+  document.getElementById('ptable').innerHTML=makeTable(coldef(['编号','姓名','性别','年龄','电话','身份证号','状态'],['id','name','gender','age','phone','idCard','status']),list,function(r){
+    return '<button class="btn btn-info btn-sm" onclick="patientForm(\''+r.id+'\')">编辑</button> '+
+           '<button class="btn btn-danger btn-sm" onclick="delPatient(\''+r.id+'\')">删除</button>';
+  });
+}
+function patientForm(pid){
+  var list=AP(),p=pid?list.find(function(x){return x.id===pid;}):null;
+  var data=p||{id:'',name:'',gender:'男',age:'',phone:'',idCard:'',address:'',complaint:'',status:'待诊',balance:'0'};
+  modal(p?'修改患者':'新增患者',
+    '<div class="form-row"><label>编号</label><input name="id" value="'+data.id+'" '+(p?'readonly':'placeholder="自动生成"')+'></div>'+
+    '<div class="form-row"><label>姓名</label><input name="name" value="'+data.name+'" required></div>'+
+    '<div class="form-row"><label>性别</label><select name="gender"><option '+(data.gender==='男'?'selected':'')+'>男</option><option '+(data.gender==='女'?'selected':'')+'>女</option></select></div>'+
+    '<div class="form-row"><label>年龄</label><input name="age" type="number" value="'+data.age+'"></div>'+
+    '<div class="form-row"><label>电话</label><input name="phone" value="'+data.phone+'"></div>'+
+    '<div class="form-row"><label>身份证号</label><input name="idCard" value="'+data.idCard+'"></div>'+
+    '<div class="form-row"><label>住址</label><input name="address" value="'+data.address+'"></div>'+
+    '<div class="form-row"><label>病情描述</label><textarea name="complaint">'+data.complaint+'</textarea></div>'+
+    '<div class="form-row"><label>状态</label><select name="status"><option value="待诊">待诊</option><option value="候诊中">候诊中</option><option value="已接诊">已接诊</option><option value="住院中">住院中</option><option value="已完成">已完成</option></select></div>'+
+    '<div class="form-row"><label>余额</label><input name="balance" type="number" value="'+data.balance+'"></div>',
+    function(d){
+      if(!d.name)return toast('姓名不能为空',1);
+      var list2=AP();
+      if(p){var idx=list2.findIndex(function(x){return x.id===pid;});if(idx>=0){list2[idx].name=d.name;list2[idx].gender=d.gender;list2[idx].age=parseInt(d.age)||0;list2[idx].phone=d.phone;list2[idx].idCard=d.idCard;list2[idx].address=d.address;list2[idx].complaint=d.complaint;list2[idx].status=d.status;list2[idx].balance=parseFloat(d.balance)||0;}}
+      else{list2.push({id:d.id||nextId(list2,'P'),name:d.name,gender:d.gender,age:parseInt(d.age)||0,phone:d.phone,idCard:d.idCard,address:d.address,complaint:d.complaint,status:d.status||'待诊',balance:parseFloat(d.balance)||0,emergency:0,blacklist:0});}
+      SP(list2);refreshPT();addLog(p?'修改患者':'新增患者',d.id||nextId(AP(),'P'),d.name);toast(p?'修改成功':'新增成功');
+    }
+  );
+}
+function delPatient(pid){if(!confirm('确定删除患者 '+pid+' 吗？'))return;var l=AP();var i=l.findIndex(function(x){return x.id===pid;});if(i>=0){l.splice(i,1);SP(l);refreshPT();addLog('删除患者',pid,'');toast('已删除');}}
+window.patientForm=patientForm;window.delPatient=delPatient;
+
+// ---- 医生管理 ----
+renderers.doctors=function(main){
+  main.innerHTML='<h2 class="page-title">医生管理</h2><div class="toolbar"><input id="dsearch" placeholder="搜索姓名/编号/科室..." style="width:220px;"><button class="btn btn-primary" id="dadd">新增医生</button></div><div id="dtable"></div>';
+  refreshDT();document.getElementById('dsearch').oninput=refreshDT;
+  document.getElementById('dadd').onclick=function(){doctorForm(null);};
+};
+function refreshDT(){
+  var list=AD(),q=(document.getElementById('dsearch')||{}).value||'';
+  if(q)list=list.filter(function(d){return d.id.indexOf(q)>=0||d.name.indexOf(q)>=0||d.dept.indexOf(q)>=0;});
+  document.getElementById('dtable').innerHTML=makeTable(coldef(['编号','姓名','性别','科室','职称','出诊状态','挂号费','剩余号源'],['id','name','gender','dept','title','onDuty','regFee','remainSlots']),list,function(r){
+    return '<button class="btn btn-info btn-sm" onclick="doctorForm(\''+r.id+'\')">编辑</button> '+
+           '<button class="btn btn-danger btn-sm" onclick="delDoctor(\''+r.id+'\')">删除</button>';
+  });
+}
+function doctorForm(did){
+  var list=AD(),d=did?list.find(function(x){return x.id===did;}):null;
+  var data=d||{id:'',name:'',gender:'男',dept:'',title:'主治医师',onDuty:'1',regFee:'30',remainSlots:'20'};
+  modal(d?'修改医生':'新增医生',
+    '<div class="form-row"><label>编号</label><input name="id" value="'+data.id+'" '+(d?'readonly':'placeholder="自动生成"')+'></div>'+
+    '<div class="form-row"><label>姓名</label><input name="name" value="'+data.name+'" required></div>'+
+    '<div class="form-row"><label>性别</label><select name="gender"><option>男</option><option>女</option></select></div>'+
+    '<div class="form-row"><label>科室</label><input name="dept" value="'+data.dept+'" required></div>'+
+    '<div class="form-row"><label>职称</label><select name="title"><option>主任医师</option><option>副主任医师</option><option>主治医师</option><option>住院医师</option></select></div>'+
+    '<div class="form-row"><label>出诊状态</label><select name="onDuty"><option value="1">在岗</option><option value="0">离岗</option></select></div>'+
+    '<div class="form-row"><label>挂号费</label><input name="regFee" type="number" value="'+data.regFee+'"></div>'+
+    '<div class="form-row"><label>剩余号源</label><input name="remainSlots" type="number" value="'+data.remainSlots+'"></div>',
+    function(dd){
+      if(!dd.name||!dd.dept)return toast('姓名和科室不能为空',1);
+      var list2=AD();
+      if(d){var i=list2.findIndex(function(x){return x.id===did;});if(i>=0){list2[i].name=dd.name;list2[i].gender=dd.gender;list2[i].dept=dd.dept;list2[i].title=dd.title;list2[i].onDuty=parseInt(dd.onDuty);list2[i].regFee=parseFloat(dd.regFee)||0;list2[i].remainSlots=parseInt(dd.remainSlots)||0;}}
+      else{list2.push({id:dd.id||nextId(list2,'D'),name:dd.name,gender:dd.gender,dept:dd.dept,title:dd.title,onDuty:parseInt(dd.onDuty),regFee:parseFloat(dd.regFee)||0,remainSlots:parseInt(dd.remainSlots)||0});}
+      SD(list2);refreshDT();addLog(d?'修改医生':'新增医生',dd.id||'',dd.name);toast(d?'修改成功':'新增成功');
+    }
+  );
+}
+function delDoctor(did){if(!confirm('确定删除医生 '+did+' 吗？'))return;var l=AD();var i=l.findIndex(function(x){return x.id===did;});if(i>=0){l.splice(i,1);SD(l);refreshDT();addLog('删除医生',did,'');toast('已删除');}}
+window.doctorForm=doctorForm;window.delDoctor=delDoctor;
+
+// ---- 科室管理 ----
+renderers.departments=function(main){
+  main.innerHTML='<h2 class="page-title">科室管理</h2><div class="toolbar"><input id="desearch" placeholder="搜索名称/位置..." style="width:220px;"><button class="btn btn-primary" id="deadd">新增科室</button></div><div id="detable"></div>';
+  refreshDET();document.getElementById('desearch').oninput=refreshDET;
+  document.getElementById('deadd').onclick=function(){deptForm(null);};
+};
+function refreshDET(){
+  var list=AE(),q=(document.getElementById('desearch')||{}).value||'';
+  if(q)list=list.filter(function(d){return d.id.indexOf(q)>=0||d.name.indexOf(q)>=0||d.location.indexOf(q)>=0;});
+  document.getElementById('detable').innerHTML=makeTable(['编号','名称','位置','负责人','简介'],list,function(r){
+    return '<button class="btn btn-info btn-sm" onclick="deptForm(\''+r.id+'\')">编辑</button> '+
+           '<button class="btn btn-danger btn-sm" onclick="delDept(\''+r.id+'\')">删除</button>';
+  });
+}
+function deptForm(did){
+  var list=AE(),d=did?list.find(function(x){return x.id===did;}):null;
+  var data=d||{id:'',name:'',location:'',head:'',desc:''};
+  modal(d?'修改科室':'新增科室',
+    '<div class="form-row"><label>编号</label><input name="id" value="'+data.id+'" '+(d?'readonly':'placeholder="自动生成"')+'></div>'+
+    '<div class="form-row"><label>名称</label><input name="name" value="'+data.name+'" required></div>'+
+    '<div class="form-row"><label>位置</label><input name="location" value="'+data.location+'"></div>'+
+    '<div class="form-row"><label>负责人</label><input name="head" value="'+data.head+'"></div>'+
+    '<div class="form-row"><label>简介</label><textarea name="desc">'+data.desc+'</textarea></div>',
+    function(dd){
+      if(!dd.name)return toast('科室名称不能为空',1);
+      var list2=AE();
+      if(d){var i=list2.findIndex(function(x){return x.id===did;});if(i>=0){list2[i].name=dd.name;list2[i].location=dd.location;list2[i].head=dd.head;list2[i].desc=dd.desc;}}
+      else{list2.push({id:dd.id||nextId(list2,'DEPT'),name:dd.name,location:dd.location,head:dd.head,desc:dd.desc});}
+      SE(list2);refreshDET();addLog(d?'修改科室':'新增科室',dd.id||'',dd.name);toast(d?'修改成功':'新增成功');
+    }
+  );
+}
+function delDept(did){if(!confirm('确定删除科室 '+did+' 吗？'))return;var l=AE();var i=l.findIndex(function(x){return x.id===did;});if(i>=0){l.splice(i,1);SE(l);refreshDET();addLog('删除科室',did,'');toast('已删除');}}
+window.deptForm=deptForm;window.delDept=delDept;
+
+// ---- 药品管理 ----
+renderers.medicines=function(main){
+  main.innerHTML='<h2 class="page-title">药品管理</h2><div class="toolbar"><input id="msearch" placeholder="搜索名称/类别..." style="width:220px;"><button class="btn btn-primary" id="madd">新增药品</button></div><div id="mtable"></div>';
+  refreshMT();document.getElementById('msearch').oninput=refreshMT;
+  document.getElementById('madd').onclick=function(){medForm(null);};
+};
+function refreshMT(){
+  var list=AM(),q=(document.getElementById('msearch')||{}).value||'';
+  if(q)list=list.filter(function(m){return m.id.indexOf(q)>=0||m.name.indexOf(q)>=0||m.category.indexOf(q)>=0;});
+  document.getElementById('mtable').innerHTML=makeTable(
+    coldef(['编号','名称','类别','单价','库存','生产厂家','有效期'],['id','name','category','price','stock','manufacturer','expiry']),list,function(r){
+    return '<button class="btn btn-info btn-sm" onclick="medForm(\''+r.id+'\')">编辑</button> '+
+           '<button class="btn btn-danger btn-sm" onclick="delMed(\''+r.id+'\')">删除</button>';
+  });
+}
+function medForm(mid){
+  var list=AM(),m=mid?list.find(function(x){return x.id===mid;}):null;
+  var data=m||{id:'',name:'',category:'',price:'',stock:'',manufacturer:'',expiry:''};
+  modal(m?'修改药品':'新增药品',
+    '<div class="form-row"><label>编号</label><input name="id" value="'+data.id+'" '+(m?'readonly':'placeholder="自动生成"')+'></div>'+
+    '<div class="form-row"><label>名称</label><input name="name" value="'+data.name+'" required></div>'+
+    '<div class="form-row"><label>类别</label><input name="category" value="'+data.category+'"></div>'+
+    '<div class="form-row"><label>单价</label><input name="price" type="number" step="0.01" value="'+data.price+'"></div>'+
+    '<div class="form-row"><label>库存</label><input name="stock" type="number" value="'+data.stock+'"></div>'+
+    '<div class="form-row"><label>厂家</label><input name="manufacturer" value="'+data.manufacturer+'"></div>'+
+    '<div class="form-row"><label>有效期</label><input name="expiry" type="date" value="'+data.expiry+'"></div>',
+    function(dd){
+      if(!dd.name)return toast('药品名称不能为空',1);
+      var list2=AM();
+      if(m){var i=list2.findIndex(function(x){return x.id===mid;});if(i>=0){list2[i].name=dd.name;list2[i].category=dd.category;list2[i].price=parseFloat(dd.price)||0;list2[i].stock=parseInt(dd.stock)||0;list2[i].manufacturer=dd.manufacturer;list2[i].expiry=dd.expiry;}}
+      else{list2.push({id:dd.id||nextId(list2,'M'),name:dd.name,category:dd.category,price:parseFloat(dd.price)||0,stock:parseInt(dd.stock)||0,manufacturer:dd.manufacturer,expiry:dd.expiry});}
+      SM(list2);refreshMT();addLog(m?'修改药品':'新增药品',dd.id||'',dd.name);toast(m?'修改成功':'新增成功');
+    }
+  );
+}
+function delMed(mid){if(!confirm('确定删除药品 '+mid+' 吗？'))return;var l=AM();var i=l.findIndex(function(x){return x.id===mid;});if(i>=0){l.splice(i,1);SM(l);refreshMT();addLog('删除药品',mid,'');toast('已删除');}}
+window.medForm=medForm;window.delMed=delMed;
+
+// ---- 现场挂号 ----
+renderers.reglive=function(main){
+  var ds=AD(),ps=AP(),deps=AE();
+  var h='<h2 class="page-title">现场挂号</h2><div class="toolbar">患者：<select id="rl-patient" style="width:150px;"></select> 科室：<select id="rl-dept" style="width:150px;"></select> 医生：<select id="rl-doctor" style="width:150px;"></select> <button class="btn btn-primary" id="rl-submit">确认挂号</button></div><div id="rl-table"></div>';
+  main.innerHTML=h;
+  var psEl=document.getElementById('rl-patient');ps.forEach(function(p){psEl.innerHTML+='<option value="'+p.id+'">'+p.id+' '+p.name+'</option>';});
+  var dEl=document.getElementById('rl-dept');deps.forEach(function(d){dEl.innerHTML+='<option value="'+d.name+'">'+d.name+'</option>';});
+  function updDoc(){
+    var ddEl=document.getElementById('rl-doctor');ddEl.innerHTML='';
+    ds.forEach(function(d){if(d.dept===dEl.value&&d.onDuty&&d.remainSlots>0)ddEl.innerHTML+='<option value="'+d.id+'">'+d.name+' ¥'+d.regFee+' (余'+d.remainSlots+')</option>';});
+  }
+  dEl.onchange=updDoc;updDoc();
+  refreshRL();
+  document.getElementById('rl-submit').onclick=function(){
+    var pid=psEl.value,did=document.getElementById('rl-doctor').value;
+    if(!pid||!did)return toast('请选择患者和医生',1);
+    var p=ps.find(function(x){return x.id===pid;}),d=ds.find(function(x){return x.id===did;});
+    if(!d||d.remainSlots<=0)return toast('该医生号源已满',1);
+    var regs=AR();var rid=nextId(regs,'REG');
+    regs.push({id:rid,patientId:pid,patientName:p.name,dept:d.dept,doctorId:did,doctorName:d.name,fee:d.regFee,time:nowStr(),status:'待候诊',regType:'现场号',queueNo:0});
+    SR(regs);d.remainSlots-=1;SD(ds);
+    addLog('现场挂号',rid,p.name+' → '+d.name+' ¥'+d.regFee);toast('挂号成功！编号：'+rid);
+    refreshRL();updDoc();
+  };
+};
+function refreshRL(){
+  var regs=AR();
+  document.getElementById('rl-table').innerHTML=makeTable(coldef(['挂号编号','患者','科室','医生','费用','时间','类型','状态'],['id','patientName','dept','doctorName','fee','time','regType','status']),regs);
+}
+
+// ---- 预约挂号 ----
+renderers.regappt=function(main){
+  var ps=AP(),ds=AD(),deps=AE();
+  var h='<h2 class="page-title">预约挂号</h2><div class="toolbar"><b>预约新号：</b> 患者<select id="ra-patient" style="width:150px;"></select> 科室<select id="ra-dept" style="width:150px;"></select> 医生<select id="ra-doctor" style="width:150px;"></select> 日期<input id="ra-date" type="date" style="width:140px;"> 时段<select id="ra-slot" style="width:150px;"><option>上午 08:00-09:00</option><option>上午 09:00-10:00</option><option>上午 10:00-11:00</option><option>下午 14:00-15:00</option><option>下午 15:00-16:00</option></select> <button class="btn btn-primary" id="ra-submit">确认预约</button></div><div id="ra-table"></div>';
+  main.innerHTML=h;
+  var psEl=document.getElementById('ra-patient');ps.forEach(function(p){psEl.innerHTML+='<option value="'+p.id+'">'+p.name+'</option>';});
+  var dEl=document.getElementById('ra-dept');deps.forEach(function(d){dEl.innerHTML+='<option value="'+d.name+'">'+d.name+'</option>';});
+  function updDoc2(){var ddEl=document.getElementById('ra-doctor');ddEl.innerHTML='';ds.forEach(function(d){if(d.dept===dEl.value&&d.onDuty)ddEl.innerHTML+='<option value="'+d.id+'">'+d.name+' ¥'+d.regFee+'</option>';});}
+  dEl.onchange=updDoc2;updDoc2();document.getElementById('ra-date').value='2026-05-07';
+  refreshRA();
+  document.getElementById('ra-submit').onclick=function(){
+    var pid=psEl.value,did=document.getElementById('ra-doctor').value,date=document.getElementById('ra-date').value,slot=document.getElementById('ra-slot').value;
+    if(!pid||!did||!date)return toast('请完整填写',1);
+    var p=ps.find(function(x){return x.id===pid;}),d=ds.find(function(x){return x.id===did;});
+    var apts=AA();var aid=nextId(apts,'APT');
+    apts.push({id:aid,patientId:pid,patientName:p.name,dept:d.dept,doctorId:did,doctorName:d.name,apptDate:date,apptSlot:slot,fee:d.regFee,status:'已预约'});
+    SA(apts);addLog('预约挂号',aid,p.name+' → '+d.name+' '+date);toast('预约成功！编号：'+aid);refreshRA();
+  };
+};
+function refreshRA(){
+  var apts=AA();
+  document.getElementById('ra-table').innerHTML='<br>'+makeTable(coldef(['预约编号','患者','科室','医生','日期','时段','费用','状态'],['id','patientName','dept','doctorName','apptDate','apptSlot','fee','status']),apts,function(r){
+    if(r.status==='已预约')return '<button class="btn btn-success btn-sm" onclick="aptCheckin(\''+r.id+'\')">转为挂号</button> <button class="btn btn-danger btn-sm" onclick="aptCancel(\''+r.id+'\')">取消预约</button>';
+    return '';
+  });
+}
+function aptCheckin(aid){
+  var apts=AA(),a=apts.find(function(x){return x.id===aid;});
+  if(!a||a.status!=='已预约')return;
+  var ds=AD(),d=ds.find(function(x){return x.id===a.doctorId;});
+  if(!d||d.remainSlots<=0)return toast('号源已满',1);
+  a.status='已到诊';SA(apts);d.remainSlots-=1;SD(ds);
+  var regs=AR();var rid=nextId(regs,'REG');
+  regs.push({id:rid,patientId:a.patientId,patientName:a.patientName,dept:a.dept,doctorId:a.doctorId,doctorName:a.doctorName,fee:a.fee,time:nowStr(),status:'待候诊',regType:'预约转挂号',queueNo:0});
+  SR(regs);addLog('预约转挂号',rid,a.patientName);toast('已转为挂号：'+rid);refreshRA();
+}
+function aptCancel(aid){
+  var apts=AA(),a=apts.find(function(x){return x.id===aid;});
+  if(!a||a.status!=='已预约')return toast('无法取消',1);
+  if(!confirm('确定取消预约 '+aid+' 吗？'))return;
+  a.status='已取消';SA(apts);addLog('取消预约',aid,a.patientName);toast('已取消');refreshRA();
+}
+window.aptCheckin=aptCheckin;window.aptCancel=aptCancel;
+
+// ---- 候诊队列 ----
+renderers.waitqueue=function(main){
+  var ds=AD();
+  var h='<h2 class="page-title">候诊队列</h2><div class="toolbar">筛选医生：<select id="wq-filter" style="width:180px;"><option value="">全部</option></select> <button class="btn btn-warning" id="wq-call">叫号</button> <button class="btn btn-danger" id="wq-skip">标记过号</button> <button class="btn btn-info" id="wq-requeue">重新排队</button></div><div id="wq-table"></div>';
+  main.innerHTML=h;
+  var dEl=document.getElementById('wq-filter');ds.forEach(function(d){dEl.innerHTML+='<option value="'+d.id+'">'+d.name+' ('+d.dept+')</option>';});
+  dEl.onchange=refreshWQ;
+  refreshWQ();
+  document.getElementById('wq-call').onclick=function(){
+    var wq=AW(),did=dEl.value;
+    var cand=wq.filter(function(w){return w.status==='候诊中'&&(!did||(AD().find(function(dd){return dd.name===w.doctorName&&dd.id===did;})));});
+    if(cand.length===0)return toast('没有可叫号的患者',1);
+    var t=cand[0];t.status='接诊中';SW(wq);
+    var regs=AR();var r=regs.find(function(x){return x.id===t.regId;});if(r)r.status='接诊中';SR(regs);
+    addLog('叫号',t.queueId,t.patientName);toast('已叫号：'+t.patientName);refreshWQ();
+  };
+  document.getElementById('wq-skip').onclick=function(){
+    if(!dEl.value)return toast('请先筛选医生',1);
+    var wq=AW(),cand=wq.filter(function(w){return w.status==='候诊中'&&AD().find(function(dd){return dd.name===w.doctorName&&dd.id===dEl.value;});});
+    if(cand.length===0)return toast('没有可过号的患者',1);
+    cand[0].status='已过号';SW(wq);
+    var regs=AR(),r=regs.find(function(x){return x.id===cand[0].regId;});if(r)r.status='已过号';SR(regs);
+    addLog('过号',cand[0].queueId,cand[0].patientName);toast('已过号：'+cand[0].patientName);refreshWQ();
+  };
+  document.getElementById('wq-requeue').onclick=function(){
+    if(!dEl.value)return toast('请先筛选医生',1);
+    var wq=AW(),cand=wq.filter(function(w){return w.status==='已过号'&&AD().find(function(dd){return dd.name===w.doctorName&&dd.id===dEl.value;});});
+    if(cand.length===0)return toast('没有可重新排队的患者',1);
+    cand[0].status='候诊中';SW(wq);
+    var regs=AR(),r=regs.find(function(x){return x.id===cand[0].regId;});if(r)r.status='候诊中';SR(regs);
+    addLog('重新排队',cand[0].queueId,cand[0].patientName);toast('已重新排队：'+cand[0].patientName);refreshWQ();
+  };
+};
+function refreshWQ(){
+  var wq=AW(),did=(document.getElementById('wq-filter')||{}).value||'';
+  var ds=AD();if(did){var dn=ds.find(function(d){return d.id===did;});if(dn)wq=wq.filter(function(w){return w.doctorName===dn.name;});}
+  var h='<button class="btn btn-success btn-sm" id="wq-add-btn" style="margin-bottom:8px;">将待候诊患者加入队列</button> ';
+  h+='<button class="btn btn-info btn-sm" id="wq-add-direct" style="margin-bottom:8px;">手动加入排队</button>';
+  h+=makeTable(coldef(['排队编号','挂号编号','患者','科室','医生','排队序号','状态'],['queueId','regId','patientName','dept','doctorName','queueNo','status']),wq);
+  document.getElementById('wq-table').innerHTML=h;
+  document.getElementById('wq-add-btn').onclick=function(){
+    var regs=AR(),wq2=AW();
+    var pending=regs.filter(function(r){return r.status==='待候诊';});
+    if(pending.length===0)return toast('没有待候诊的挂号记录',1);
+    var r=pending[0];var qno=1;wq2.forEach(function(w){if(w.doctorName===r.doctorName&&w.status==='候诊中')qno++;});
+    var qid=nextId(wq2,'Q');
+    wq2.push({queueId:qid,regId:r.id,patientId:r.patientId,patientName:r.patientName,dept:r.dept,doctorName:r.doctorName,queueNo:qno,status:'候诊中'});
+    r.status='候诊中';r.queueNo=qno;SR(regs);SW(wq2);
+    addLog('加入候诊队列',qid,r.patientName);toast('已加入队列');refreshWQ();
+  };
+  document.getElementById('wq-add-direct').onclick=function(){
+    var regs=AR();var opts='';regs.forEach(function(r){opts+='<option value="'+r.id+'">'+r.id+' '+r.patientName+' ('+r.status+')</option>';});
+    modal('手动加入排队','<div class="form-row"><label>挂号记录</label><select name="regId">'+opts+'</select></div>',function(dd){
+      var r=regs.find(function(x){return x.id===dd.regId;});if(!r)return toast('请选择',1);
+      if(r.status==='候诊中'||r.status==='接诊中')return toast('已在队列中',1);
+      var wq2=AW();var qno=1;wq2.forEach(function(w){if(w.doctorName===r.doctorName&&w.status==='候诊中')qno++;});
+      qno=Math.max(qno,r.queueNo||1);
+      var qid=nextId(wq2,'Q');
+      wq2.push({queueId:qid,regId:r.id,patientId:r.patientId,patientName:r.patientName,dept:r.dept,doctorName:r.doctorName,queueNo:qno,status:'候诊中'});
+      r.status='候诊中';r.queueNo=qno;SR(regs);SW(wq2);
+      addLog('手动加入队列',qid,r.patientName);toast('已加入');refreshWQ();
+    });
+  };
+}
+
+// ---- 医生接诊 ----
+renderers.consult=function(main){
+  var ms=AM(),wq=AW();
+  var consulting=wq.filter(function(w){return w.status==='接诊中';});
+  var h='<h2 class="page-title">医生接诊</h2><div class="toolbar">选择接诊中患者：<select id="cs-patient" style="width:200px;">';
+  consulting.forEach(function(w){h+='<option value="'+w.queueId+'">'+w.patientName+' - '+w.dept+' - '+w.doctorName+'</option>';});
+  h+='</select> <button class="btn btn-primary" id="cs-start">开始接诊</button></div><div id="cs-form" style="display:none;background:#fff;padding:16px;border-radius:4px;box-shadow:0 1px 4px rgba(0,0,0,0.06);margin-bottom:12px;"><h3>诊断信息</h3><div class="form-row"><label>诊断结果</label><textarea id="cs-diag" rows="3" style="width:100%;"></textarea></div><div class="form-row"><label>医嘱</label><textarea id="cs-advice" rows="3" style="width:100%;"></textarea></div><h3>开处方</h3><div class="form-row"><label>药品</label><select id="cs-med" style="width:200px;"></select> 数量 <input id="cs-qty" type="number" value="1" style="width:60px;"> <button class="btn btn-success btn-sm" id="cs-addmed">添加药品</button></div><div id="cs-medlist" style="margin:8px 0;font-size:14px;"></div><button class="btn btn-primary" id="cs-complete" style="margin-top:10px;">完成接诊</button></div><div id="cs-history"></div>';
+  main.innerHTML=h;
+  var medSel=document.getElementById('cs-med');ms.forEach(function(m){medSel.innerHTML+='<option value="'+m.id+'">'+m.name+' (库存:'+m.stock+') ¥'+m.price+'</option>';});
+  var currentMeds=[];
+  document.getElementById('cs-start').onclick=function(){
+    if(!document.getElementById('cs-patient').value)return toast('请选择患者',1);
+    document.getElementById('cs-form').style.display='block';currentMeds=[];updateMedListUI();
+    document.getElementById('cs-diag').value='';document.getElementById('cs-advice').value='';
+    document.getElementById('cs-form').dataset.qid=document.getElementById('cs-patient').value;
+  };
+  document.getElementById('cs-addmed').onclick=function(){
+    var mid=document.getElementById('cs-med').value,qty=parseInt(document.getElementById('cs-qty').value)||1;
+    var mm=ms.find(function(x){return x.id===mid;});if(!mm)return;
+    if(qty>mm.stock)return toast('库存不足！当前库存:'+mm.stock,1);
+    currentMeds.push({medId:mm.id,medName:mm.name,qty:qty,price:mm.price});updateMedListUI();
+  };
+  document.getElementById('cs-complete').onclick=function(){
+    var qid=document.getElementById('cs-form').dataset.qid;
+    var wq2=AW(),w=wq2.find(function(x){return x.queueId===qid;});if(!w)return;
+    var diag=document.getElementById('cs-diag').value||'诊断完成';
+    var advice=document.getElementById('cs-advice').value||'遵医嘱';
+    w.status='已接诊';SW(wq2);
+    var regs=AR(),r=regs.find(function(x){return x.id===w.regId;});if(r)r.status='已接诊';SR(regs);
+    // update patient status
+    var ps=AP(),p=ps.find(function(x){return x.id===w.patientId;});if(p)p.status='已接诊';SP(ps);
+    if(currentMeds.length>0){
+      var rxs=AX();var rxid=nextId(rxs,'RX');
+      var total=0;currentMeds.forEach(function(x){total+=x.price*x.qty;});
+      rxs.push({id:rxid,regId:w.regId,patientId:w.patientId,patientName:w.patientName,doctorName:w.doctorName,medicines:currentMeds.slice(),total:total,time:nowStr(),status:'未发药'});
+      SX(rxs);
+      var ms2=AM();currentMeds.forEach(function(x){var mm=ms2.find(function(m2){return m2.id===x.medId;});if(mm)mm.stock-=x.qty;});SM(ms2);
+      addLog('开处方',rxid,w.patientName+' ¥'+total.toFixed(2));
+    }
+    var crs=AC();crs.push({recordId:nextId(crs,'CR'),patientId:w.patientId,patientName:w.patientName,doctorName:w.doctorName,diagnosis:diag,advice:advice,time:nowStr()});
+    SC(crs);addLog('完成接诊',w.patientName,diag);toast('接诊完成！'+w.patientName);
+    showPage('consult');
+  };
+  refreshConsultHistory();
+  window.removeMedItem=function(i){currentMeds.splice(i,1);updateMedListUI();};
+  function updateMedListUI(){
+    var h2='';currentMeds.forEach(function(x,i){h2+='<span style="display:inline-block;background:#e8f4fc;padding:4px 8px;margin:2px;border-radius:3px;">'+x.medName+' ×'+x.qty+' ¥'+(x.price*x.qty).toFixed(2)+' <a href="#" onclick="removeMedItem('+i+');return false;" style="color:#d9304e;text-decoration:none;">✕</a></span>';});
+    document.getElementById('cs-medlist').innerHTML=h2||'(未添加药品)';
+  }
+};
+function refreshConsultHistory(){
+  var crs=AC();
+  document.getElementById('cs-history').innerHTML='<h3 style="margin-top:16px;">接诊记录</h3>'+makeTable(coldef(['记录编号','患者','医生','诊断','医嘱','时间'],['recordId','patientName','doctorName','diagnosis','advice','time']),crs.slice().reverse());
+}
+
+// ---- 处方发药 ----
+renderers.prescribe=function(main){
+  main.innerHTML='<h2 class="page-title">处方/发药管理</h2><div id="rx-table"></div>';refreshRX();
+};
+function refreshRX(){
+  var rxs=AX();
+  document.getElementById('rx-table').innerHTML=makeTable(coldef(['处方编号','患者','医生','药品','金额','状态','时间'],['id','patientName','doctorName','_meds','total','status','time']),rxs,function(r){
+    var medStr=r.medicines.map(function(m){return m.medName+' ×'+m.qty;}).join(', ');
+    // override the _meds display
+    var tr=arguments.callee.caller; // won't work, need to handle differently
+    return '';
+  });
+  // Better approach: build manually
+  var h='<table><thead><tr><th>处方编号</th><th>患者</th><th>医生</th><th>药品明细</th><th>金额</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody>';
+  if(rxs.length===0)h+='<tr><td colspan="8" style="text-align:center;color:#999;">暂无数据</td></tr>';
+  else rxs.slice().reverse().forEach(function(rx){
+    var medStr=rx.medicines.map(function(m){return m.medName+' ×'+m.qty;}).join(', ');
+    h+='<tr><td>'+rx.id+'</td><td>'+rx.patientName+'</td><td>'+rx.doctorName+'</td><td>'+medStr+'</td><td>¥'+rx.total.toFixed(2)+'</td><td>'+rx.status+'</td><td>'+rx.time+'</td><td>';
+    if(rx.status==='未发药')h+='<button class="btn btn-success btn-sm" onclick="dispenseRx(\''+rx.id+'\')">发药</button>';
+    h+='</td></tr>';
+  });
+  h+='</tbody></table>';
+  document.getElementById('rx-table').innerHTML=h;
+}
+function dispenseRx(rxid){
+  var rxs=AX(),rx=rxs.find(function(x){return x.id===rxid;});
+  if(!rx||rx.status!=='未发药')return;
+  rx.status='已发药';rx.time=nowStr();SX(rxs);
+  var bills=AB();bills.push({id:nextId(bills,'BILL'),type:'药品费',patientId:rx.patientId,patientName:rx.patientName,amount:rx.total,time:nowStr(),status:'已收费',refId:rx.id});
+  SB(bills);addLog('发药',rxid,rx.patientName+' ¥'+rx.total.toFixed(2));toast('发药成功！');refreshRX();
+}
+window.dispenseRx=dispenseRx;
+
+// ---- 退号管理 ----
+renderers.refund=function(main){
+  main.innerHTML='<h2 class="page-title">退号管理</h2><div id="rf-table"></div>';refreshRF();
+};
+function refreshRF(){
+  var regs=AR();
+  document.getElementById('rf-table').innerHTML=makeTable(coldef(['挂号编号','患者','科室','医生','费用','状态'],['id','patientName','dept','doctorName','fee','status']),regs,function(r){
+    if(r.status==='待候诊'||r.status==='候诊中')return '<button class="btn btn-warning btn-sm" onclick="refundReg(\''+r.id+'\')">退号</button>';
+    if(r.status==='已退号')return '<span style="color:#999;">已退号</span>';
+    return '<span style="color:#999;">——</span>';
+  });
+}
+function refundReg(rid){
+  if(!confirm('确定退号 '+rid+' 吗？'))return;
+  var regs=AR(),r=regs.find(function(x){return x.id===rid;});
+  if(!r||(r.status!=='待候诊'&&r.status!=='候诊中'))return toast('不可退号',1);
+  r.status='已退号';SR(regs);
+  var ds=AD(),d=ds.find(function(x){return x.id===r.doctorId;});if(d)d.remainSlots+=1;SD(ds);
+  var wq=AW();for(var i=wq.length-1;i>=0;i--){if(wq[i].regId===rid&&(wq[i].status==='候诊中'||wq[i].status==='待候诊'))wq.splice(i,1);}SW(wq);
+  addLog('退号',rid,r.patientName);toast('退号成功，号源已恢复');refreshRF();
+}
+window.refundReg=refundReg;
+
+// ---- 住院管理 ----
+renderers.inpatient=function(main){
+  main.innerHTML='<h2 class="page-title">住院管理</h2><div class="toolbar"><button class="btn btn-primary" id="ip-add">新增住院</button></div><div id="ip-table"></div>';
+  refreshIP();
+  document.getElementById('ip-add').onclick=function(){ipForm(null);};
+};
+function refreshIP(){
+  var ips=AI();
+  document.getElementById('ip-table').innerHTML=makeTable(coldef(['住院编号','患者','科室','主治医生','病房','床位','入院时间','出院时间','状态','费用'],['id','patientName','dept','doctorName','ward','bed','admitTime','dischargeTime','status','fee']),ips,function(r){
+    if(r.status==='住院中')return '<button class="btn btn-info btn-sm" onclick="ipForm(\''+r.id+'\')">修改</button> <button class="btn btn-success btn-sm" onclick="dischargeIP(\''+r.id+'\')">办理出院</button>';
+    return '<button class="btn btn-info btn-sm" onclick="ipForm(\''+r.id+'\')">查看</button>';
+  });
+}
+function ipForm(iid){
+  var ips=AI(),ip=iid?ips.find(function(x){return x.id===iid;}):null;
+  var data=ip||{id:'',patientName:'',dept:'',doctorName:'',ward:'',bed:'',status:'住院中',fee:'0',deposit:'0'};
+  var ps=AP(),ds=AD();
+  var popts='';ps.forEach(function(p){popts+='<option value="'+p.id+'" data-name="'+p.name+'">'+p.name+' ('+p.id+')</option>';});
+  var dopts='';ds.forEach(function(d){dopts+='<option value="'+d.id+'" data-name="'+d.name+'" data-dept="'+d.dept+'">'+d.name+' ('+d.dept+')</option>';});
+  modal(ip?'修改住院记录':'新增住院记录',
+    (ip?'<div class="form-row"><label>编号</label><input name="id" value="'+data.id+'" readonly></div>':'')+
+    '<div class="form-row"><label>患者</label><select name="patientId">'+popts+'</select></div>'+
+    '<div class="form-row"><label>医生</label><select name="doctorId">'+dopts+'</select></div>'+
+    '<div class="form-row"><label>科室</label><input name="dept" value="'+data.dept+'"></div>'+
+    '<div class="form-row"><label>病房号</label><input name="ward" value="'+data.ward+'"></div>'+
+    '<div class="form-row"><label>床位号</label><input name="bed" value="'+data.bed+'"></div>'+
+    '<div class="form-row"><label>状态</label><select name="status"><option value="住院中">住院中</option><option value="已出院">已出院</option></select></div>'+
+    '<div class="form-row"><label>住院费用</label><input name="fee" type="number" step="0.01" value="'+data.fee+'"></div>'+
+    '<div class="form-row"><label>押金</label><input name="deposit" type="number" step="0.01" value="'+data.deposit+'"></div>',
+    function(dd){
+      if(!dd.patientId||!dd.doctorId)return toast('请选择患者和医生',1);
+      var selP=ps.find(function(x){return x.id===dd.patientId;});
+      var selD=ds.find(function(x){return x.id===dd.doctorId;});
+      var list2=AI();
+      if(ip){var i=list2.findIndex(function(x){return x.id===iid;});if(i>=0){list2[i].patientId=dd.patientId;list2[i].patientName=selP?selP.name:'';list2[i].dept=dd.dept;list2[i].doctorName=selD?selD.name:'';list2[i].ward=dd.ward;list2[i].bed=dd.bed;list2[i].status=dd.status;list2[i].fee=parseFloat(dd.fee)||0;list2[i].deposit=parseFloat(dd.deposit)||0;}}
+      else{list2.push({id:nextId(list2,'IN'),patientId:dd.patientId,patientName:selP?selP.name:'',dept:dd.dept,doctorName:selD?selD.name:'',ward:dd.ward,bed:dd.bed,admitTime:nowStr(),dischargeTime:'',status:'住院中',fee:parseFloat(dd.fee)||0,deposit:parseFloat(dd.deposit)||0});}
+      SI(list2);refreshIP();addLog(ip?'修改住院':'新增住院',dd.id||'',selP?selP.name:'');toast(ip?'更新成功':'登记成功');
+    }
+  );
+}
+function dischargeIP(iid){
+  if(!confirm('确定办理出院 '+iid+' 吗？'))return;
+  var ips=AI(),ip=ips.find(function(x){return x.id===iid;});
+  if(!ip||ip.status!=='住院中')return toast('不可出院',1);
+  ip.status='已出院';ip.dischargeTime=nowStr();SI(ips);
+  var bills=AB();bills.push({id:nextId(bills,'BILL'),type:'住院费',patientId:ip.patientId,patientName:ip.patientName,amount:ip.fee,time:nowStr(),status:'已收费',refId:ip.id});
+  SB(bills);
+  var ps=AP(),p=ps.find(function(x){return x.id===ip.patientId;});if(p)p.status='已完成';SP(ps);
+  addLog('办理出院',iid,ip.patientName+' ¥'+ip.fee);toast('出院手续完成！');refreshIP();
+}
+window.ipForm=ipForm;window.dischargeIP=dischargeIP;
+
+// ---- 收费管理 ----
+renderers.billing=function(main){
+  main.innerHTML='<h2 class="page-title">收费管理</h2><div class="toolbar"><button class="btn btn-primary" id="bl-add">新增收费</button></div><div id="bl-table"></div>';
+  refreshBL();
+  document.getElementById('bl-add').onclick=function(){
+    modal('新增收费',
+      '<div class="form-row"><label>类型</label><select name="type"><option>挂号费</option><option>药品费</option><option>住院费</option><option>检查费</option></select></div>'+
+      '<div class="form-row"><label>患者姓名</label><input name="patientName" required></div>'+
+      '<div class="form-row"><label>金额</label><input name="amount" type="number" step="0.01" required></div>'+
+      '<div class="form-row"><label>关联编号</label><input name="refId"></div>',
+      function(dd){
+        if(!dd.patientName||!dd.amount)return toast('请填写完整',1);
+        var bills=AB();bills.push({id:nextId(bills,'BILL'),type:dd.type,patientId:'',patientName:dd.patientName,amount:parseFloat(dd.amount)||0,time:nowStr(),status:'已收费',refId:dd.refId});
+        SB(bills);refreshBL();addLog('收费',dd.type,dd.patientName+' ¥'+dd.amount);toast('收费成功');
+      }
+    );
+  };
+};
+function refreshBL(){
+  var bills=AB();
+  var total=bills.reduce(function(s,b){return s+b.amount;},0);
+  document.getElementById('bl-table').innerHTML=makeTable(coldef(['收费编号','类型','患者','金额','时间','状态','关联编号'],['id','type','patientName','amount','time','status','refId']),bills)+
+    '<p style="margin-top:10px;font-size:18px;font-weight:bold;color:#d9304e;">收费总额：¥'+total.toFixed(2)+'</p>';
+}
+
+// ---- 查询统计 ----
+renderers.statistics=function(main){
+  var regs=AR(),apts=AA(),ips=AI(),rxs=AX(),ms=AM(),ds=AD(),deps=AE();
+
+  var statusCount={};regs.forEach(function(r){statusCount[r.status]=(statusCount[r.status]||0)+1;});
+  var aptStatus={};apts.forEach(function(a){aptStatus[a.status]=(aptStatus[a.status]||0)+1;});
+
+  var h='<h2 class="page-title">查询统计</h2>';
+
+  h+='<h3 style="margin:16px 0 8px;">挂号记录状态统计</h3>';
+  h+=makeTable(['状态','数量'],['待候诊','候诊中','接诊中','已接诊','已退号','已过号'].map(function(s){return{'状态':s,'数量':statusCount[s]||0};}));
+
+  h+='<h3 style="margin:16px 0 8px;">预约记录状态统计</h3>';
+  h+=makeTable(['状态','数量'],['已预约','已到诊','已取消'].map(function(s){return{'状态':s,'数量':aptStatus[s]||0};}));
+
+  var deptReg={};regs.forEach(function(r){deptReg[r.dept]=(deptReg[r.dept]||0)+1;});
+  h+='<h3 style="margin:16px 0 8px;">各科室挂号统计</h3>';
+  h+=makeTable(['科室','挂号数'],deps.map(function(d){return{'科室':d.name,'挂号数':deptReg[d.name]||0};}));
+
+  h+='<h3 style="margin:16px 0 8px;">药品库存统计</h3>';
+  h+=makeTable(coldef(['编号','名称','库存','单价'],['id','name','stock','price']),ms);
+
+  var docConsult={};regs.filter(function(r){return r.status==='已接诊';}).forEach(function(r){docConsult[r.doctorName]=(docConsult[r.doctorName]||0)+1;});
+  h+='<h3 style="margin:16px 0 8px;">医生接诊统计</h3>';
+  h+=makeTable(['医生','已接诊数'],ds.map(function(d){return{'医生':d.name+' ('+d.dept+')','已接诊数':docConsult[d.name]||0};}));
+
+  var ipStatus={};ips.forEach(function(ip){ipStatus[ip.status]=(ipStatus[ip.status]||0)+1;});
+  h+='<h3 style="margin:16px 0 8px;">住院状态统计</h3>';
+  h+=makeTable(['状态','数量'],['住院中','已出院'].map(function(s){return{'状态':s,'数量':ipStatus[s]||0};}));
+
+  h+='<h3 style="margin:16px 0 8px;">患者综合查询</h3><div class="toolbar"><input id="st-search" placeholder="输入患者姓名..." style="width:200px;"><button class="btn btn-primary" id="st-searchbtn">查询</button></div><div id="st-result"></div>';
+  main.innerHTML=h;
+
+  document.getElementById('st-searchbtn').onclick=function(){
+    var q=document.getElementById('st-search').value;
+    var r1='<h4>挂号记录</h4>'+makeTable(coldef(['编号','患者','科室','医生','状态'],['id','patientName','dept','doctorName','status']),regs.filter(function(r){return r.patientName.indexOf(q)>=0;}));
+    r1+='<h4>预约记录</h4>'+makeTable(coldef(['编号','患者','科室','医生','日期','状态'],['id','patientName','dept','doctorName','apptDate','status']),apts.filter(function(a){return a.patientName.indexOf(q)>=0;}));
+    r1+='<h4>住院记录</h4>'+makeTable(coldef(['编号','患者','科室','病房','状态'],['id','patientName','dept','ward','status']),ips.filter(function(ip){return ip.patientName.indexOf(q)>=0;}));
+    r1+='<h4>处方记录</h4>'+makeTable(coldef(['编号','患者','医生','金额','状态'],['id','patientName','doctorName','total','status']),rxs.filter(function(rx){return rx.patientName.indexOf(q)>=0;}));
+    document.getElementById('st-result').innerHTML=r1;
+  };
+};
+
+// ---- 数据结构展示 ----
+renderers.datastruct=function(main){
+  var regs=AR(),wq=AW();
+  var h='<h2 class="page-title">数据结构展示</h2>';
+  h+='<h3 style="margin:16px 0 8px;">1-4. 患者表 / 医生表 / 科室表 / 药品表 — 顺序表（数组）</h3><p style="color:#6a8a9a;">数据以 JSON 数组存储在 localStorage 中，支持顺序遍历、索引访问、条件筛选。</p>';
+  h+='<h3 style="margin:16px 0 8px;">5. 挂号记录 — 双向链表（逻辑结构）</h3><p style="color:#6a8a9a;margin-bottom:8px;">每次挂号在链表尾部增加新节点，支持双向遍历、任意位置插入删除。</p>';
+  h+='<div class="ll-viz"><span class="node" style="border:2px dashed #999;color:#999;">NULL</span>';
+  regs.slice(0,6).forEach(function(r){h+=' <span class="arrow">⇄</span> <span class="node">'+r.id+'<br><small>'+r.patientName+'</small></span>';});
+  h+=' <span class="arrow">⇄</span> <span class="node" style="border:2px dashed #999;color:#999;">NULL</span></div>';
+  h+='<h3 style="margin:16px 0 8px;">6. 候诊队列 — 队列（FIFO，先进先出）</h3><p style="color:#6a8a9a;margin-bottom:8px;">队头叫号 → 接诊 → 离队；新患者从队尾入队。</p>';
+  h+='<div class="ll-viz"><span class="node" style="background:#d4edda;border-color:#27a844;">队头 Dequeue</span>';
+  wq.slice(0,5).forEach(function(w){h+=' <span class="arrow">→</span> <span class="node">'+w.queueId+'<br><small>'+w.patientName+'</small></span>';});
+  h+=' <span class="arrow">→</span> <span class="node" style="background:#d4edda;border-color:#27a844;">队尾 Enqueue</span></div>';
+  h+='<h3 style="margin:16px 0 8px;">7. 查询统计 — 遍历与条件筛选</h3><p style="color:#6a8a9a;">对顺序表进行遍历和条件匹配，过滤符合条件的数据并汇总统计。</p>';
+  main.innerHTML=h;
+};
+
+// ---- 数据管理 ----
+renderers.datamgmt=function(main){
+  var h='<h2 class="page-title">数据管理</h2><div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px;">';
+  h+='<button class="btn btn-success" id="dm-reset">🔄 重新导入真实数据</button> ';
+  h+='<button class="btn btn-danger" id="dm-clear">清空全部数据</button> ';
+  h+='<button class="btn btn-info" id="dm-export">导出 JSON</button> ';
+  h+='<button class="btn btn-warning" id="dm-import-btn">导入 JSON</button> ';
+  h+='<input type="file" id="dm-import-file" accept=".json" style="display:none;"></div><div id="dm-status"></div>';
+  main.innerHTML=h;
+
+  document.getElementById('dm-reset').onclick=function(){
+    if(!confirm('确定要清空当前数据并重新导入真实数据吗？当前所有修改将丢失。'))return;
+    DATA_KEYS.forEach(function(k){localStorage.removeItem(k);});
+    initDemoData();
+    addLog('系统重置','全部模块','清空数据并重新导入data/目录真实数据');
+    showPage('dashboard');
+  };
+  document.getElementById('dm-clear').onclick=function(){
+    if(!confirm('确定清空全部数据吗？此操作不可恢复！'))return;
+    DATA_KEYS.forEach(function(k){localStorage.removeItem(k);});
+    toast('全部数据已清空');showPage('dashboard');
+  };
+  document.getElementById('dm-export').onclick=function(){
+    var data={};DATA_KEYS.forEach(function(k){data[k]=loadData(k);});
+    var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+    var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='HIS_backup_'+nowStr().replace(/[: ]/g,'_')+'.json';a.click();
+    addLog('导出JSON','全部数据','数据备份导出');toast('数据已导出！');
+  };
+  document.getElementById('dm-import-btn').onclick=function(){document.getElementById('dm-import-file').click();};
+  document.getElementById('dm-import-file').onchange=function(e){
+    var file=e.target.files[0];if(!file)return;
+    var reader=new FileReader();
+    reader.onload=function(ev){
+      try{var data=JSON.parse(ev.target.result);if(!confirm('确定导入数据吗？当前数据将被覆盖。'))return;
+        DATA_KEYS.forEach(function(k){if(data[k])saveData(k,data[k]);});
+        addLog('导入JSON','全部数据','数据从文件导入恢复');toast('数据导入成功！');showPage('dashboard');
+      }catch(ex){toast('文件格式错误！',1);}
+    };
+    reader.readAsText(file);
+  };
+};
+
+// ==================== 占位页面渲染器 ====================
+function ph(title,desc){return'<div class="placeholder-page"><div class="ph-icon">🚧</div><h3>'+title+'</h3><p>'+desc+'</p></div>';}
+renderers.accounts=function(main){main.innerHTML='<h2 class="page-title">账号管理</h2><div id="acc-table"></div>';refreshAccounts();};
+function refreshAccounts(){
+  var accs=loadData('his_accounts');
+  var data=accs.map(function(a){return{username:a.username,realName:a.realName,gender:a.gender,roleName:ROLE_NAMES[a.role]||a.role,onDuty:a.isOnDuty?'在岗':'离岗',errorCount:a.errorCount,_orig:a};});
+  var h=makeTable(coldef(['账号','姓名','性别','角色','在岗状态','错误次数'],['username','realName','gender','roleName','onDuty','errorCount']),data,function(row){
+    return '<button class="btn btn-sm btn-danger" onclick="deleteAccount(\''+row._orig.username+'\')">删除</button>';
+  });
+  document.getElementById('acc-table').innerHTML=h;
+}
+function deleteAccount(uname){
+  if(!confirm('确定删除账号 '+uname+' 吗？'))return;
+  var accs=loadData('his_accounts');
+  var idx=-1;for(var i=0;i<accs.length;i++){if(accs[i].username===uname){idx=i;break;}}
+  if(idx<0)return;accs.splice(idx,1);saveData('his_accounts',accs);addLog('删除账号',uname,'');toast('已删除');refreshAccounts();
+}
+renderers.doctor_duty=function(main){main.innerHTML=ph('医生排班','排班功能待补齐。C后端对应：admin_menu → 医生排班管理。');};
+renderers.nurse_duty=function(main){main.innerHTML=ph('护士排班','排班功能待补齐。C后端对应：admin_menu → 护士排班管理。');};
+renderers.pharmacist_duty=function(main){main.innerHTML=ph('药师排班','排班功能待补齐。C后端对应：admin_menu → 药师排班管理。');};
+renderers.check_items=function(main){
+  var h='<h2 class="page-title">检查项目管理</h2><div id="ci-table"></div>';
+  main.innerHTML=h;refreshCheckItems();
+  function refreshCheckItems(){
+    var items=loadData('his_checkitems');
+    document.getElementById('ci-table').innerHTML=makeTable(coldef(['项目编号','项目名称','所属科室','价格'],['id','name','dept','price']),items,function(it){
+      return '<button class="btn btn-sm btn-danger" onclick="if(confirm(\'确定删除？\')){var arr=loadData(\'his_checkitems\');var i=arr.findIndex(function(x){return x.id===\''+it.id+'\';});if(i>=0){arr.splice(i,1);saveData(\'his_checkitems\',arr);refreshCheckItems();}}">删除</button>';
+    });
+  }
+};
+renderers.check_records=function(main){
+  var h='<h2 class="page-title">检查记录管理</h2><div id="cr-table"></div>';
+  main.innerHTML=h;refreshCheckRecords();
+  function refreshCheckRecords(){
+    var records=loadData('his_checkrecords');
+    var data=records.map(function(r){return{recordId:r.recordId,patientId:r.patientId,itemName:r.itemName,dept:r.dept,checkTime:r.checkTime,completed:r.isCompleted?'已完成':'未完成',paid:r.isPaid?'已缴费':'未缴费'};});
+    document.getElementById('cr-table').innerHTML=makeTable(coldef(['记录编号','患者ID','项目名称','科室','检查时间','完成','缴费'],['recordId','patientId','itemName','dept','checkTime','completed','paid']),data);
+  }
+};
+renderers.ward_mgmt=function(main){
+  var h='<h2 class="page-title">床位管理</h2><div id="ward-table"></div>';
+  main.innerHTML=h;refreshWards();
+  function refreshWards(){
+    var wards=loadData('his_wards');
+    var data=wards.map(function(w){return{bedId:w.bedId,roomId:w.roomId,wardType:w.wardTypeName||w.wardType,dept:w.dept,isOccupied:w.isOccupied?'占用':'空闲',patientId:w.patientId||'-',_orig:w};});
+    document.getElementById('ward-table').innerHTML=makeTable(coldef(['床位编号','病房编号','病房类型','所属科室','占用状态','患者ID'],['bedId','roomId','wardType','dept','isOccupied','patientId']),data,function(row){
+      return '<button class="btn btn-sm btn-danger" onclick="if(confirm(\'确定删除？\')){var arr=loadData(\'his_wards\');var i=arr.findIndex(function(x){return x.bedId===\''+row._orig.bedId+'\';});if(i>=0){arr.splice(i,1);saveData(\'his_wards\',arr);refreshWards();}}">删除</button>';
+    });
+  }
+};
+renderers.complaints=function(main){
+  var h='<h2 class="page-title">投诉管理</h2><div id="cp-table"></div>';
+  main.innerHTML=h;
+  var complaints=loadData('his_complaints');
+  var data=complaints.map(function(c){return{complaintId:c.complaintId,patientId:c.patientId,targetName:c.targetName,content:c.content,statusName:c.status===0?'待处理':'已回复',submitTime:c.submitTime};});
+  document.getElementById('cp-table').innerHTML=makeTable(coldef(['工单号','投诉人ID','被投诉人','内容','状态','提交时间'],['complaintId','patientId','targetName','content','statusName','submitTime']),data);
+};
+renderers.blacklist=function(main){
+  var ps=AP().filter(function(p){return p.blacklist;});
+  main.innerHTML='<h2 class="page-title">黑名单管理</h2>'+makeTable(coldef(['编号','姓名','黑名单','过号次数'],['id','name','blacklist','missed_count']),ps,function(p){
+    return '<button class="btn btn-sm btn-success" onclick="var arr=AP();var pt=arr.find(function(x){return x.id===\''+p.id+'\';});if(pt){pt.blacklist=0;SP(arr);toast(\'已移出黑名单\');showPage(\'blacklist\');}">移出黑名单</button>';
+  });
+};
+renderers.reviews=function(main){main.innerHTML=ph('评价管理','评价管理功能待补齐。C后端对应：admin_menu → 评价管理。');};
+renderers.alerts=function(main){
+  var h='<h2 class="page-title">预警中心</h2>';
+  var alerts=loadData('his_alerts');
+  if(alerts.length===0)h+='<p style="color:#6a8a9a;">暂无预警信息。</p>';
+  else alerts.forEach(function(a){h+='<div style="background:#fff;padding:10px;margin:4px 0;border-radius:4px;border-left:4px solid #e8900c;">'+a.message+' <small style="color:#999;">'+new Date(a.time*1000).toLocaleString()+'</small></div>';});
+  main.innerHTML=h;
+};
+renderers.recycle=function(main){main.innerHTML=ph('回收站','回收站功能待补齐。可在此恢复软删除的药品、检查项目、账号、床位。');};
+renderers.reports=function(main){main.innerHTML=ph('统计报表','统计报表功能待补齐。C后端对应：admin_menu → 统计报表。');};
+renderers.bigscreen=function(main){
+  var ps=AP(),ds=AD(),ms=AM(),regs=AR(),ips=AI();
+  var h='<h2 class="page-title">🏥 社区智慧医疗大数据看板</h2>';
+  h+='<div class="stat-grid">';
+  h+=scard(ps.length,'患者总数','#2a7ab5');h+=scard(ds.length,'医生总数','#27a844');
+  h+=scard(regs.length,'今日挂号','#e8900c');h+=scard(ips.filter(function(ip){return ip.is_active;}).length,'住院人数','#d9304e');
+  h+=scard(ms.reduce(function(s,m){return s+m.stock;},0),'药品库存总量','#0f7b8a');
+  h+='</div>';
+  h+='<p style="text-align:center;color:#6a8a9a;margin-top:24px;">数据实时更新 | 社区智慧医疗信息管理系统</p>';
+  main.innerHTML=h;
+};
+renderers.infection_alert=function(main){main.innerHTML=ph('传染病预警','传染病预警功能待补齐。C后端对应：admin_menu → 传染病预警。');};
+renderers.processed_patients=function(main){
+  var records=AC();
+  var h='<h2 class="page-title">已接诊患者</h2>';
+  h+=makeTable(coldef(['记录编号','患者ID','接诊时间','诊断','医嘱'],['record_id','patient_id','consult_time','diagnosis_text','treatment_advice']),records);
+  main.innerHTML=h;
+};
+renderers.medicine_stock=function(main){
+  var ms=AM();
+  main.innerHTML='<h2 class="page-title">药品库存管理</h2>'+makeTable(coldef(['药品编码','药品名称','通用名','单价','库存','效期'],['id','name','generic_name','price','stock','expiry_date']),ms);
+};
+renderers.dispense_pending=function(main){
+  var rxs=AX().filter(function(rx){return rx.status==='未发药';});
+  var h='<h2 class="page-title">待发药</h2>';
+  if(rxs.length===0)h+='<p style="color:#6a8a9a;">暂无待发药处方。</p>';
+  else h+=makeTable(coldef(['处方编号','患者','医生','药品数','金额','时间'],['id','patientName','doctorName','medCount','total','time']),rxs.map(function(rx){rx.medCount=rx.medicines?rx.medicines.length:0;return rx;}),function(rx){
+    return '<button class="btn btn-sm btn-success" onclick="dispenseRx(\''+rx.id+'\')">发药</button>';
+  });
+  main.innerHTML=h;
+  window.dispenseRx=function(rxid){
+    var rxs2=AX(),rx=rxs2.find(function(x){return x.id===rxid;});
+    if(!rx)return;rx.status='已发药';SX(rxs2);addLog('发药',rxid,rx.patientName);toast('已发药');showPage('dispense_pending');
+  };
+};
+renderers.check_pending=function(main){
+  var records=loadData('his_checkrecords').filter(function(r){return!r.isCompleted;});
+  main.innerHTML='<h2 class="page-title">待检查列表</h2>'+makeTable(coldef(['记录编号','患者ID','项目名称','科室'],['recordId','patientId','itemName','dept']),records,function(r){
+    return '<button class="btn btn-sm btn-primary" onclick="inputCheckResult(\''+r.recordId+'\')">录入结果</button>';
+  });
+  window.inputCheckResult=function(rid){
+    modal('录入检查结果','<div class="form-row"><label>检查结果</label><textarea name="result" rows="4"></textarea></div>',function(dd){
+      var records2=loadData('his_checkrecords'),r2=records2.find(function(x){return x.recordId===rid;});
+      if(!r2)return;r2.result=dd.result;r2.isCompleted=1;saveData('his_checkrecords',records2);
+      addLog('录入检查结果',rid,r2.patientId);toast('结果已保存');showPage('check_pending');
+    });
+  };
+};
+renderers.check_result=function(main){main.innerHTML=ph('录入检查结果','请在"待检查列表"中点击"录入结果"按钮。');};
+renderers.profile=function(main){
+  if(!g_user)return;
+  main.innerHTML='<h2 class="page-title">个人信息</h2><div style="background:#fff;padding:20px;border-radius:4px;box-shadow:0 1px 4px rgba(0,0,0,0.06);max-width:500px;">'+
+    '<p><b>账号：</b>'+g_user.username+'</p><p><b>姓名：</b>'+g_user.name+'</p><p><b>角色：</b>'+ROLE_NAMES[g_user.role]+'</p>'+
+    '<p><b>性别：</b>'+(g_user.gender||'未知')+'</p><p><b>登录时间：</b>'+g_user.loginTime+'</p>'+
+    (g_user.dept?'<p><b>所属科室：</b>'+g_user.dept+'</p>':'')+'</div>';
+};
+
+// ---- 患者自助端 ----
+renderers.patient_dashboard=function(main){
+  if(!g_user||g_user.role!==ROLES.PATIENT){showPage('login');return;}
+  var p=AP().find(function(x){return x.id===g_user.username;});
+  if(!p){main.innerHTML='<p>未找到患者信息</p>';return;}
+  main.innerHTML='<h2 class="page-title">患者首页 · '+p.name+'</h2>'+
+    '<div class="stat-grid">'+scard((p.balance||0).toFixed(2),'账户余额','#27a844')+scard(p.script_count||0,'处方数','#2a7ab5')+
+    scard(p.missed_count||0,'过号次数','#e8900c')+(p.blacklist?scard('是','黑名单','#d9304e'):'')+'</div>'+
+    '<p style="color:#6a8a9a;">状态：'+(p.status||'未知')+' | 医保类型：自费</p>';
+};
+renderers.my_appointments=function(main){
+  if(!g_user||g_user.role!==ROLES.PATIENT){showPage('login');return;}
+  var apts=AA().filter(function(a){return a.patientId===g_user.username;});
+  main.innerHTML='<h2 class="page-title">我的预约</h2>'+makeTable(coldef(['预约编号','科室','医生','日期','时段','状态'],['appointment_id','department','doctor_name','appointment_date','appointment_slot','appointment_status']),apts);
+};
+renderers.my_records=function(main){
+  if(!g_user||g_user.role!==ROLES.PATIENT){showPage('login');return;}
+  var records=AC().filter(function(r){return r.patient_id===g_user.username;});
+  main.innerHTML='<h2 class="page-title">就诊记录</h2>'+makeTable(coldef(['记录编号','接诊时间','诊断','医嘱'],['record_id','consult_time','diagnosis_text','treatment_advice']),records);
+};
+renderers.my_check_reports=function(main){
+  if(!g_user||g_user.role!==ROLES.PATIENT){showPage('login');return;}
+  var records=loadData('his_checkrecords').filter(function(r){return r.patientId===g_user.username&&r.isCompleted;});
+  main.innerHTML='<h2 class="page-title">检查报告</h2>'+makeTable(coldef(['记录编号','项目名称','科室','检查时间','结果'],['recordId','itemName','dept','checkTime','result']),records);
+};
+renderers.my_queue=function(main){
+  if(!g_user||g_user.role!==ROLES.PATIENT){showPage('login');return;}
+  var wq=AW(),myWq=wq.filter(function(w){return w.patientId===g_user.username;});
+  main.innerHTML='<h2 class="page-title">排队查询</h2>'+(myWq.length===0?'<p>当前无排队信息</p>':
+    makeTable(coldef(['排队编号','科室','医生','排队序号','状态'],['queueId','dept','doctorName','queueNo','status']),myWq));
+};
+renderers.my_balance=function(main){
+  if(!g_user||g_user.role!==ROLES.PATIENT){showPage('login');return;}
+  var p=AP().find(function(x){return x.id===g_user.username;});
+  main.innerHTML='<h2 class="page-title">账户充值</h2><p>当前余额：<b style="font-size:24px;color:#27a844;">¥'+(p?p.balance||0:0).toFixed(2)+'</b></p>'+
+    '<div style="margin-top:16px;"><input type="number" id="recharge-amount" placeholder="充值金额" style="padding:8px;width:200px;"> '+
+    '<button class="btn btn-success" id="btn-recharge">充值</button></div>';
+  document.getElementById('btn-recharge').onclick=function(){
+    var amt=parseFloat(document.getElementById('recharge-amount').value);
+    if(!amt||amt<=0)return toast('请输入有效金额',1);
+    if(!p)return;
+    p.balance=(p.balance||0)+amt;SP(AP());addLog('患者充值',p.id,'¥'+amt.toFixed(2));toast('充值成功！');
+    showPage('my_balance');
+  };
+};
+renderers.patient_register=function(main){main.innerHTML=ph('自助挂号','自助挂号功能待补齐。C后端对应：patient_self_service_menu → 自助挂号。');};
+renderers.patient_appointment=function(main){main.innerHTML=ph('预约挂号','预约挂号功能待补齐。C后端对应：patient_self_service_menu → 预约挂号。');};
+renderers.my_bills=function(main){
+  if(!g_user||g_user.role!==ROLES.PATIENT){showPage('login');return;}
+  var bills=AB().filter(function(b){return b.patientId===g_user.username;});
+  main.innerHTML='<h2 class="page-title">我的账单</h2>'+makeTable(coldef(['账单编号','金额','类型','时间','状态'],['id','amount','billType','time','status']),bills);
+};
+renderers.my_complaints=function(main){main.innerHTML=ph('投诉建议','投诉建议功能待补齐。C后端对应：patient_self_service_menu → 投诉建议。');};
+renderers.my_reviews=function(main){main.innerHTML=ph('服务评价','服务评价功能待补齐。C后端对应：patient_self_service_menu → 服务评价。');};
+
+// ==================== 启动 ====================
+(function(){
+  if(AP().length===0){initDemoData();}
+  try{
+    var session=JSON.parse(localStorage.getItem('his_session'));
+    if(session&&session.username){
+      g_user=session;
+      refreshSidebar();refreshUserbar();
+      if(g_user.role===ROLES.PATIENT)showPage('patient_dashboard');
+      else showPage('dashboard');
+    }else{showPage('login');}
+  }catch(e){showPage('login');}
+})();
+</script>
+</body>
+</html>
