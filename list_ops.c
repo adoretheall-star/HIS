@@ -47,7 +47,7 @@ PatientNode* init_patient_list()
     strncpy(head->name, "SYSTEM_HEAD", MAX_NAME_LEN - 1);
     head->name[MAX_NAME_LEN - 1] = '\0';
     
-    // 💡 防御阵地：头结点的指针必须干干净净
+    // [TIP] 防御阵地：头结点的指针必须干干净净
     head->script_head = NULL; 
     head->prev = NULL;
     head->next = NULL;
@@ -127,7 +127,7 @@ PatientNode* create_patient_node(const char* id, const char* name, int age, cons
 // ---------------------------------------------------------
 void insert_patient_tail(PatientNode* head, PatientNode* new_node)
  {
-    // 💡 防御阵地：永远怀疑指针是空的
+    // [TIP] 防御阵地：永远怀疑指针是空的
     if (head == NULL || new_node == NULL) return;
 
     PatientNode* curr = head;
@@ -1252,7 +1252,7 @@ void push_system_alert(const char* msg)
     AlertNode* new_node = (AlertNode*)malloc(sizeof(AlertNode));
     if (new_node == NULL)
     {
-        printf("⚠️ 内存分配失败，预警信息无法添加！\n");
+        printf("[WARN] 内存分配失败，预警信息无法添加！\n");
         return;
     }
     

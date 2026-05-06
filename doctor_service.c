@@ -174,20 +174,20 @@ static DoctorNode* get_doctor_by_id_checked(const char* doctor_id)
 
     if (g_doctor_list == NULL)
     {
-        printf("⚠️ 医生链表尚未初始化！\n");
+        printf("[WARN] 医生链表尚未初始化！\n");
         return NULL;
     }
 
     if (doctor_id == NULL || strlen(doctor_id) == 0)
     {
-        printf("⚠️ 医生编号不能为空！\n");
+        printf("[WARN] 医生编号不能为空！\n");
         return NULL;
     }
 
     doctor = find_doctor_by_id(g_doctor_list, doctor_id);
     if (doctor == NULL)
     {
-        printf("⚠️ 未找到对应医生，操作失败！\n");
+        printf("[WARN] 未找到对应医生，操作失败！\n");
         return NULL;
     }
 
@@ -475,7 +475,7 @@ void show_waiting_patients_by_doctor(const char* doctor_id)
 
     if (g_patient_list == NULL)
     {
-        printf("⚠️ 患者链表尚未初始化！\n");
+        printf("[WARN] 患者链表尚未初始化！\n");
         return;
     }
 
@@ -531,7 +531,7 @@ int doctor_consult_patient(
 
     if (g_patient_list == NULL)
     {
-        printf("⚠️ 患者链表尚未初始化，无法接诊！\n");
+        printf("[WARN] 患者链表尚未初始化，无法接诊！\n");
         return 0;
     }
 
@@ -540,26 +540,26 @@ int doctor_consult_patient(
 
     if (patient_id == NULL || strlen(patient_id) == 0)
     {
-        printf("⚠️ 患者编号不能为空！\n");
+        printf("[WARN] 患者编号不能为空！\n");
         return 0;
     }
 
     patient = find_patient_by_id(g_patient_list, patient_id);
     if (patient == NULL)
     {
-        printf("⚠️ 未找到对应患者，无法接诊！\n");
+        printf("[WARN] 未找到对应患者，无法接诊！\n");
         return 0;
     }
 
     if (patient->status != STATUS_PENDING && patient->status != STATUS_RECHECK_PENDING)
     {
-        printf("⚠️ 当前患者状态为[%s]，不属于待诊状态！\n", get_med_status_text(patient->status));
+        printf("[WARN] 当前患者状态为[%s]，不属于待诊状态！\n", get_med_status_text(patient->status));
         return 0;
     }
 
     if (!is_patient_match_doctor(patient, doctor))
     {
-        printf("⚠️ 当前患者未分配给该医生，或预约目标与该医生不匹配！\n");
+        printf("[WARN] 当前患者未分配给该医生，或预约目标与该医生不匹配！\n");
         return 0;
     }
 
@@ -592,7 +592,7 @@ int doctor_consult_patient(
             break;
         case 2:
             patient->status = STATUS_UNPAID;
-            patient->unpaid_time = time(NULL); // ⏱️ 补丁：按下72小时作废的秒表！
+            patient->unpaid_time = time(NULL); // [TIMER] 补丁：按下72小时作废的秒表！
             break;
         case 3:
             patient->status = STATUS_UNPAID;
@@ -602,7 +602,7 @@ int doctor_consult_patient(
             patient->status = STATUS_HOSPITALIZED;
             break;
         default:
-            printf("⚠️ 无效的诊疗决策，操作取消！\n");
+            printf("[WARN] 无效的诊疗决策，操作取消！\n");
             return 0;
     }
 
@@ -706,11 +706,11 @@ int doctor_consult_patient(
             // 根据是否现场挂号显示不同提示
             if (matched_appointment->is_walk_in == 1)
             {
-                printf("\n✅ 接诊成功！患者为现场挂号\n");
+                printf("\n[OK] 接诊成功！患者为现场挂号\n");
             }
             else
             {
-                printf("\n✅ 接诊成功！患者为预约挂号\n");
+                printf("\n[OK] 接诊成功！患者为预约挂号\n");
             }
         }
         else
@@ -774,14 +774,14 @@ void doctor_view_processed_patients(const char* doctor_id)
     // 检查患者链表是否初始化
     if (g_patient_list == NULL)
     {
-        printf("⚠️ 患者链表尚未初始化，无法查询！\n");
+        printf("[WARN] 患者链表尚未初始化，无法查询！\n");
         return;
     }
     
     // 检查医生编号是否为空
     if (doctor_id == NULL || strlen(doctor_id) == 0)
     {
-        printf("⚠️ 医生编号不能为空！\n");
+        printf("[WARN] 医生编号不能为空！\n");
         return;
     }
     
@@ -863,21 +863,21 @@ void doctor_view_processed_patient_detail(const char* doctor_id, const char* pat
     // 检查患者链表是否初始化
     if (g_patient_list == NULL)
     {
-        printf("⚠️ 患者链表尚未初始化，无法查询！\n");
+        printf("[WARN] 患者链表尚未初始化，无法查询！\n");
         return;
     }
     
     // 检查医生编号是否为空
     if (doctor_id == NULL || strlen(doctor_id) == 0)
     {
-        printf("⚠️ 医生编号不能为空！\n");
+        printf("[WARN] 医生编号不能为空！\n");
         return;
     }
     
     // 检查患者编号是否为空
     if (patient_id == NULL || strlen(patient_id) == 0)
     {
-        printf("⚠️ 患者编号不能为空！\n");
+        printf("[WARN] 患者编号不能为空！\n");
         return;
     }
     
@@ -890,7 +890,7 @@ void doctor_view_processed_patient_detail(const char* doctor_id, const char* pat
     patient = find_patient_by_id(g_patient_list, patient_id);
     if (patient == NULL)
     {
-        printf("⚠️ 未找到对应患者！\n");
+        printf("[WARN] 未找到对应患者！\n");
         return;
     }
     
@@ -899,7 +899,7 @@ void doctor_view_processed_patient_detail(const char* doctor_id, const char* pat
         patient->status == STATUS_PENDING || 
         patient->status == STATUS_RECHECK_PENDING)
     {
-        printf("⚠️ 当前患者不属于该医生或未被接诊！\n");
+        printf("[WARN] 当前患者不属于该医生或未被接诊！\n");
         return;
     }
     
@@ -1087,7 +1087,7 @@ void doctor_view_consult_history(const char* doctor_id, const char* patient_id)
     // 检查接诊记录链表是否初始化
     if (g_consult_record_list == NULL)
     {
-        printf("⚠️ 接诊记录链表尚未初始化，无法查询！\n");
+        printf("[WARN] 接诊记录链表尚未初始化，无法查询！\n");
         return;
     }
     
@@ -1209,21 +1209,21 @@ void doctor_view_patient_overview(const char* doctor_id, const char* patient_id)
     // 检查患者链表是否初始化
     if (g_patient_list == NULL)
     {
-        printf("⚠️ 患者链表尚未初始化，无法查询！\n");
+        printf("[WARN] 患者链表尚未初始化，无法查询！\n");
         return;
     }
     
     // 检查医生编号是否为空
     if (doctor_id == NULL || strlen(doctor_id) == 0)
     {
-        printf("⚠️ 医生编号不能为空！\n");
+        printf("[WARN] 医生编号不能为空！\n");
         return;
     }
     
     // 检查患者编号是否为空
     if (patient_id == NULL || strlen(patient_id) == 0)
     {
-        printf("⚠️ 患者编号不能为空！\n");
+        printf("[WARN] 患者编号不能为空！\n");
         return;
     }
     
@@ -1236,14 +1236,14 @@ void doctor_view_patient_overview(const char* doctor_id, const char* patient_id)
     patient = find_patient_by_id(g_patient_list, patient_id);
     if (patient == NULL)
     {
-        printf("⚠️ 未找到对应患者！\n");
+        printf("[WARN] 未找到对应患者！\n");
         return;
     }
     
     // 检查患者是否归属于当前医生
     if (!is_patient_match_doctor(patient, doctor))
     {
-        printf("⚠️ 当前患者未分配给该医生，或预约目标与该医生不匹配！\n");
+        printf("[WARN] 当前患者未分配给该医生，或预约目标与该医生不匹配！\n");
         return;
     }
     
@@ -1389,7 +1389,7 @@ void show_waiting_checks_by_dept(const char* doctor_id)
 
     if (g_check_record_list == NULL)
     {
-        printf("⚠️ 检查记录链表尚未初始化！\n");
+        printf("[WARN] 检查记录链表尚未初始化！\n");
         return;
     }
 
@@ -1480,18 +1480,18 @@ int doctor_update_check_result(const char* doctor_id, const char* record_id, con
     if (doctor == NULL) return 0;
     if (record_id == NULL || strlen(record_id) == 0)
     {
-        printf("⚠️ 检查记录编号不能为空！\n");
+        printf("[WARN] 检查记录编号不能为空！\n");
         return 0;
     }
     if (result == NULL || strlen(result) == 0)
     {
-        printf("⚠️ 检查结果不能为空！\n");
+        printf("[WARN] 检查结果不能为空！\n");
         return 0;
     }
 
     if (g_check_record_list == NULL)
     {
-        printf("⚠️ 检查记录链表尚未初始化！\n");
+        printf("[WARN] 检查记录链表尚未初始化！\n");
         return 0;
     }
 
@@ -1503,21 +1503,21 @@ int doctor_update_check_result(const char* doctor_id, const char* record_id, con
             // 检查科室是否匹配
             if (strcmp(curr->dept, doctor->department) != 0)
             {
-                printf("⚠️ 该检查记录不属于您的科室！\n");
+                printf("[WARN] 该检查记录不属于您的科室！\n");
                 return 0;
             }
             
             // 检查是否已完成
             if (curr->is_completed == 1)
             {
-                printf("⚠️ 该检查记录已完成，无法修改！\n");
+                printf("[WARN] 该检查记录已完成，无法修改！\n");
                 return 0;
             }
             
             // 检查是否已缴费
             if (curr->is_paid == 0)
             {
-                printf("⚠️ 该检查记录尚未缴费，不能录入结果！请先完成缴费。\n");
+                printf("[WARN] 该检查记录尚未缴费，不能录入结果！请先完成缴费。\n");
                 return 0;
             }
 
@@ -1597,19 +1597,19 @@ int doctor_update_check_result(const char* doctor_id, const char* record_id, con
                 }
             }
 
-            printf("✅ 检查结果录入成功！\n");
+            printf("[OK] 检查结果录入成功！\n");
             printf("检查记录: %s\n", curr->record_id);
             printf("患者姓名: %s\n", get_patient_name_by_id(curr->patient_id));
             printf("检查项目: %s\n", curr->item_name);
             printf("检查结果: %s\n", curr->result);
             printf("完成时间: %s\n", curr->check_time);
-            printf("🔄 [系统联动] 该患者状态已自动更新为：检查后待复诊 (STATUS_RECHECK_PENDING)，已重新回到原接诊医生队列。\n");
+            printf("[UPD] [系统联动] 该患者状态已自动更新为：检查后待复诊 (STATUS_RECHECK_PENDING)，已重新回到原接诊医生队列。\n");
             return 1;
         }
         curr = curr->next;
     }
 
-    printf("⚠️ 未找到指定的检查记录！\n");
+    printf("[WARN] 未找到指定的检查记录！\n");
     return 0;
 }
 
@@ -1630,7 +1630,7 @@ void show_check_records_by_patient_id(const char* patient_id)
     CheckRecordPtrNode* records = get_check_records_by_patient(g_check_record_list, patient_id);
     if (records == NULL)
     {
-        printf("\n⚠️ 患者 %s 暂无检查记录。\n", patient_id);
+        printf("\n[WARN] 患者 %s 暂无检查记录。\n", patient_id);
         return;
     }
 
@@ -1660,8 +1660,8 @@ void show_check_records_by_patient_id(const char* patient_id)
         print_col(r->item_name, 20);
         print_col(r->dept, 12);
         print_col(r->is_completed ? r->check_time : "——", 22);
-        print_col(r->is_completed ? "✅" : "待查", 8);
-        print_col(r->is_paid ? "✅" : "未缴", 6);
+        print_col(r->is_completed ? "[OK]" : "待查", 8);
+        print_col(r->is_paid ? "[OK]" : "未缴", 6);
         printf("\n");
         count++;
         curr = curr->next;
@@ -1711,7 +1711,7 @@ void show_check_record_by_id(const char* record_id)
     CheckRecordNode* record = find_check_record_by_id(g_check_record_list, record_id);
     if (record == NULL)
     {
-        printf("\n⚠️ 未找到检查记录 %s。\n", record_id);
+        printf("\n[WARN] 未找到检查记录 %s。\n", record_id);
         return;
     }
 
@@ -1723,12 +1723,12 @@ void show_doctor_info(DoctorNode* doctor)
 {
     if (doctor == NULL)
     {
-        printf("⚠️ 医生信息不存在！\n");
+        printf("[WARN] 医生信息不存在！\n");
         return;
     }
     
     printf("\n======================================================\n");
-    printf("                  👨‍⚕️ 医生信息\n");
+    printf("                  [DOC] 医生信息\n");
     printf("======================================================\n");
     printf("工号: %s\n", doctor->id);
     printf("姓名: %s\n", doctor->name);

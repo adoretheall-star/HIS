@@ -1,4 +1,4 @@
-// 文件名: utils.c
+﻿// 文件名: utils.c
 // 作用: 工具函数的具体实现逻辑
 #define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
@@ -10,6 +10,12 @@
 #include <errno.h> // 用于 errno
 #include <math.h> // 用于 isnan, isinf, isfinite
 #include <conio.h> // 用于 _getch()
+#ifdef _WIN32
+#include <windows.h>
+#ifdef STATUS_PENDING
+#undef STATUS_PENDING
+#endif
+#endif
 #include "global.h" // 需要访问全局链表和结构体
 #include "utils.h" // 必须把自己的说明书引进来
 
@@ -26,6 +32,72 @@ static int str_equal_ignore_case(const char* a, const char* b)
     return (*a == *b) ? 1 : 0;
 }
 
+
+/*
+ * Windows 控制台 UTF-8 输入修复：
+ * 直接使用 ReadConsoleW 读取 UTF-16，再转换为 UTF-8。
+ * 这样可以避免 fgets(stdin) 在 Windows 控制台里把中文按 ANSI/GBK 读入，
+ * 导致后续按 UTF-8 输出或保存时变成乱码/方块。
+ */
+static int read_console_line_utf8(char* buffer, int max_len)
+{
+    if (buffer == NULL || max_len <= 0)
+    {
+        return 0;
+    }
+
+    buffer[0] = '\0';
+
+#ifdef _WIN32
+    HANDLE h_in = GetStdHandle(STD_INPUT_HANDLE);
+    DWORD mode = 0;
+
+    if (h_in != INVALID_HANDLE_VALUE && GetConsoleMode(h_in, &mode))
+    {
+        wchar_t wbuffer[1024];
+        DWORD chars_read = 0;
+        DWORD capacity = (DWORD)(sizeof(wbuffer) / sizeof(wbuffer[0]) - 1);
+
+        if (!ReadConsoleW(h_in, wbuffer, capacity, &chars_read, NULL))
+        {
+            return 0;
+        }
+
+        if (chars_read > capacity)
+        {
+            chars_read = capacity;
+        }
+        wbuffer[chars_read] = L'\0';
+
+        while (chars_read > 0 &&
+               (wbuffer[chars_read - 1] == L'\n' || wbuffer[chars_read - 1] == L'\r'))
+        {
+            wbuffer[chars_read - 1] = L'\0';
+            chars_read--;
+        }
+
+        WideCharToMultiByte(CP_UTF8, 0, wbuffer, -1, buffer, max_len, NULL, NULL);
+        buffer[max_len - 1] = '\0';
+        return 1;
+    }
+#endif
+
+    if (fgets(buffer, max_len, stdin) == NULL)
+    {
+        return 0;
+    }
+
+    buffer[strcspn(buffer, "\n")] = '\0';
+
+    if ((int)strlen(buffer) == max_len - 1)
+    {
+        int c;
+        while ((c = getchar()) != '\n' && c != EOF);
+    }
+
+    return 1;
+}
+
 // 1. 工业级安全整数读取（彻底吃掉残留回车）
 int get_safe_int(const char* prompt) 
 {
@@ -35,19 +107,16 @@ int get_safe_int(const char* prompt)
     {
         if (prompt) printf("%s", prompt);
         
-        // fgets 会把一整行连同最后的回车 \n 一起读走
-        if (fgets(buffer, sizeof(buffer), stdin) != NULL) 
+        if (read_console_line_utf8(buffer, sizeof(buffer))) 
         {
-            // 如果读到的只有回车（比如前面残留的），直接丢弃，继续等输入
-            if (buffer[0] == '\n') continue;
+            if (buffer[0] == '\0') continue;
             
-            // 尝试提取纯数字
             if (sscanf(buffer, "%d", &val) == 1) 
             {
                 return val;
             }
         }
-        printf("  ⚠️ [系统拦截] 检测到非法输入！请重新输入纯数字: \n");
+        printf("  [WARN] [系统拦截] 检测到非法输入！请重新输入纯数字: \n");
     }
 }
 
@@ -59,15 +128,15 @@ double get_safe_double(const char* prompt)
     while (1) 
     {
         if (prompt) printf("%s", prompt);
-        if (fgets(buffer, sizeof(buffer), stdin) != NULL) 
+        if (read_console_line_utf8(buffer, sizeof(buffer))) 
         {
-            if (buffer[0] == '\n') continue;
+            if (buffer[0] == '\0') continue;
             if (sscanf(buffer, "%lf", &val) == 1) 
             {
                 return val;
             }
         }
-        printf("  ⚠️ [系统拦截] 检测到非法输入！请重新输入正确的金额: \n");
+        printf("  [WARN] [系统拦截] 检测到非法输入！请重新输入正确的金额: \n");
     }
 }
 
@@ -78,16 +147,8 @@ void get_safe_string(const char* prompt, char* buffer, int max_len)
     {
         if (prompt) printf("%s", prompt);
         
-        if (fgets(buffer, max_len, stdin) != NULL) 
+        if (read_console_line_utf8(buffer, max_len)) 
         {
-            // 剔除字符串末尾自带的换行符
-            buffer[strcspn(buffer, "\n")] = '\0';
-            
-            // 防溢出保护：如果用户输入的长度超过了 max_len，吃掉缓冲区里多余的字符
-            if ((int)strlen(buffer) == max_len - 1) {
-                int c;
-                while ((c = getchar()) != '\n' && c != EOF);
-            }
             break;
         }
     }
@@ -693,17 +754,17 @@ void safe_copy_string(char* dest, int dest_size, const char* src)
 char get_single_char(const char* prompt)
 {
     char input[10];
-    printf("%s", prompt);
-    if (fgets(input, sizeof(input), stdin) != NULL)
+    if (prompt != NULL)
     {
-        // 去掉换行符
-        input[strcspn(input, "\n")] = '\0';
-        // 如果输入为空，返回空格
+        printf("%s", prompt);
+    }
+
+    if (read_console_line_utf8(input, sizeof(input)))
+    {
         if (strlen(input) == 0)
         {
             return ' ';
         }
-        // 返回第一个字符
         return input[0];
     }
     return ' ';
@@ -1137,7 +1198,7 @@ int inputChoice(int min, int max)
         // 检查是否为空
         if (is_blank_string(buffer))
         {
-            printf("⚠️ 输入不能为空，请重新输入。\n");
+            printf("[WARN] 输入不能为空，请重新输入。\n");
             continue;
         }
         
@@ -1154,7 +1215,7 @@ int inputChoice(int min, int max)
         
         if (!is_numeric)
         {
-            printf("⚠️ 无效输入，请输入 %d-%d 的数字，或输入 B 返回，Q 退出。\n", min, max);
+            printf("[WARN] 无效输入，请输入 %d-%d 的数字，或输入 B 返回，Q 退出。\n", min, max);
             continue;
         }
         
@@ -1164,7 +1225,7 @@ int inputChoice(int min, int max)
         // 检查范围
         if (value < min || value > max)
         {
-            printf("⚠️ 输入超出范围，请输入 %d-%d 的数字，或输入 B 返回，Q 退出。\n", min, max);
+            printf("[WARN] 输入超出范围，请输入 %d-%d 的数字，或输入 B 返回，Q 退出。\n", min, max);
             continue;
         }
         
