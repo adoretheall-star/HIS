@@ -323,16 +323,38 @@ void show_all_medicines()
 
     if (g_medicine_list == NULL || g_medicine_list->next == NULL)
     {
+        printf("\n======================================================\n");
+        printf("                    药品信息列表\n");
+        printf("======================================================\n");
         printf("当前暂无药品数据\n");
         return;
     }
 
     printf("\n=======================================================================================================================\n");
     printf("                    药品信息列表\n");
-    printf("=======================================================================================================================\n");
-    printf("%-12s %-22s %-45s %-10s %-6s %-10s %s\n",
-           "药品编号", "商品名", "通用名", "单价(元)", "库存", "医保类型", "效期");
-    printf("-----------------------------------------------------------------------------------------------------------------------\n");
+    printf("======================================================\n");
+    // 列宽设置（按显示宽度）
+    const int ID_WIDTH = 10;
+    const int NAME_WIDTH = 20;
+    const int GEN_NAME_WIDTH = 38;
+    const int PRICE_WIDTH = 10;
+    const int STOCK_WIDTH = 8;
+    const int TYPE_WIDTH = 10;
+    const int EXPIRY_WIDTH = 12;
+
+    // 打印表头
+    print_truncated_col("药品编号", ID_WIDTH);
+    print_truncated_col("商品名", NAME_WIDTH);
+    print_truncated_col("通用名", GEN_NAME_WIDTH);
+    print_truncated_col("单价(元)", PRICE_WIDTH);
+    print_truncated_col("库存", STOCK_WIDTH);
+    print_truncated_col("医保类型", TYPE_WIDTH);
+    printf("效期\n");
+
+    // 打印分隔线
+    int total_width = ID_WIDTH + NAME_WIDTH + GEN_NAME_WIDTH + PRICE_WIDTH + STOCK_WIDTH + TYPE_WIDTH + EXPIRY_WIDTH;
+    for (int i = 0; i < total_width; i++) printf("-");
+    printf("\n");
 
     curr = g_medicine_list->next;
     while (curr != NULL)
@@ -345,40 +367,49 @@ void show_all_medicines()
             case MEDICARE_NONE:    m_type_name = "自费"; break;
             default:               m_type_name = "未知";
         }
-        printf("%-12s %-22s %-45s %-10.2f %-6d %-10s %s\n",
-               curr->id,
-               curr->name,
-               curr->generic_name,
-               curr->price,
-               curr->stock,
-               m_type_name,
-               curr->expiry_date);
+
+        // 打印数据行
+        print_truncated_col(curr->id, ID_WIDTH);
+        print_truncated_col(curr->name, NAME_WIDTH);
+        print_truncated_col(curr->generic_name, GEN_NAME_WIDTH);
+        char price_str[32];
+        snprintf(price_str, sizeof(price_str), "%.2f", curr->price);
+        print_truncated_col(price_str, PRICE_WIDTH);
+        char stock_str[16];
+        snprintf(stock_str, sizeof(stock_str), "%d", curr->stock);
+        print_truncated_col(stock_str, STOCK_WIDTH);
+        print_truncated_col(m_type_name, TYPE_WIDTH);
+        printf("%s\n", curr->expiry_date);
         curr = curr->next;
     }
 }
 
-void search_medicine_by_keyword(const char* keyword)
+// 检查是否有药品匹配关键词（返回是否找到结果，不打印任何内容）
+int has_medicine_match(const char* keyword)
 {
     int found = 0;
     MedicineNode* curr = NULL;
 
-    if (is_blank_string(keyword))
+    if (is_blank_string(keyword) || g_medicine_list == NULL || g_medicine_list->next == NULL)
     {
-        printf("提示：查询关键字不能为空。\n");
-        return;
+        return 0;
     }
 
-    if (g_medicine_list == NULL || g_medicine_list->next == NULL)
-    {
-        printf("未找到匹配药品\n");
-        return;
-    }
-
-    printf("\n================ 药品查询结果 ================\n");
+    // 准备关键词的大写版本用于拼音首字母匹配
+    char keyword_upper[128];
+    to_upper_string(keyword, keyword_upper, sizeof(keyword_upper));
 
     curr = g_medicine_list->next;
     while (curr != NULL)
     {
+        // 获取拼音首字母
+        char name_initials[128];
+        char alias_initials[128];
+        char generic_initials[256];
+        get_pinyin_initials_utf8(curr->name, name_initials, sizeof(name_initials));
+        get_pinyin_initials_utf8(curr->alias, alias_initials, sizeof(alias_initials));
+        get_pinyin_initials_utf8(curr->generic_name, generic_initials, sizeof(generic_initials));
+
         if (strcmp(curr->id, keyword) == 0 || 
             contains_keyword(curr->name, keyword) || 
             contains_keyword(curr->generic_name, keyword) || 
@@ -387,7 +418,66 @@ void search_medicine_by_keyword(const char* keyword)
             contains_keyword_case_insensitive(curr->alias, keyword) ||
             contains_keyword_case_insensitive(curr->name, keyword) ||
             contains_keyword_case_insensitive(curr->generic_name, keyword) ||
-            contains_keyword_by_order(curr->alias, keyword)) 
+            contains_keyword_by_order(curr->alias, keyword) ||
+            contains_ignore_case(name_initials, keyword_upper) ||
+            contains_ignore_case(alias_initials, keyword_upper) ||
+            contains_ignore_case(generic_initials, keyword_upper)) 
+        {
+            found = 1;
+            break;
+        }
+        curr = curr->next;
+    }
+
+    return found;
+}
+
+int search_medicine_by_keyword(const char* keyword)
+{
+    int found = 0;
+    MedicineNode* curr = NULL;
+
+    if (is_blank_string(keyword))
+    {
+        printf("提示：查询关键字不能为空。\n");
+        return 0;
+    }
+
+    if (g_medicine_list == NULL || g_medicine_list->next == NULL)
+    {
+        printf("未找到匹配药品\n");
+        return 0;
+    }
+
+    printf("\n================ 药品查询结果 ================\n");
+
+    // 准备关键词的大写版本用于拼音首字母匹配
+    char keyword_upper[128];
+    to_upper_string(keyword, keyword_upper, sizeof(keyword_upper));
+
+    curr = g_medicine_list->next;
+    while (curr != NULL)
+    {
+        // 获取拼音首字母
+        char name_initials[128];
+        char alias_initials[128];
+        char generic_initials[256];
+        get_pinyin_initials_utf8(curr->name, name_initials, sizeof(name_initials));
+        get_pinyin_initials_utf8(curr->alias, alias_initials, sizeof(alias_initials));
+        get_pinyin_initials_utf8(curr->generic_name, generic_initials, sizeof(generic_initials));
+
+        if (strcmp(curr->id, keyword) == 0 || 
+            contains_keyword(curr->name, keyword) || 
+            contains_keyword(curr->generic_name, keyword) || 
+            contains_keyword(curr->alias, keyword) ||
+            contains_keyword_case_insensitive(curr->id, keyword) ||
+            contains_keyword_case_insensitive(curr->alias, keyword) ||
+            contains_keyword_case_insensitive(curr->name, keyword) ||
+            contains_keyword_case_insensitive(curr->generic_name, keyword) ||
+            contains_keyword_by_order(curr->alias, keyword) ||
+            contains_ignore_case(name_initials, keyword_upper) ||
+            contains_ignore_case(alias_initials, keyword_upper) ||
+            contains_ignore_case(generic_initials, keyword_upper)) 
         {
             print_medicine_info(curr);
             found = 1;
@@ -399,9 +489,11 @@ void search_medicine_by_keyword(const char* keyword)
     {
         printf("未找到匹配药品\n");
     }
+
+    return found;
 }
 
-void show_low_stock_medicines(int threshold)
+void show_low_stock_medicines_with_title(int threshold, int show_title)
 {
     int found = 0;
     MedicineNode* curr = NULL;
@@ -418,16 +510,60 @@ void show_low_stock_medicines(int threshold)
         return;
     }
 
-    printf("\n======================================================\n");
-    printf("                    低库存药品列表\n");
-    printf("======================================================\n");
+    if (show_title)
+    {
+        printf("\n======================================================\n");
+        printf("                    低库存药品列表\n");
+        printf("======================================================\n");
+    }
+    // 列宽设置（按显示宽度）
+    const int ID_WIDTH = 10;
+    const int NAME_WIDTH = 20;
+    const int GEN_NAME_WIDTH = 38;
+    const int PRICE_WIDTH = 10;
+    const int STOCK_WIDTH = 8;
+    const int TYPE_WIDTH = 10;
+    const int EXPIRY_WIDTH = 12;
+
+    // 打印表头
+    print_truncated_col("药品编号", ID_WIDTH);
+    print_truncated_col("商品名", NAME_WIDTH);
+    print_truncated_col("通用名", GEN_NAME_WIDTH);
+    print_truncated_col("单价(元)", PRICE_WIDTH);
+    print_truncated_col("库存", STOCK_WIDTH);
+    print_truncated_col("医保类型", TYPE_WIDTH);
+    printf("效期\n");
+
+    // 打印分隔线
+    int total_width = ID_WIDTH + NAME_WIDTH + GEN_NAME_WIDTH + PRICE_WIDTH + STOCK_WIDTH + TYPE_WIDTH + EXPIRY_WIDTH;
+    for (int i = 0; i < total_width; i++) printf("-");
+    printf("\n");
 
     curr = g_medicine_list->next;
     while (curr != NULL)
     {
         if (curr->stock < threshold)
         {
-            print_low_stock_info(curr);
+            const char* m_type_name = NULL;
+            switch (curr->m_type)
+            {
+                case MEDICARE_CLASS_A: m_type_name = "甲类"; break;
+                case MEDICARE_CLASS_B: m_type_name = "乙类"; break;
+                case MEDICARE_NONE:    m_type_name = "自费"; break;
+                default:               m_type_name = "未知";
+            }
+            // 打印数据行
+            print_truncated_col(curr->id, ID_WIDTH);
+            print_truncated_col(curr->name, NAME_WIDTH);
+            print_truncated_col(curr->generic_name, GEN_NAME_WIDTH);
+            char price_str[32];
+            snprintf(price_str, sizeof(price_str), "%.2f", curr->price);
+            print_truncated_col(price_str, PRICE_WIDTH);
+            char stock_str[16];
+            snprintf(stock_str, sizeof(stock_str), "%d", curr->stock);
+            print_truncated_col(stock_str, STOCK_WIDTH);
+            print_truncated_col(m_type_name, TYPE_WIDTH);
+            printf("%s\n", curr->expiry_date);
             found = 1;
         }
         curr = curr->next;
@@ -439,7 +575,12 @@ void show_low_stock_medicines(int threshold)
     }
 }
 
-void show_expiring_medicines(const char* today, int days_threshold)
+void show_low_stock_medicines(int threshold)
+{
+    show_low_stock_medicines_with_title(threshold, 1);
+}
+
+void show_expiring_medicines_with_title(const char* today, int days_threshold, int show_title)
 {
     int found = 0;
     MedicineNode* curr = NULL;
@@ -462,9 +603,34 @@ void show_expiring_medicines(const char* today, int days_threshold)
         return;
     }
 
-    printf("\n======================================================\n");
-    printf("                    近效期药品列表\n");
-    printf("======================================================\n");
+    if (show_title)
+    {
+        printf("\n======================================================\n");
+        printf("                    近效期药品列表\n");
+        printf("======================================================\n");
+    }
+    // 列宽设置（按显示宽度）
+    const int ID_WIDTH = 10;
+    const int NAME_WIDTH = 20;
+    const int GEN_NAME_WIDTH = 38;
+    const int PRICE_WIDTH = 10;
+    const int STOCK_WIDTH = 8;
+    const int TYPE_WIDTH = 10;
+    const int EXPIRY_WIDTH = 12;
+
+    // 打印表头
+    print_truncated_col("药品编号", ID_WIDTH);
+    print_truncated_col("商品名", NAME_WIDTH);
+    print_truncated_col("通用名", GEN_NAME_WIDTH);
+    print_truncated_col("单价(元)", PRICE_WIDTH);
+    print_truncated_col("库存", STOCK_WIDTH);
+    print_truncated_col("医保类型", TYPE_WIDTH);
+    printf("效期      剩余天数\n");
+
+    // 打印分隔线
+    int total_width = ID_WIDTH + NAME_WIDTH + GEN_NAME_WIDTH + PRICE_WIDTH + STOCK_WIDTH + TYPE_WIDTH + EXPIRY_WIDTH + 12;
+    for (int i = 0; i < total_width; i++) printf("-");
+    printf("\n");
 
     curr = g_medicine_list->next;
     while (curr != NULL)
@@ -480,7 +646,26 @@ void show_expiring_medicines(const char* today, int days_threshold)
         diff_days = days_between_dates(today, curr->expiry_date);
         if (diff_days >= 0 && diff_days <= days_threshold)
         {
-            print_medicine_info(curr);
+            const char* m_type_name = NULL;
+            switch (curr->m_type)
+            {
+                case MEDICARE_CLASS_A: m_type_name = "甲类"; break;
+                case MEDICARE_CLASS_B: m_type_name = "乙类"; break;
+                case MEDICARE_NONE:    m_type_name = "自费"; break;
+                default:               m_type_name = "未知";
+            }
+            // 打印数据行
+            print_truncated_col(curr->id, ID_WIDTH);
+            print_truncated_col(curr->name, NAME_WIDTH);
+            print_truncated_col(curr->generic_name, GEN_NAME_WIDTH);
+            char price_str[32];
+            snprintf(price_str, sizeof(price_str), "%.2f", curr->price);
+            print_truncated_col(price_str, PRICE_WIDTH);
+            char stock_str[16];
+            snprintf(stock_str, sizeof(stock_str), "%d", curr->stock);
+            print_truncated_col(stock_str, STOCK_WIDTH);
+            print_truncated_col(m_type_name, TYPE_WIDTH);
+            printf("%s  %-4d天\n", curr->expiry_date, diff_days);
             found = 1;
         }
 
@@ -490,6 +675,153 @@ void show_expiring_medicines(const char* today, int days_threshold)
     if (!found)
     {
         printf("当前无近效期药品\n");
+    }
+}
+
+void show_expiring_medicines(const char* today, int days_threshold)
+{
+    show_expiring_medicines_with_title(today, days_threshold, 1);
+}
+
+// 显示综合库存预警（近效期+低库存，分区显示）
+void show_comprehensive_stock_alert(int low_stock_threshold, const char* today, int expiring_days_threshold)
+{
+    int low_stock_count = 0;
+    int expiring_count = 0;
+    MedicineNode* curr = NULL;
+
+    if (g_medicine_list == NULL)
+    {
+        printf("提示：药品链表尚未初始化，无法执行综合预警检查。\n");
+        return;
+    }
+
+    // ================ 近效期药品 ================
+    printf("\n============= 近效期药品 ==============\n");
+    
+    // 列宽设置（按显示宽度）
+    const int ID_WIDTH = 10;
+    const int NAME_WIDTH = 20;
+    const int GEN_NAME_WIDTH = 38;
+    const int PRICE_WIDTH = 10;
+    const int STOCK_WIDTH = 8;
+    const int TYPE_WIDTH = 10;
+    const int EXPIRY_WIDTH = 12;
+
+    // 打印表头
+    print_truncated_col("药品编号", ID_WIDTH);
+    print_truncated_col("商品名", NAME_WIDTH);
+    print_truncated_col("通用名", GEN_NAME_WIDTH);
+    print_truncated_col("单价(元)", PRICE_WIDTH);
+    print_truncated_col("库存", STOCK_WIDTH);
+    print_truncated_col("医保类型", TYPE_WIDTH);
+    printf("效期      剩余天数\n");
+
+    // 打印分隔线
+    int total_width = ID_WIDTH + NAME_WIDTH + GEN_NAME_WIDTH + PRICE_WIDTH + STOCK_WIDTH + TYPE_WIDTH + EXPIRY_WIDTH + 12;
+    for (int i = 0; i < total_width; i++) printf("-");
+    printf("\n");
+
+    // 查找并打印近效期药品
+    curr = g_medicine_list->next;
+    while (curr != NULL)
+    {
+        int diff_days;
+        if (is_valid_date_string(curr->expiry_date))
+        {
+            diff_days = days_between_dates(today, curr->expiry_date);
+            if (diff_days >= 0 && diff_days <= expiring_days_threshold)
+            {
+                const char* m_type_name = NULL;
+                switch (curr->m_type)
+                {
+                    case MEDICARE_CLASS_A: m_type_name = "甲类"; break;
+                    case MEDICARE_CLASS_B: m_type_name = "乙类"; break;
+                    case MEDICARE_NONE:    m_type_name = "自费"; break;
+                    default:               m_type_name = "未知";
+                }
+                // 打印数据行
+                print_truncated_col(curr->id, ID_WIDTH);
+                print_truncated_col(curr->name, NAME_WIDTH);
+                print_truncated_col(curr->generic_name, GEN_NAME_WIDTH);
+                char price_str[32];
+                snprintf(price_str, sizeof(price_str), "%.2f", curr->price);
+                print_truncated_col(price_str, PRICE_WIDTH);
+                char stock_str[16];
+                snprintf(stock_str, sizeof(stock_str), "%d", curr->stock);
+                print_truncated_col(stock_str, STOCK_WIDTH);
+                print_truncated_col(m_type_name, TYPE_WIDTH);
+                printf("%s  %-4d天\n", curr->expiry_date, diff_days);
+                expiring_count++;
+            }
+        }
+        curr = curr->next;
+    }
+
+    if (expiring_count == 0)
+    {
+        printf("当前无近效期药品\n");
+    }
+    else
+    {
+        printf("\n共找到 %d 个近效期药品\n", expiring_count);
+    }
+
+    // ================ 低库存药品 ================
+    printf("\n============= 低库存药品 ==============\n");
+
+    // 打印表头
+    print_truncated_col("药品编号", ID_WIDTH);
+    print_truncated_col("商品名", NAME_WIDTH);
+    print_truncated_col("通用名", GEN_NAME_WIDTH);
+    print_truncated_col("单价(元)", PRICE_WIDTH);
+    print_truncated_col("库存", STOCK_WIDTH);
+    print_truncated_col("医保类型", TYPE_WIDTH);
+    printf("效期\n");
+
+    // 打印分隔线
+    total_width = ID_WIDTH + NAME_WIDTH + GEN_NAME_WIDTH + PRICE_WIDTH + STOCK_WIDTH + TYPE_WIDTH + EXPIRY_WIDTH;
+    for (int i = 0; i < total_width; i++) printf("-");
+    printf("\n");
+
+    // 查找并打印低库存药品
+    curr = g_medicine_list->next;
+    while (curr != NULL)
+    {
+        if (curr->stock < low_stock_threshold)
+        {
+            const char* m_type_name = NULL;
+            switch (curr->m_type)
+            {
+                case MEDICARE_CLASS_A: m_type_name = "甲类"; break;
+                case MEDICARE_CLASS_B: m_type_name = "乙类"; break;
+                case MEDICARE_NONE:    m_type_name = "自费"; break;
+                default:               m_type_name = "未知";
+            }
+            // 打印数据行
+            print_truncated_col(curr->id, ID_WIDTH);
+            print_truncated_col(curr->name, NAME_WIDTH);
+            print_truncated_col(curr->generic_name, GEN_NAME_WIDTH);
+            char price_str[32];
+            snprintf(price_str, sizeof(price_str), "%.2f", curr->price);
+            print_truncated_col(price_str, PRICE_WIDTH);
+            char stock_str[16];
+            snprintf(stock_str, sizeof(stock_str), "%d", curr->stock);
+            print_truncated_col(stock_str, STOCK_WIDTH);
+            print_truncated_col(m_type_name, TYPE_WIDTH);
+            printf("%s\n", curr->expiry_date);
+            low_stock_count++;
+        }
+        curr = curr->next;
+    }
+
+    if (low_stock_count == 0)
+    {
+        printf("当前无低库存药品\n");
+    }
+    else
+    {
+        printf("\n共找到 %d 个低库存药品\n", low_stock_count);
     }
 }
 

@@ -31,7 +31,7 @@ int check_duplicate_appointment_early(
     size_t id_size
 );
 // 2. 按患者编号查询预约
-void query_appointments_by_patient_id(const char* patient_id);
+int query_appointments_by_patient_id(const char* patient_id);
 // 3. 按身份证号查询预约
 void query_appointments_by_id_card(const char* id_card);
 // 4. 按预约编号查询预约及患者信息

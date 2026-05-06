@@ -62,10 +62,10 @@ typedef enum //预约状态
 
 typedef enum //病房类型
 {
-    WARD_GENERAL = 0,  // 普通病房
-    WARD_ICU = 1,      // ICU
-    WARD_ISOLATION = 2, // 隔离病房
-    WARD_SINGLE = 3    // 单人病房
+    WARD_GENERAL = 1,  // 普通病房
+    WARD_ICU = 2,      // ICU
+    WARD_ISOLATION = 3, // 隔离病房
+    WARD_SINGLE = 4    // 单人病房
 } WardType;
 
 typedef enum //回收站类型

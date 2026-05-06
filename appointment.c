@@ -852,20 +852,20 @@ AppointmentNode* create_walk_in_appointment_record(
 }
 
 // 按患者编号查询预约
-void query_appointments_by_patient_id(const char* patient_id)
+int query_appointments_by_patient_id(const char* patient_id)
 {
     int found = 0;
     int record_count = 0;
     AppointmentNode* curr = NULL;
     if (g_appointment_list == NULL)
     {
-        printf("[WARN] 预约链表尚未初始化！\n");
-        return;
+        printf("⚠️ 预约链表尚未初始化！\n");
+        return 0;
     }
     if (patient_id == NULL || strlen(patient_id) == 0)
     {
-        printf("[WARN] 患者编号不能为空！\n");
-        return;
+        printf("⚠️ 患者编号不能为空！\n");
+        return 0;
     }
     curr = g_appointment_list->next;
     while (curr != NULL)
@@ -890,6 +890,7 @@ void query_appointments_by_patient_id(const char* patient_id)
     {
         printf("ℹ️ 未查询到该患者的预约记录。\n");
     }
+    return found;
 }
 // 按身份证号查询预约
 void query_appointments_by_id_card(const char* id_card)

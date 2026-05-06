@@ -1,6 +1,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
 #include <stdlib.h>
 #include <windows.h>
 #include <direct.h>
@@ -4095,7 +4096,7 @@ void handle_medicine_dispense(void)
     char patient_id[MAX_ID_LEN];
 
     printf("\n================ 发药处理 ================\n");
-    printf("提示：输入 '0' 可以回退上一步，输入 '00' 可以退出操作\n");
+    printf("提示：输入 B 返回上一步，输入 Q 退出当前操作\n");
     show_paid_patients_waiting_for_dispense();
     printf("------------------------------------------------------\n");
     
@@ -4104,14 +4105,14 @@ void handle_medicine_dispense(void)
         get_safe_string("请输入要发药的患者编号: ", patient_id, MAX_ID_LEN);
         
         // 检查是否退出
-        if (strcmp(patient_id, "00") == 0)
+        if (strcmp(patient_id, "Q") == 0)
         {
             printf("操作取消！\n");
             return;
         }
         
         // 检查是否回退
-        if (strcmp(patient_id, "0") == 0)
+        if (strcmp(patient_id, "B") == 0)
         {
             return;
         }
@@ -4123,149 +4124,12 @@ void handle_medicine_dispense(void)
         }
         else
         {
-            printf("[WARN] 患者编号格式不合法，正确格式为 P-1001，请重新输入！\n");
-            printf("提示：输入 '0' 可以回退上一步，输入 '00' 可以退出操作\n");
+            printf("⚠️ 患者编号格式不合法，正确格式为 P-1001，请重新输入！\n");
+            printf("提示：输入 B 返回上一步，输入 Q 退出当前操作\n");
         }
     }
     
     dispense_medicine_for_patient(patient_id);
-}
-
-void handle_remove_medicine_from_shelf(void)
-{
-    char med_id[MAX_ID_LEN];
-    char confirm_str[32];
-    int confirm = 0;
-    MedicineNode* medicine = NULL;
-
-    while (1)
-    {
-        system("cls");
-        printf("\n================ 下架药品 ===============-\n");
-        printf("提示：输入 B 返回上一步操作，输入 Q 取消该操作\n\n");
-
-        get_safe_string("请输入要下架的药品编号：", med_id, MAX_ID_LEN);
-
-        if (my_strcasecmp(med_id, "Q") == 0)
-        {
-            printf("已取消操作\n");
-            return;
-        }
-        if (my_strcasecmp(med_id, "B") == 0)
-        {
-            printf("已取消操作\n");
-            return;
-        }
-
-        if (is_blank_string(med_id))
-        {
-            printf("药品编号不能为空，请重新输入\n");
-            printf("\n按任意键继续...\n");
-            system("pause");
-            continue;
-        }
-
-        // 查找药品是否存在
-        medicine = find_medicine_by_id(g_medicine_list, med_id);
-        if (medicine == NULL)
-        {
-            printf("提示：未找到对应药品，下架失败。\n");
-            printf("\n按任意键继续...\n");
-            system("pause");
-            continue;
-        }
-
-        // 显示药品基本信息
-        printf("\n当前药品信息：\n");
-        printf("药品编号：%s\n", medicine->id);
-        printf("商品名：%s\n", medicine->name);
-        printf("通用名：%s\n", medicine->generic_name);
-        printf("别名：%s\n", medicine->alias[0] == '\0' ? "无" : medicine->alias);
-        printf("单价：%.2f\n", medicine->price);
-        printf("库存：%d\n", medicine->stock);
-        // 显示医保类型
-        switch (medicine->m_type)
-        {
-            case MEDICARE_NONE:
-                printf("医保类型：非医保\n");
-                break;
-            case MEDICARE_CLASS_A:
-                printf("医保类型：甲类医保\n");
-                break;
-            case MEDICARE_CLASS_B:
-                printf("医保类型：乙类医保\n");
-                break;
-            default:
-                printf("医保类型：未知\n");
-                break;
-        }
-        printf("效期：%s\n", medicine->expiry_date);
-        printf("----------------------------------------\n");
-
-        // 二次确认
-        printf("是否确定下架该药品？\n");
-        printf("[1] 确认下架\n");
-        printf("[0] 取消返回\n");
-
-        get_safe_string("请输入操作编号：", confirm_str, sizeof(confirm_str));
-
-        if (my_strcasecmp(confirm_str, "Q") == 0)
-        {
-            printf("已取消操作\n");
-            return;
-        }
-        if (my_strcasecmp(confirm_str, "B") == 0 || strcmp(confirm_str, "0") == 0)
-        {
-            printf("已取消操作\n");
-            return;
-        }
-        if (strcmp(confirm_str, "1") == 0)
-        {
-            // 执行下架操作
-            remove_medicine(med_id);
-            printf("按任意键返回...\n");
-            system("pause");
-            return;
-        }
-
-        printf("无效的输入，请重新选择\n");
-        printf("\n按任意键继续...\n");
-        system("pause");
-    }
-
-    // 显示药品基本信息
-    printf("\n当前药品信息：\n");
-    printf("药品编号：%s\n", medicine->id);
-    printf("商品名：%s\n", medicine->name);
-    printf("通用名：%s\n", medicine->generic_name);
-    printf("别名：%s\n", medicine->alias[0] == '\0' ? "无" : medicine->alias);
-    printf("单价：%.2f\n", medicine->price);
-    printf("库存：%d\n", medicine->stock);
-    // 显示医保类型
-    switch (medicine->m_type)
-    {
-        case MEDICARE_NONE:       printf("医保类型：自费\n");       break;
-        case MEDICARE_CLASS_A:    printf("医保类型：甲类医保\n");     break;
-        case MEDICARE_CLASS_B:    printf("医保类型：乙类医保\n");     break;
-        default:                  printf("医保类型：未知\n");         break;
-    }
-    printf("效期：%s\n", medicine->expiry_date);
-    printf("----------------------------------------\n");
-
-    // 二次确认
-    printf("是否确定下架该药品？\n");
-    printf("[1] 确定下架\n");
-    printf("[0] 取消返回\n");
-    confirm = get_safe_int("请输入操作编号: ");
-
-    if (confirm != 1)
-    {
-        printf("提示：已取消下架操作。\n");
-        return;
-    }
-
-    // 执行下架操作
-    remove_medicine(med_id);
 }
 
 // 前向声明
@@ -4422,62 +4286,107 @@ void add_log(const char* operation, const char* target, const char* description)
 // 显示日志
 void show_logs(void)
 {
-    printf("\n==============================================================\n");
-    printf("                      系统日志\n");
-    printf("==============================================================\n");
-
+    // 第一步：遍历计算最大列宽
+    int time_width = get_display_width("时间");
+    int action_width = get_display_width("操作");
+    int target_width = get_display_width("目标");
+    int desc_width = get_display_width("描述");
+    
+    if (g_log_list != NULL && g_log_list->next != NULL)
+    {
+        LogNode* curr = g_log_list->next;
+        while (curr != NULL)
+        {
+            int curr_time_w = get_display_width(curr->timestamp);
+            int curr_action_w = get_display_width(curr->operation);
+            int curr_target_w = get_display_width(curr->target);
+            int curr_desc_w = get_display_width(curr->description);
+            
+            if (curr_time_w > time_width) time_width = curr_time_w;
+            if (curr_action_w > action_width) action_width = curr_action_w;
+            if (curr_target_w > target_width) target_width = curr_target_w;
+            if (curr_desc_w > desc_width) desc_width = curr_desc_w;
+            
+            curr = curr->next;
+        }
+    }
+    
+    // 计算总宽度（4列 + 3个4空格间距）
+    int total_width = time_width + action_width + target_width + desc_width + 12;
+    
+    // 打印顶部分隔线和标题
+    printf("\n");
+    for (int i = 0; i < total_width; i++) printf("=");
+    printf("\n");
+    
+    int title_width = get_display_width("系统日志");
+    int title_padding = (total_width - title_width) / 2;
+    for (int i = 0; i < title_padding; i++) printf(" ");
+    printf("系统日志");
+    for (int i = 0; i < total_width - title_width - title_padding; i++) printf(" ");
+    printf("\n");
+    
+    for (int i = 0; i < total_width; i++) printf("=");
+    printf("\n");
+    
+    // 空日志情况
     if (g_log_list == NULL || g_log_list->next == NULL)
     {
         printf("当前无日志记录\n");
-        printf("==============================================================\n");
+        for (int i = 0; i < total_width; i++) printf("=");
+        printf("\n");
         printf("\n请按任意键返回...\n");
         system("pause");
         return;
     }
-
-    // 使用固定列宽确保对齐（考虑中文字符占用2个字符宽度）
-    const int col1_width = 22;  // 时间列（"2026-04-30 17:58:04" = 19字符）
-    const int col2_width = 16;  // 操作列（中文操作名）
-    const int col3_width = 16;  // 目标列（日期或编号）
-    const int total_width = col1_width + col2_width + col3_width + 40;
-
-    // 打印分隔线
-    for (int i = 0; i < total_width; i++) {
-        printf("-");
-    }
+    
+    // 打印表头
+    print_padded_text("时间", time_width);
+    printf("    ");
+    print_padded_text("操作", action_width);
+    printf("    ");
+    print_padded_text("目标", target_width);
+    printf("    ");
+    print_padded_text("描述", desc_width);
     printf("\n");
-
-    // 打印表头（左对齐）
-    printf("%-*s%-*s%-*s%s\n", col1_width, "时间", col2_width, "操作", col3_width, "目标", "描述");
-
-    // 打印分隔线
-    for (int i = 0; i < total_width; i++) {
-        printf("-");
-    }
+    
+    // 打印表头下划线
+    for (int i = 0; i < total_width; i++) printf("-");
     printf("\n");
-
-    // 打印日志内容
+    
+    // 第三步：遍历打印日志数据
     LogNode* curr = g_log_list->next;
     int count = 0;
     while (curr != NULL)
     {
-        printf("%-*s%-*s%-*s%s\n", 
-               col1_width, curr->timestamp,
-               col2_width, curr->operation,
-               col3_width, curr->target,
-               curr->description);
+        print_padded_text(curr->timestamp, time_width);
+        printf("    ");
+        print_padded_text(curr->operation, action_width);
+        printf("    ");
+        print_padded_text(curr->target, target_width);
+        printf("    ");
+        print_padded_text(curr->description, desc_width);
+        printf("\n");
         count++;
         curr = curr->next;
     }
-
+    
     // 打印底部分隔线
-    for (int i = 0; i < total_width; i++) {
-        printf("-");
-    }
+    for (int i = 0; i < total_width; i++) printf("-");
     printf("\n");
     
-    printf("日志总数：%d\n", count);
-    printf("==============================================================\n");
+    // 打印统计信息
+    char count_str[50];
+    snprintf(count_str, sizeof(count_str), "日志总数：%d", count);
+    int count_width = get_display_width(count_str);
+    int count_padding = (total_width - count_width) / 2;
+    for (int i = 0; i < count_padding; i++) printf(" ");
+    printf("%s", count_str);
+    printf("\n");
+    
+    for (int i = 0; i < total_width; i++) printf("=");
+    printf("\n");
+    
     printf("\n请按任意键返回...\n");
     system("pause");
 }
@@ -4531,13 +4440,87 @@ void show_all_check_items(void)
         return;
     }
 
-    printf("\n========================================================================\n");
-    printf("                            检查项目字典\n");
-    printf("========================================================================\n");
-    printf("%-10s %-20s %12s %10s   %-10s\n",
-           "项目编号", "项目名称", "所属科室", "价格(元)", "医保类型");
-    printf("------------------------------------------------------------------------\n");
+    // 第一步：遍历计算最大列宽
+    int id_width = get_display_width("项目编号");
+    int name_width = get_display_width("项目名称");
+    int dept_width = get_display_width("所属科室");
+    int price_width = get_display_width("价格(元)");
+    int type_width = get_display_width("医保类型");
 
+    curr = g_check_item_list->next;
+    while (curr != NULL)
+    {
+        int curr_id_w = get_display_width(curr->item_id);
+        int curr_name_w = get_display_width(curr->item_name);
+        int curr_dept_w = get_display_width(curr->dept);
+
+        char price_buf[32];
+        sprintf(price_buf, "%.2f", curr->price);
+        int curr_price_w = get_display_width(price_buf);
+
+        const char* m_type_name = NULL;
+        switch (curr->m_type)
+        {
+            case MEDICARE_CLASS_A:
+                m_type_name = "甲类";
+                break;
+            case MEDICARE_CLASS_B:
+                m_type_name = "乙类";
+                break;
+            case MEDICARE_NONE:
+                m_type_name = "自费";
+                break;
+            default:
+                m_type_name = "未知";
+                break;
+        }
+        int curr_type_w = get_display_width(m_type_name);
+
+        if (curr_id_w > id_width) id_width = curr_id_w;
+        if (curr_name_w > name_width) name_width = curr_name_w;
+        if (curr_dept_w > dept_width) dept_width = curr_dept_w;
+        if (curr_price_w > price_width) price_width = curr_price_w;
+        if (curr_type_w > type_width) type_width = curr_type_w;
+
+        count++;
+        curr = curr->next;
+    }
+
+    // 计算总宽度（5列 + 4个4空格间距）
+    int total_width = id_width + name_width + dept_width + price_width + type_width + 16;
+
+    // 第二步：打印顶部分隔线和标题
+    printf("\n");
+    for (int i = 0; i < total_width; i++) printf("=");
+    printf("\n");
+
+    int title_width = get_display_width("检查项目字典");
+    int title_padding = (total_width - title_width) / 2;
+    for (int i = 0; i < title_padding; i++) printf(" ");
+    printf("检查项目字典");
+    for (int i = 0; i < total_width - title_width - title_padding; i++) printf(" ");
+    printf("\n");
+
+    for (int i = 0; i < total_width; i++) printf("=");
+    printf("\n");
+
+    // 打印表头
+    print_padded_text("项目编号", id_width);
+    printf("    ");
+    print_padded_text("项目名称", name_width);
+    printf("    ");
+    print_padded_text("所属科室", dept_width);
+    printf("    ");
+    print_padded_text("价格(元)", price_width);
+    printf("    ");
+    print_padded_text("医保类型", type_width);
+    printf("\n");
+
+    // 打印表头下划线
+    for (int i = 0; i < total_width; i++) printf("-");
+    printf("\n");
+
+    // 第三步：遍历打印数据
     curr = g_check_item_list->next;
     while (curr != NULL)
     {
@@ -4549,19 +4532,38 @@ void show_all_check_items(void)
             case MEDICARE_NONE:       m_type_name = "自费";       break;
             default:                  m_type_name = "未知";       break;
         }
-        printf("%-10s %-20s %12s %10.2f   %-10s\n",
-               curr->item_id,
-               curr->item_name,
-               curr->dept,
-               curr->price,
-               m_type_name);
-        count++;
+
+        char price_buf[32];
+        sprintf(price_buf, "%.2f", curr->price);
+
+        print_padded_text(curr->item_id, id_width);
+        printf("    ");
+        print_padded_text(curr->item_name, name_width);
+        printf("    ");
+        print_padded_text(curr->dept, dept_width);
+        printf("    ");
+        print_padded_text(price_buf, price_width);
+        printf("    ");
+        print_padded_text(m_type_name, type_width);
+        printf("\n");
+
         curr = curr->next;
     }
 
-    printf("------------------------------------------------------------------------\n");
-    printf("检查项目总数：%d\n", count);
-    printf("========================================================================\n");
+    // 打印底部信息
+    for (int i = 0; i < total_width; i++) printf("-");
+    printf("\n");
+
+    char count_str[50];
+    snprintf(count_str, sizeof(count_str), "检查项目总数：%d", count);
+    int count_width = get_display_width(count_str);
+    int count_padding = (total_width - count_width) / 2;
+    for (int i = 0; i < count_padding; i++) printf(" ");
+    printf("%s", count_str);
+    printf("\n");
+
+    for (int i = 0; i < total_width; i++) printf("=");
+    printf("\n");
 }
 
 static void generate_check_item_id(char* new_id)
@@ -4620,14 +4622,93 @@ void search_check_item_by_keyword(const char* keyword)
         return;
     }
 
-    printf("\n========================================================================\n");
-    printf("                        检查项目查询结果\n");
-    printf("========================================================================\n");
-    printf("%-12s %-28s %-16s %-12s %-8s\n",
-           "项目编号", "项目名称", "所属科室", "价格(元)", "医保类型");
-    printf("------------------------------------------------------------------------\n");
-
+    // 第一步：遍历匹配的节点，计算最大列宽
+    int id_width = get_display_width("项目编号");
+    int name_width = get_display_width("项目名称");
+    int dept_width = get_display_width("所属科室");
+    int price_width = get_display_width("价格(元)");
+    int type_width = get_display_width("医保类型");
+    
     curr = g_check_item_list->next;
+    while (curr != NULL)
+    {
+        if (strstr(curr->item_id, keyword) != NULL ||
+            strstr(curr->item_name, keyword) != NULL ||
+            strstr(curr->dept, keyword) != NULL)
+        {
+            int curr_id_w = get_display_width(curr->item_id);
+            int curr_name_w = get_display_width(curr->item_name);
+            int curr_dept_w = get_display_width(curr->dept);
+            
+            char price_buf[32];
+            sprintf(price_buf, "%.2f", curr->price);
+            int curr_price_w = get_display_width(price_buf);
+            
+            const char* m_type_name = NULL;
+            switch (curr->m_type)
+            {
+                case MEDICARE_CLASS_A:    m_type_name = "甲类";       break;
+                case MEDICARE_CLASS_B:    m_type_name = "乙类";       break;
+                case MEDICARE_NONE:       m_type_name = "自费";       break;
+                default:                  m_type_name = "未知";       break;
+            }
+            int curr_type_w = get_display_width(m_type_name);
+            
+            if (curr_id_w > id_width) id_width = curr_id_w;
+            if (curr_name_w > name_width) name_width = curr_name_w;
+            if (curr_dept_w > dept_width) dept_width = curr_dept_w;
+            if (curr_price_w > price_width) price_width = curr_price_w;
+            if (curr_type_w > type_width) type_width = curr_type_w;
+            
+            found = 1;
+        }
+        curr = curr->next;
+    }
+    
+    // 如果没有匹配，直接返回
+    if (!found)
+    {
+        printf("未找到匹配检查项目\n");
+        return;
+    }
+    
+    // 计算总宽度（5列 + 4个4空格间距）
+    int total_width = id_width + name_width + dept_width + price_width + type_width + 16;
+    
+    // 第二步：打印顶部分隔线和标题
+    printf("\n");
+    for (int i = 0; i < total_width; i++) printf("=");
+    printf("\n");
+    
+    int title_width = get_display_width("检查项目查询结果");
+    int title_padding = (total_width - title_width) / 2;
+    for (int i = 0; i < title_padding; i++) printf(" ");
+    printf("检查项目查询结果");
+    for (int i = 0; i < total_width - title_width - title_padding; i++) printf(" ");
+    printf("\n");
+    
+    for (int i = 0; i < total_width; i++) printf("=");
+    printf("\n");
+    
+    // 打印表头
+    print_padded_text("项目编号", id_width);
+    printf("    ");
+    print_padded_text("项目名称", name_width);
+    printf("    ");
+    print_padded_text("所属科室", dept_width);
+    printf("    ");
+    print_padded_text("价格(元)", price_width);
+    printf("    ");
+    print_padded_text("医保类型", type_width);
+    printf("\n");
+    
+    // 打印表头下划线
+    for (int i = 0; i < total_width; i++) printf("-");
+    printf("\n");
+    
+    // 第三步：遍历打印匹配的数据
+    curr = g_check_item_list->next;
+    int count = 0;
     while (curr != NULL)
     {
         if (strstr(curr->item_id, keyword) != NULL ||
@@ -4637,20 +4718,45 @@ void search_check_item_by_keyword(const char* keyword)
             const char* m_type_name = NULL;
             switch (curr->m_type)
             {
-                case MEDICARE_CLASS_A:    m_type_name = "甲类";       break;
-                case MEDICARE_CLASS_B:    m_type_name = "乙类";       break;
-                case MEDICARE_NONE:       m_type_name = "自费";       break;
-                default:                  m_type_name = "未知";       break;
+                case MEDICARE_CLASS_A: m_type_name = "甲类"; break;
+                case MEDICARE_CLASS_B: m_type_name = "乙类"; break;
+                case MEDICARE_NONE:    m_type_name = "自费"; break;
+                default:               m_type_name = "未知"; break;
             }
-            printf("%-12s %-28s %-16s %-12.2f %-8s\n",
-                   curr->item_id, curr->item_name, curr->dept,
-                   curr->price, m_type_name);
-            found = 1;
+            
+            char price_buf[32];
+            sprintf(price_buf, "%.2f", curr->price);
+            
+            print_padded_text(curr->item_id, id_width);
+            printf("    ");
+            print_padded_text(curr->item_name, name_width);
+            printf("    ");
+            print_padded_text(curr->dept, dept_width);
+            printf("    ");
+            print_padded_text(price_buf, price_width);
+            printf("    ");
+            print_padded_text(m_type_name, type_width);
+            printf("\n");
+            
+            count++;
         }
         curr = curr->next;
     }
 
-    if (!found) printf("未找到匹配检查项目\n");
+    // 打印底部信息
+    for (int i = 0; i < total_width; i++) printf("-");
+    printf("\n");
+    
+    char count_str[50];
+    snprintf(count_str, sizeof(count_str), "共找到 %d 条匹配记录", count);
+    int count_width = get_display_width(count_str);
+    int count_padding = (total_width - count_width) / 2;
+    for (int i = 0; i < count_padding; i++) printf(" ");
+    printf("%s", count_str);
+    printf("\n");
+    
+    for (int i = 0; i < total_width; i++) printf("=");
+    printf("\n");
 }
 
 void handle_check_item_register(void)
@@ -5108,6 +5214,12 @@ static void print_green(const char* text)
     reset_console_color();
 }
 
+static void print_cyan(const char* text)
+{
+    set_console_color(11);
+    printf("%s", text);
+    reset_console_color();
+}
 static void print_progress_bar(const char* label, int value, int total, int width)
 {
     int completed;
@@ -5367,7 +5479,32 @@ static void print_progress_bar_cyan(const char* label, int value, int total, int
 
              if (g_doctor_list != NULL)
              {
+                 // 第一次遍历：计算各列最大宽度
+                 int name_dept_width = 0;
+                 int status_width = 0;
                  DoctorNode* doc = g_doctor_list->next;
+                 while (doc != NULL)
+                 {
+                     char label[64];
+                     snprintf(label, sizeof(label), "%s(%s)", doc->name, doc->department);
+                     int curr_width = str_display_width(label);
+                     if (curr_width > name_dept_width)
+                         name_dept_width = curr_width;
+
+                     const char* status_text = doc->is_on_duty ? "在岗" : "不在岗";
+                     int status_w = str_display_width(status_text);
+                     if (status_w > status_width)
+                         status_width = status_w;
+
+                     doc = doc->next;
+                 }
+
+                 // 设置最小宽度
+                 if (name_dept_width < 12) name_dept_width = 12;
+                 if (status_width < 4) status_width = 4;
+
+                 // 第二次遍历：按对齐格式打印
+                 doc = g_doctor_list->next;
                  int has_doc = 0;
                  while (doc != NULL)
                  {
@@ -5384,9 +5521,11 @@ static void print_progress_bar_cyan(const char* label, int value, int total, int
                          }
                      }
 
-                     char label[24];
+                     char label[64];
                      snprintf(label, sizeof(label), "%s(%s)", doc->name, doc->department);
-                     printf("  %-20s ", label);
+
+                     printf("  ");
+                     print_col(label, name_dept_width);
 
                      if (doc->is_on_duty == 1)
                      {
@@ -5397,25 +5536,27 @@ static void print_progress_bar_cyan(const char* label, int value, int total, int
                          else                 { busy_text = "拥挤";    color = 12; }
 
                          set_console_color(color);
-                         printf("%-4s", busy_text);
+                         print_col(busy_text, status_width);
                          reset_console_color();
-                         printf(" [");
 
-                         int bar_width = 20;
+                         printf("[");
+                         int bar_width = 18;
                          int filled = (queue > 20) ? 20 : queue;
                          set_console_color(color);
                          int j;
                          for (j = 0; j < filled; j++) printf("█");
                          for (; j < bar_width; j++) printf("-");
                          reset_console_color();
-                         printf("] %d人\n", queue);
+                         printf("]");
+
+                         printf("  %2d人\n", queue);
                      }
                      else
                      {
                          set_console_color(8);
-                         printf("不在岗");
+                         print_col("不在岗", status_width);
                          reset_console_color();
-                         printf(" [--------------------] 0人\n");
+                         printf("[------------------]  0人\n");
                      }
 
                      has_doc = 1;
@@ -5784,10 +5925,7 @@ static void print_progress_bar_cyan(const char* label, int value, int total, int
                           deposit_low_count > 0 || complaint_pending > 0));
 
         /* ===== 输出界面 ===== */
-        printf("\n");
-        printf("==============================================================\n");
-        printf("             [STAT] 社区智慧医疗管理系统 - 医疗大屏\n");
-        printf("==============================================================\n");
+        print_dashboard_title("📊 社区智慧医疗管理系统 - 医疗风险监控大屏");
 
         printf("  系统状态：");
         if (is_high_risk)
@@ -5801,15 +5939,14 @@ static void print_progress_bar_cyan(const char* label, int value, int total, int
         /* ===== 风险汇总卡片 ===== */
         {
             int has_red_risk = (expired_count > 0 || bed_occupancy_rate >= 90.0 || blacklisted_count > 0);
-            int has_yellow_risk = (low_stock_count > 0 || expiring_count > 0 || 
-                                  deposit_low_count > 0 || complaint_pending > 0 || 
+            int has_yellow_risk = (low_stock_count > 0 || expiring_count > 0 ||
+                                  deposit_low_count > 0 || complaint_pending > 0 ||
                                   alert_total > 0 || emergency_debt_total > 0);
             int has_risk = has_red_risk || has_yellow_risk;
 
-            printf("\n");
-            printf("+------------------------------------------------------------+\n");
-            printf("│                      [WARN]  风险汇总                            │\n");
-            printf("+------------------------------------------------------------+\n");
+            print_dashboard_line('-', DASHBOARD_WIDTH);
+            printf("│                      ⚠️  风险汇总                            │\n");
+            print_dashboard_line('-', DASHBOARD_WIDTH);
 
             if (!has_risk)
             {
@@ -5915,144 +6052,204 @@ static void print_progress_bar_cyan(const char* label, int value, int total, int
                 }
             }
 
-            printf("+------------------------------------------------------------+\n");
+            print_dashboard_line('-', DASHBOARD_WIDTH);
         }
 
         /* ===== 输出：门诊运行 ===== */
         {
-            char buf[64];
+            char buf1[64], buf2[64], buf3[64], buf4[64], buf5[64], buf6[64], buf7[64], buf8[64], buf9[64];
 
-            printf("\n");
-            printf("--------------------------  【门诊运行】  -------------------------\n");
+            print_section_title("门诊运行");
 
-            printf("患者总数：%-7d 待诊：%-7d 检查中：%-7d\n",
-                   patient_total, pending_count, examining_count);
-            printf("复诊待处理：%-5d 待缴费：", recheck_pending_count);
-            snprintf(buf, sizeof(buf), "%-7d", unpaid_count);
-            if (unpaid_count > 0) print_red(buf); else print_green(buf);
-            printf(" 待取药：%-7d\n", wait_med_count);
-            printf("需住院登记：%-5d 住院中：%-7d 就诊结束：%-5d\n",
-                   need_hospitalize_count, hospitalized_count, completed_count);
-            printf("过号作废：%-7d 急诊患者：%-5d 黑名单：",
-                   no_show_count, emergency_count);
-            snprintf(buf, sizeof(buf), "%-7d", blacklisted_count);
-            if (blacklisted_count > 0) print_red(buf); else print_green(buf);
-            printf("\n");
+            snprintf(buf1, sizeof(buf1), "%d", patient_total);
+            snprintf(buf2, sizeof(buf2), "%d", pending_count);
+            snprintf(buf3, sizeof(buf3), "%d", examining_count);
+            print_kv_3cols("患者总数：", buf1, "待诊：", buf2, "检查中：", buf3);
 
-            printf("急诊欠费总额：");
-            snprintf(buf, sizeof(buf), "%.2f", emergency_debt_total);
-            if (emergency_debt_total > 0) print_yellow(buf); else print_green(buf);
-            printf(" 元\n");
+            snprintf(buf4, sizeof(buf4), "%d", recheck_pending_count);
+            snprintf(buf5, sizeof(buf5), "%d", unpaid_count);
+            snprintf(buf6, sizeof(buf6), "%d", wait_med_count);
+            print_kv_3cols("复诊待处理：", buf4, "待缴费：", buf5, "待取药：", buf6);
 
-            print_progress_bar("待诊患者", pending_count, patient_total, 20);
-            print_progress_bar("待缴费患者", unpaid_count, patient_total, 20);
-            print_progress_bar("待取药患者", wait_med_count, patient_total, 20);
-            print_progress_bar("急诊患者", emergency_count, patient_total, 20);
+            snprintf(buf7, sizeof(buf7), "%d", need_hospitalize_count);
+            snprintf(buf8, sizeof(buf8), "%d", hospitalized_count);
+            snprintf(buf9, sizeof(buf9), "%d", completed_count);
+            print_kv_3cols("需住院登记：", buf7, "住院中：", buf8, "就诊结束：", buf9);
+
+            snprintf(buf1, sizeof(buf1), "%d", no_show_count);
+            snprintf(buf2, sizeof(buf2), "%d", emergency_count);
+            snprintf(buf3, sizeof(buf3), "%d", blacklisted_count);
+            print_kv_3cols("过号作废：", buf1, "急诊患者：", buf2, "黑名单：", buf3);
+
+            snprintf(buf1, sizeof(buf1), "%.2f", emergency_debt_total);
+            printf("  急诊欠费总额：%s 元\n", buf1);
+
+            print_progress_bar_single("待诊患者", pending_count, patient_total);
+            print_progress_bar_single("待缴费患者", unpaid_count, patient_total);
+            print_progress_bar_single("待取药患者", wait_med_count, patient_total);
+            print_progress_bar_single("急诊患者", emergency_count, patient_total);
         }
 
         /* ===== 输出：预约挂号 ===== */
         {
-            printf("\n");
-            printf("------------------------  【预约挂号】  -------------------------\n");
-            printf("预约总数：%-7d 已预约：%-7d 已签到/已挂号：%-5d\n",
-                   appointment_total, reserved_count, checked_in_count);
-            printf("已取消：%-9d 已过号：%-7d\n",
-                   cancelled_count, missed_count);
-            printf("现场号：%-9d 预约号：%-7d\n",
-                   walk_in_count, appointment_count);
-            printf("已缴挂号费：%-5d 未缴挂号费：%-5d\n",
-                   fee_paid_count, fee_unpaid_count);
+            char buf1[64], buf2[64], buf3[64], buf4[64], buf5[64], buf6[64], buf7[64], buf8[64], buf9[64];
 
-            print_progress_bar("已签到/挂号", checked_in_count, appointment_total, 20);
-            print_progress_bar("已取消预约", cancelled_count, appointment_total, 20);
-            print_progress_bar("已过号预约", missed_count, appointment_total, 20);
+            print_section_title("预约挂号");
+
+            snprintf(buf1, sizeof(buf1), "%d", appointment_total);
+            snprintf(buf2, sizeof(buf2), "%d", reserved_count);
+            snprintf(buf3, sizeof(buf3), "%d", checked_in_count);
+            print_kv_3cols("预约总数：", buf1, "已预约：", buf2, "已签到/已挂号：", buf3);
+
+            snprintf(buf4, sizeof(buf4), "%d", cancelled_count);
+            snprintf(buf5, sizeof(buf5), "%d", missed_count);
+            snprintf(buf6, sizeof(buf6), "%d", walk_in_count);
+            print_kv_3cols("已取消：", buf4, "已过号：", buf5, "现场号：", buf6);
+
+            snprintf(buf7, sizeof(buf7), "%d", appointment_count);
+            snprintf(buf8, sizeof(buf8), "%d", fee_paid_count);
+            snprintf(buf9, sizeof(buf9), "%d", fee_unpaid_count);
+            print_kv_3cols("预约号：", buf7, "已缴挂号费：", buf8, "未缴挂号费：", buf9);
+
+            print_progress_bar_single("已签到/挂号", checked_in_count, appointment_total);
+            print_progress_bar_single("已取消预约", cancelled_count, appointment_total);
+            print_progress_bar_single("已过号预约", missed_count, appointment_total);
         }
 
         /* ===== 输出：医护药人员 ===== */
         {
-            printf("\n");
-            printf("-----------------------  【医护药人员】  ------------------------\n");
-            printf("管理员：%d\n", admin_count);
-            printf("医生：%d / 在岗 %d\n", doctor_total, doctor_on_duty);
-            printf("护士：%d / 在岗 %d\n", nurse_total, nurse_on_duty);
-            printf("药师：%d / 在岗 %d\n", pharmacist_total, pharmacist_on_duty);
+            char buf1[64], buf2[64], buf3[64];
+
+            print_section_title("医护药人员");
+
+            snprintf(buf1, sizeof(buf1), "%d", admin_count);
+            printf("  管理员：%s\n", buf1);
+
+            snprintf(buf1, sizeof(buf1), "%d", doctor_total);
+            snprintf(buf2, sizeof(buf2), "%d", doctor_on_duty);
+            printf("  医生：%s / 在岗 %s\n", buf1, buf2);
+
+            snprintf(buf1, sizeof(buf1), "%d", nurse_total);
+            snprintf(buf2, sizeof(buf2), "%d", nurse_on_duty);
+            printf("  护士：%s / 在岗 %s\n", buf1, buf2);
+
+            snprintf(buf1, sizeof(buf1), "%d", pharmacist_total);
+            snprintf(buf2, sizeof(buf2), "%d", pharmacist_on_duty);
+            printf("  药师：%s / 在岗 %s\n", buf1, buf2);
+        }
+
+        /* ===== 输出：医生候诊队列 ===== */
+        {
+            print_section_title("医生候诊队列");
+            print_doctor_queue();
         }
 
         /* ===== 输出：床位住院 ===== */
         {
-            char buf[64];
+            char buf1[64], buf2[64], buf3[64], buf4[64], buf5[64], buf6[64], buf7[64];
 
+            print_section_title("床位住院");
+
+            snprintf(buf1, sizeof(buf1), "%d", bed_total);
+            snprintf(buf2, sizeof(buf2), "%d", bed_occupied);
+            snprintf(buf3, sizeof(buf3), "%d", bed_free);
+            print_kv_3cols("床位总数：", buf1, "已占用：", buf2, "空闲：", buf3);
+
+            printf("  床位占用率：");
+            snprintf(buf1, sizeof(buf1), "%.1f%%", bed_occupancy_rate);
+            if (bed_occupancy_rate >= 90.0)
+                print_red(buf1);
+            else
+                print_green(buf1);
             printf("\n");
-            printf("------------------------  【床位住院】  -------------------------\n");
-            printf("床位总数：%-7d 已占用：%-7d 空闲：%-7d\n",
-                   bed_total, bed_occupied, bed_free);
 
-            printf("床位占用率：");
-            snprintf(buf, sizeof(buf), "%.1f%%", bed_occupancy_rate);
-            if (bed_occupancy_rate >= 90.0) print_red(buf); else print_green(buf);
-            printf("\n");
+            snprintf(buf4, sizeof(buf4), "%d", inpatient_total);
+            snprintf(buf5, sizeof(buf5), "%d", inpatient_active);
+            snprintf(buf6, sizeof(buf6), "%d", inpatient_discharged);
+            print_kv_3cols("住院记录：", buf4, "当前住院：", buf5, "已出院：", buf6);
 
-            printf("住院记录：%-7d 当前住院：%-5d 已出院：%-7d\n",
-                   inpatient_total, inpatient_active, inpatient_discharged);
+            printf("  押金不足：");
+            snprintf(buf7, sizeof(buf7), "%d", deposit_low_count);
+            if (deposit_low_count > 0)
+                print_yellow(buf7);
+            else
+                print_green(buf7);
+            printf("  住院押金总余额：%.2f 元\n", deposit_balance_total);
 
-            printf("押金不足：");
-            snprintf(buf, sizeof(buf), "%-7d", deposit_low_count);
-            if (deposit_low_count > 0) print_yellow(buf); else print_green(buf);
-            printf(" 住院押金总余额：%.2f 元\n", deposit_balance_total);
-
-            print_progress_bar("床位占用", bed_occupied, bed_total, 20);
+            print_progress_bar_single("床位占用", bed_occupied, bed_total);
         }
 
         /* ===== 输出：药品库存 ===== */
         {
-            char buf[64];
+            char buf1[64], buf2[64], buf3[64], buf4[64];
 
-            printf("\n");
-            printf("------------------------  【药品库存】  -------------------------\n");
-            printf("药品种类：%-7d 库存总量：%-7d\n",
-                   medicine_kind_total, medicine_stock_total);
+            print_section_title("药品库存");
 
-            printf("低库存药品：");
-            snprintf(buf, sizeof(buf), "%-5d", low_stock_count);
-            if (low_stock_count > 0) print_yellow(buf); else print_green(buf);
+            snprintf(buf1, sizeof(buf1), "%d", medicine_kind_total);
+            snprintf(buf2, sizeof(buf2), "%d", medicine_stock_total);
+            print_kv_3cols("药品种类：", buf1, "库存总量：", buf2, "", "");
 
-            printf(" 近效期药品：");
-            snprintf(buf, sizeof(buf), "%-5d", expiring_count);
-            if (expiring_count > 0) print_yellow(buf); else print_green(buf);
-
-            printf(" 已过期药品：");
-            snprintf(buf, sizeof(buf), "%-5d", expired_count);
-            if (expired_count > 0) print_red(buf); else print_green(buf);
+            printf("  低库存药品：");
+            snprintf(buf3, sizeof(buf3), "%d", low_stock_count);
+            if (low_stock_count > 0)
+                print_yellow(buf3);
+            else
+                print_green(buf3);
+            printf("  近效期药品：");
+            snprintf(buf4, sizeof(buf4), "%d", expiring_count);
+            if (expiring_count > 0)
+                print_yellow(buf4);
+            else
+                print_green(buf4);
+            printf("  已过期药品：");
+            snprintf(buf1, sizeof(buf1), "%d", expired_count);
+            if (expired_count > 0)
+                print_red(buf1);
+            else
+                print_green(buf1);
             printf("\n");
         }
 
         /* ===== 输出：检查与服务 ===== */
         {
-            char buf[64];
+            char buf1[64], buf2[64], buf3[64], buf4[64], buf5[64], buf6[64], buf7[64];
 
-            printf("\n");
-            printf("-----------------------  【检查与服务】  ------------------------\n");
+            print_section_title("检查与服务");
 
-            printf("检查记录：%-7d 已完成：%-7d 未完成：%-7d\n",
-                   check_total, check_completed, check_uncompleted);
+            snprintf(buf1, sizeof(buf1), "%d", check_total);
+            snprintf(buf2, sizeof(buf2), "%d", check_completed);
+            snprintf(buf3, sizeof(buf3), "%d", check_uncompleted);
+            print_kv_3cols("检查记录：", buf1, "已完成：", buf2, "未完成：", buf3);
 
-            printf("已缴费检查：%-5d 未缴费检查：",
-                   check_paid);
-            snprintf(buf, sizeof(buf), "%-5d", check_unpaid);
-            if (check_unpaid > 0) print_red(buf); else print_green(buf);
-            printf("\n");
-
-            printf("系统预警：");
-            snprintf(buf, sizeof(buf), "%-7d", alert_total);
-            if (alert_total > 0) print_yellow(buf); else print_green(buf);
-
-            printf(" 投诉总数：%-5d 待处理投诉：", complaint_total);
-            snprintf(buf, sizeof(buf), "%-5d", complaint_pending);
-            if (complaint_pending > 0) print_yellow(buf); else print_green(buf);
+            printf("  已缴费检查：");
+            snprintf(buf4, sizeof(buf4), "%d", check_paid);
+            printf("%s  未缴费检查：", buf4);
+            snprintf(buf5, sizeof(buf5), "%d", check_unpaid);
+            if (check_unpaid > 0)
+                print_red(buf5);
+            else
+                print_green(buf5);
             printf("\n");
 
-            printf("已回复投诉：%-5d 操作日志：%-7d\n",
-                   complaint_replied, log_total);
+            printf("  系统预警：");
+            snprintf(buf6, sizeof(buf6), "%d", alert_total);
+            if (alert_total > 0)
+                print_yellow(buf6);
+            else
+                print_green(buf6);
+            printf("  投诉总数：");
+            snprintf(buf7, sizeof(buf7), "%d", complaint_total);
+            printf("%s  待处理投诉：", buf7);
+            snprintf(buf1, sizeof(buf1), "%d", complaint_pending);
+            if (complaint_pending > 0)
+                print_yellow(buf1);
+            else
+                print_green(buf1);
+            printf("\n");
+
+            snprintf(buf2, sizeof(buf2), "%d", complaint_replied);
+            snprintf(buf3, sizeof(buf3), "%d", log_total);
+            print_kv_3cols("已回复投诉：", buf2, "操作日志：", buf3, "", "");
         }
 
         printf("\n");
@@ -7551,43 +7748,151 @@ static void show_account_info(AccountNode* account)
 static void change_password(AccountNode* account)
 {
     if (account == NULL) return;
-    
+
     char old_password[MAX_ID_LEN] = "";
     char new_password[MAX_ID_LEN] = "";
     char confirm_password[MAX_ID_LEN] = "";
-    
-    system("cls");
-    printf("========== 修改登录密码 ==========\n");
-    
-    get_password_with_toggle("请输入旧密码：", old_password, MAX_ID_LEN);
-    
-    if (strcmp(old_password, account->password) != 0)
+    char error_msg[256] = "";
+    int step = 0; // 0=输入旧密码, 1=输入新密码, 2=确认新密码
+    int visible = 0; // 0=隐藏密码, 1=显示密码
+    int ret;
+
+    while (1)
     {
-        printf("\n[ERROR] 旧密码错误，修改失败。\n");
-        return;
+        system("cls");
+        printf("================ 修改登录密码 ================\n");
+        printf("提示：输入 B 返回上一步，输入 Q 退出当前操作，按 Tab 切换密码显示/隐藏\n");
+        printf("------------------------------------------------\n");
+
+        // 显示已输入的密码
+        if (strlen(old_password) > 0)
+        {
+            printf("已输入旧密码：%s\n", visible ? old_password : "******");
+        }
+        if (strlen(new_password) > 0)
+        {
+            printf("已输入新密码：%s\n", visible ? new_password : "******");
+        }
+
+        // 显示错误信息
+        if (strlen(error_msg) > 0)
+        {
+            printf("[错误] %s\n", error_msg);
+            error_msg[0] = '\0';
+        }
+
+        // 根据当前步骤执行输入
+        if (step == 0)
+        {
+            printf("\n");
+            ret = read_password_with_toggle_ext("请输入旧密码：", old_password, MAX_ID_LEN, &visible);
+
+            if (ret == 1 || strcasecmp(old_password, "B") == 0)
+            {
+                return;
+            }
+
+            if (ret == 2 || strcasecmp(old_password, "Q") == 0)
+            {
+                return;
+            }
+
+            if (is_blank_string(old_password))
+            {
+                strcpy(error_msg, "旧密码不能为空，请重新输入。");
+                continue;
+            }
+
+            if (contains_space(old_password))
+            {
+                strcpy(error_msg, "密码不能包含空格，请重新输入。");
+                continue;
+            }
+
+            if (strcmp(old_password, account->password) != 0)
+            {
+                strcpy(error_msg, "旧密码错误，请重新输入。");
+                continue;
+            }
+
+            step = 1;
+        }
+        else if (step == 1)
+        {
+            printf("\n");
+            ret = read_password_with_toggle_ext("请输入新密码：", new_password, MAX_ID_LEN, &visible);
+
+            if (ret == 1 || strcasecmp(new_password, "B") == 0)
+            {
+                step = 0;
+                strcpy(new_password, "");
+                continue;
+            }
+
+            if (ret == 2 || strcasecmp(new_password, "Q") == 0)
+            {
+                return;
+            }
+
+            if (is_blank_string(new_password))
+            {
+                strcpy(error_msg, "新密码不能为空，请重新输入。");
+                continue;
+            }
+
+            if (contains_space(new_password))
+            {
+                strcpy(error_msg, "密码不能包含空格，请重新输入。");
+                continue;
+            }
+
+            step = 2;
+        }
+        else if (step == 2)
+        {
+            printf("\n");
+            ret = read_password_with_toggle_ext("请确认新密码：", confirm_password, MAX_ID_LEN, &visible);
+
+            if (ret == 1 || strcasecmp(confirm_password, "B") == 0)
+            {
+                step = 1;
+                strcpy(confirm_password, "");
+                continue;
+            }
+
+            if (ret == 2 || strcasecmp(confirm_password, "Q") == 0)
+            {
+                return;
+            }
+
+            if (is_blank_string(confirm_password))
+            {
+                strcpy(error_msg, "确认密码不能为空，请重新输入。");
+                continue;
+            }
+
+            if (contains_space(confirm_password))
+            {
+                strcpy(error_msg, "密码不能包含空格，请重新输入。");
+                continue;
+            }
+
+            if (strcmp(new_password, confirm_password) != 0)
+            {
+                strcpy(error_msg, "两次输入的新密码不一致，请重新确认。");
+                continue;
+            }
+
+            break;
+        }
     }
-    
-    get_password_with_toggle("请输入新密码：", new_password, MAX_ID_LEN);
-    
-    if (strlen(new_password) == 0)
-    {
-        printf("\n[ERROR] 新密码不能为空。\n");
-        return;
-    }
-    
-    get_password_with_toggle("请再次确认新密码：", confirm_password, MAX_ID_LEN);
-    
-    if (strcmp(new_password, confirm_password) != 0)
-    {
-        printf("\n[ERROR] 两次输入的新密码不一致，修改失败。\n");
-        return;
-    }
-    
     strncpy(account->password, new_password, MAX_ID_LEN - 1);
-    
+    account->password[MAX_ID_LEN - 1] = '\0';
+
     save_account_list(g_account_list);
-    
-    printf("\n[OK] 密码修改成功，请牢记新密码。\n");
+
+    printf("\n✅ 密码修改成功，请牢记新密码。\n");
+    system("pause");
 }
 
 static void show_duty_status(AccountNode* account)
