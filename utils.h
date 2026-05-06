@@ -20,6 +20,9 @@
 // 严格整数解析函数（只允许纯数字，不允许字母或特殊字符）
 int parse_int_strict(const char* str, int* out);
 
+// 严格浮点数解析函数（只允许数字和一位小数点，不允许字母或特殊字符）
+int parse_double_strict(const char* str, double* out);
+
 // 打印统一的页面标题
 void print_page_header(const char* title);
 
@@ -111,6 +114,12 @@ int str_display_width(const char* str);
 // 16. 按显示宽度对齐打印字符串
 void print_col(const char* str, int col_width);
 
+// 16.1. 打印带整数值的列（先组合字符串再对齐）
+void print_col_num_int(const char* str, int val, int col_width);
+
+// 16.2. 打印带浮点数值的列（先组合字符串再对齐）
+void print_col_num_dbl(const char* str, double val, int col_width);
+
 // 17. 检查日期格式是否正确 (YYYY-MM-DD)
 int is_valid_date_format(const char* date_str);
 
@@ -170,6 +179,7 @@ int contains_ignore_case(const char* text, const char* keyword);
 #define BLUE    "\033[34m"
 #define MAGENTA "\033[35m"
 #define CYAN    "\033[36m"
+#define GRAY    "\033[90m"
 #define BOLD    "\033[1m"
 #define RESET   "\033[0m"
 

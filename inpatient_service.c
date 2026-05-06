@@ -398,7 +398,7 @@ void show_free_beds()
 
 }
 
-static void print_col_num_int(const char* str, int val, int col_width)
+void print_col_num_int(const char* str, int val, int col_width)
 
 {
 
@@ -416,7 +416,7 @@ static void print_col_num_int(const char* str, int val, int col_width)
 
 }
 
-static void print_col_num_dbl(const char* str, double val, int col_width)
+void print_col_num_dbl(const char* str, double val, int col_width)
 
 {
 
@@ -939,7 +939,7 @@ void show_inpatient_record_by_patient_id(const char* patient_id)
     for (int i = 0; i < inp_sep_width; i++) printf("-");
     printf("\n");
 
-    print_col("住院中", 12);
+    print_col("住院号", 12);
     print_col("病房编号", 12);
     print_col("床位编号", 12);
     print_col("推荐类型", 10);
@@ -1133,25 +1133,15 @@ void show_hospitalized_patients_by_dept(const char* dept)
     }
 
     printf("\n==============================================================\n");
-
     printf("               科室住院患者—%s\n", dept);
-
     printf("==============================================================\n");
-
-    print_col("住院中", 10);
-
+    print_col("住院号", 10);
     print_col("患者编号", 12);
-
     print_col("患者姓名", 12);
-
     print_col("床位", 10);
-
     print_col("类型", 10);
-
     print_col("状态", 8);
-
     printf("\n");
-
     printf("--------------------------------------------------------------\n");
 
     InpatientRecord* curr = g_inpatient_list->next;
@@ -1241,29 +1231,17 @@ void show_discharged_patients(void)
     }
 
     printf("\n==============================================================\n");
-
     printf("                      已出院患者\n");
-
     printf("==============================================================\n");
-
-    print_col("住院中", 10);
-
+    print_col("住院号", 10);
     print_col("患者编号", 12);
-
     print_col("患者姓名", 12);
-
     print_col("床位", 10);
-
     print_col("类型", 10);
-
     print_col("已住", 6);
-
     print_col("押金", 10);
-
     printf("\n");
-
     print_col("", 10);
-
     print_col("", 12);
 
     print_col("", 12);

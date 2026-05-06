@@ -148,7 +148,7 @@ double get_safe_double(const char* prompt)
         if (read_console_line_utf8(buffer, sizeof(buffer))) 
         {
             if (buffer[0] == '\0') continue;
-            if (sscanf(buffer, "%lf", &val) == 1) 
+            if (parse_double_strict(buffer, &val)) 
             {
                 return val;
             }
@@ -1986,6 +1986,75 @@ int parse_int_strict(const char* str, int* out)
     }
 
     *out = (int)value;
+    return 1;
+}
+
+int parse_double_strict(const char* str, double* out)
+{
+    int i = 0;
+    int dot_count = 0;
+    int digit_count = 0;
+    double value = 0.0;
+    double decimal = 0.1;
+    int after_dot = 0;
+
+    if (str == NULL || out == NULL)
+    {
+        return 0;
+    }
+
+    while (str[i] == ' ' || str[i] == '\t')
+    {
+        i++;
+    }
+
+    if (str[i] == '\0')
+    {
+        return 0;
+    }
+
+    for (; str[i] != '\0'; i++)
+    {
+        if (str[i] == '\n' || str[i] == '\r')
+        {
+            break;
+        }
+
+        if (str[i] == '.')
+        {
+            dot_count++;
+            if (dot_count > 1)
+            {
+                return 0;
+            }
+            after_dot = 1;
+            continue;
+        }
+
+        if (str[i] < '0' || str[i] > '9')
+        {
+            return 0;
+        }
+
+        digit_count++;
+
+        if (!after_dot)
+        {
+            value = value * 10 + (str[i] - '0');
+        }
+        else
+        {
+            value += (str[i] - '0') * decimal;
+            decimal *= 0.1;
+        }
+    }
+
+    if (digit_count == 0)
+    {
+        return 0;
+    }
+
+    *out = value;
     return 1;
 }
 
