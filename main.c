@@ -2226,8 +2226,8 @@ back_to_decision:
         }
 
         printf("\n================ 可用检查项目列表 ================\n");
-        printf("%-12s %-22s %-14s %-10s %s\n", "项目编号", "项目名称", "所属科室", "价格(元)", "医保类型");
-        printf("--------------------------------------------------------------------\n");
+        printf("%-12s %-22s %-14s %-10s %-8s\n", "项目编号", "项目名称", "所属科室", "价格(元)", "医保类型");
+        printf("----------------------------------------------------------------------\n");
         item_curr = g_check_item_list->next;
         while (item_curr != NULL)
         {
@@ -2239,7 +2239,7 @@ back_to_decision:
                 case MEDICARE_NONE: medicare_type = "自费"; break;
                 default: medicare_type = "未知";
             }
-            printf("%-12s %-22s %-14s %-10.2f %s\n",
+            printf("%-12s %-22s %-14s %-10.2f %-8s\n",
                    item_curr->item_id,
                    item_curr->item_name,
                    item_curr->dept,
@@ -9168,9 +9168,13 @@ static void inpatient_menu()
                 break;
             case 3:
                 {
-                    printf("\n===============================================================\n");
+                    int bed_occ_sep = 89; // 6 cols, print_col adds +12
+                    printf("\n");
+                    for (int i = 0; i < bed_occ_sep; i++) printf("=");
+                    printf("\n");
                     printf("                      床位占用情况\n");
-                    printf("===============================================================\n");
+                    for (int i = 0; i < bed_occ_sep; i++) printf("=");
+                    printf("\n");
                     print_col("病房编号", 12);
                     print_col("床位编号", 12);
                     print_col("类型", 10);
@@ -9178,7 +9182,8 @@ static void inpatient_menu()
                     print_col("患者姓名", 12);
                     print_col("身份证号", 18);
                     printf("\n");
-                    printf("---------------------------------------------------------------\n");
+                    for (int i = 0; i < bed_occ_sep; i++) printf("-");
+                    printf("\n");
 
                     if (g_ward_list != NULL && g_ward_list->next != NULL)     
                     {
@@ -9218,12 +9223,14 @@ static void inpatient_menu()
                         {
                             printf("  当前暂无已占用床位\n");
                         }
-                        printf("---------------------------------------------------------------\n");
+                        for (int i = 0; i < bed_occ_sep; i++) printf("-");
+                        printf("\n");
                     }
                     else
                     {
                         printf("  当前无床位数据\n");
-                        printf("---------------------------------------------------------------\n");
+                        for (int i = 0; i < bed_occ_sep; i++) printf("-");
+                        printf("\n");
                     }
                     system("pause");
                 }

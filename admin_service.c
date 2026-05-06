@@ -1893,7 +1893,7 @@ void show_recycle_bin(void)
     printf("\n");
     printf("%-12s %-10s %-12s %-24s %-20s %-10s %-20s %-8s\n",
            "回收编号", "类型", "原编号", "名称", "删除时间", "操作人", "原因", "已恢复");
-    printf("--------------------------------------------------------------------------------------------------------------------------\n");
+    printf("---------------------------------------------------------------------------------------------------------------------------\n");
 
     if (curr == NULL)
     {
@@ -3685,10 +3685,11 @@ void handle_medicine_register(void)
 void handle_medicine_basic_info_update(void)
 {
     char med_id[MAX_ID_LEN];
-    char new_name[MAX_MED_NAME_LEN];
-    char new_alias[MAX_ALIAS_LEN];
-    char new_generic_name[MAX_GENERIC_NAME_LEN];
-    char new_expiry_date[MAX_DATE_LEN];
+    char new_name[MAX_MED_NAME_LEN] = "";
+    char new_alias[MAX_ALIAS_LEN] = "";
+    char new_generic_name[MAX_GENERIC_NAME_LEN] = "";
+    char new_expiry_date[MAX_DATE_LEN] = "";
+    double new_price = -1.0;
     char* alias_ptr = NULL;
     MedicineNode* medicine_node = NULL;
 
@@ -3703,7 +3704,6 @@ void handle_medicine_basic_info_update(void)
         {
             get_safe_string("请输入药品编号：", med_id, MAX_ID_LEN);
 
-            // 优先检查退出/返回指令
             if (my_strcasecmp(med_id, "Q") == 0)
             {
                 printf("已取消操作\n");
@@ -3715,20 +3715,16 @@ void handle_medicine_basic_info_update(void)
                 return;
             }
 
-            // 检查是否为空
             if (is_blank_string(med_id))
             {
                 printf("药品编号不能为空，请重新输入\n");
                 continue;
             }
 
-            // 执行正常的药品搜索
             medicine_node = find_medicine_by_id(g_medicine_list, med_id);
             if (medicine_node == NULL)
             {
-                printf("未找到编号为 %s 的药品，修改流程结束\n", med_id);
-                printf("\n按任意键继续...\n");
-                system("pause");
+                printf("未找到编号为 %s 的药品，请重新输入\n", med_id);
                 continue;
             }
 
@@ -3764,7 +3760,7 @@ void handle_medicine_basic_info_update(void)
         printf("----------------------------------------\n");
 
         // 2. 商品名（选填，空白字符串表示不修改）
-        get_safe_string("请输入新商品名（留空不修改）：", new_name, MAX_MED_NAME_LEN);
+        get_safe_string("请输入新商品名（留空不修改，输入 B 返回上一级）：", new_name, MAX_MED_NAME_LEN);
         if (my_strcasecmp(new_name, "Q") == 0)
         {
             printf("已取消操作\n");
@@ -3776,73 +3772,19 @@ void handle_medicine_basic_info_update(void)
         }
 
         // 3. 通用名（选填，空白字符串表示不修改）
-        get_safe_string("请输入新通用名（留空不修改）：", new_generic_name, MAX_GENERIC_NAME_LEN);
+        get_safe_string("请输入新通用名（留空不修改，输入 B 返回上一级）：", new_generic_name, MAX_GENERIC_NAME_LEN);
         if (my_strcasecmp(new_generic_name, "Q") == 0)
         {
             printf("已取消操作\n");
             return;
         }
-        
-        break;
-    }
-
-    // 显示当前药品信息
-    printf("\n------------- 当前药品信息 ------------\n");
-    printf("药品编号：%s\n", medicine_node->id);
-    printf("商品名：%s\n", medicine_node->name);
-    printf("通用名：%s\n", medicine_node->generic_name);
-    printf("别名：%s\n", (medicine_node->alias[0] == '\0') ? "无" : medicine_node->alias);
-    printf("单价：%.2f\n", medicine_node->price);
-    printf("库存：%d\n", medicine_node->stock);
-    
-    // 显示医保类型
-    switch (medicine_node->m_type)
-    {
-        case MEDICARE_NONE:       printf("医保类型：自费\n");       break;
-        case MEDICARE_CLASS_A:    printf("医保类型：甲类医保\n");     break;
-        case MEDICARE_CLASS_B:    printf("医保类型：乙类医保\n");     break;
-        default:                  printf("医保类型：未知\n");         break;
-    }
-    printf("效期：%s\n", medicine_node->expiry_date);
-    printf("----------------------------------------\n");
-
-    // 2. 商品名（选填，空白字符串表示不修改）
-    get_safe_string("请输入新商品名（留空不修改，输入 B 返回上一级）: ", new_name, MAX_MED_NAME_LEN);
-    if (strcmp(new_name, "B") == 0 || strcmp(new_name, "b") == 0)
-    {
-        return;
-    }
-
-    // 3. 通用名（选填，空白字符串表示不修改）
-    get_safe_string("请输入新通用名（留空不修改，输入 B 返回上一级）: ", new_generic_name, MAX_GENERIC_NAME_LEN);
-    if (strcmp(new_generic_name, "B") == 0 || strcmp(new_generic_name, "b") == 0)
-    {
-        return;
-    }
-
-    // 4. 别名（选填，输入 B 返回上一级，空字符串表示清空）
-    get_safe_string("请输入新别名（留空不修改，输入 B 返回上一级，输入空字符串清空别名）: ", new_alias, MAX_ALIAS_LEN);
-    if (strcmp(new_alias, "B") == 0 || strcmp(new_alias, "b") == 0)
-    {
-        return;
-    }
-    if (!is_blank_string(new_alias))
-    {
-        alias_ptr = new_alias;
-    }
-
-    // 5. 单价（选填，-1 表示不修改）
-    while (1)
-    {
-        char price_str[32];
-        get_safe_string("请输入新单价（留空不修改，输入 B 返回上一级）: ", price_str, sizeof(price_str));
-        if (strcmp(price_str, "B") == 0 || strcmp(price_str, "b") == 0)
+        if (my_strcasecmp(new_generic_name, "B") == 0)
         {
             continue;
         }
 
-        // 4. 别名（选填，空字符串表示不修改）
-        get_safe_string("请输入新别名（留空不修改）：", new_alias, MAX_ALIAS_LEN);
+        // 4. 别名（选填，空字符串表示清空）
+        get_safe_string("请输入新别名（留空不修改，输入 B 返回上一级，输入空字符串清空别名）：", new_alias, MAX_ALIAS_LEN);
         if (my_strcasecmp(new_alias, "Q") == 0)
         {
             printf("已取消操作\n");
@@ -3852,14 +3794,17 @@ void handle_medicine_basic_info_update(void)
         {
             continue;
         }
+        if (!is_blank_string(new_alias))
+        {
+            alias_ptr = new_alias;
+        }
 
         // 5. 单价（选填，-1 表示不修改）
-        double new_price = -1.0;
         while (1)
         {
             char price_str[32];
             char* endptr;
-            get_safe_string("请输入新单价（留空不修改）：", price_str, sizeof(price_str));
+            get_safe_string("请输入新单价（留空不修改，输入 B 返回上一级）：", price_str, sizeof(price_str));
             if (my_strcasecmp(price_str, "Q") == 0)
             {
                 printf("已取消操作\n");
@@ -3887,7 +3832,7 @@ void handle_medicine_basic_info_update(void)
         // 6. 效期（选填，空白字符串表示不修改）
         while (1)
         {
-            get_safe_string("请输入新效期（留空不修改）：", new_expiry_date, MAX_DATE_LEN);
+            get_safe_string("请输入新效期（留空不修改，输入 B 返回上一级）：", new_expiry_date, MAX_DATE_LEN);
             if (my_strcasecmp(new_expiry_date, "Q") == 0)
             {
                 printf("已取消操作\n");
@@ -3914,11 +3859,6 @@ void handle_medicine_basic_info_update(void)
             break;
         }
 
-        if (!is_blank_string(new_alias))
-        {
-            alias_ptr = new_alias;
-        }
-
         // 调用 update_medicine_basic_info 函数
         update_medicine_basic_info(
             med_id,
@@ -3928,6 +3868,8 @@ void handle_medicine_basic_info_update(void)
             new_price,
             is_blank_string(new_expiry_date) ? NULL : new_expiry_date
         );
+        
+        printf("\n修改成功！\n");
         printf("按任意键返回...\n");
         system("pause");
         return;
