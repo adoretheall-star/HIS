@@ -556,14 +556,14 @@ static void handle_admin_register_account()
                     continue;
                 }
                 
-                role = atoi(input_buffer);
-                if (role >= 1 && role <= 4)
+                role = atoi(input_buffer) - 1;  // 用户输入1-4，转换为0-3的枚举值
+                if (role >= 0 && role <= 3)
                 {
                     switch (role)
                     {
                         case ROLE_ADMIN:    strcpy(role_str, "管理员"); break;
-                        case ROLE_NURSE:    strcpy(role_str, "护士"); break;
                         case ROLE_DOCTOR:   strcpy(role_str, "医生"); break;
+                        case ROLE_NURSE:    strcpy(role_str, "护士"); break;
                         case ROLE_PHARMACIST: strcpy(role_str, "药师"); break;
                         case ROLE_PATIENT:  strcpy(role_str, "患者"); break;
                     }

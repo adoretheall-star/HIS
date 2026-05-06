@@ -788,6 +788,14 @@ int update_doctor_duty_status(const char* username, int is_on_duty)
     }
 
     account->is_on_duty = is_on_duty;
+    
+    // 同时更新医生节点的值班状态
+    DoctorNode* doctor = find_doctor_by_id(g_doctor_list, username);
+    if (doctor != NULL)
+    {
+        doctor->is_on_duty = is_on_duty;
+    }
+    
     return 1;
 }
 
